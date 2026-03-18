@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Film } from '../types'
 
 // const BASE_URL = 'http://192.168.68.108:8000' // dev — IP locale de la machine
-const BASE_URL = 'https://ton-app.up.railway.app' // prod — à remplacer après déploiement Railway
+const BASE_URL = 'https://cinepick-production-95bc.up.railway.app' // prod
 
 const STORAGE_KEYS = {
   WATCHLIST: 'watchlist',
