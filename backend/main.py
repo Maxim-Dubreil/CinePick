@@ -1,11 +1,18 @@
 import asyncio
-from fastapi import FastAPI, HTTPException
+import os
+from typing import Optional
+
+from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
 from scraper import ScraperError, scrape_watchlist
 from tmdb import enrich_film
-from models import Film, WatchlistResponse
+from ai import test_key, recommend as ai_recommend
+from models import (
+    Film, WatchlistResponse,
+    AITestKeyRequest, AIRecommendRequest, AIRecommendResponse, AIRecommendation,
+)
 
 load_dotenv()
 
@@ -17,6 +24,19 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ---------------------------------------------------------------------------
+# Security — X-App-Token
+# Set APP_TOKEN env var in Railway to enforce the check.
+# If APP_TOKEN is not set, the check is skipped (dev mode).
+# ---------------------------------------------------------------------------
+
+_APP_TOKEN = os.getenv("APP_TOKEN")
+
+
+def check_app_token(x_app_token: Optional[str] = Header(default=None)) -> None:
+    if _APP_TOKEN and x_app_token != _APP_TOKEN:
+        raise HTTPException(status_code=401, detail="Token d'application invalide.")
 
 
 @app.get("/health")
@@ -58,3 +78,38 @@ async def get_watchlist(username: str):
     films = await asyncio.gather(*[enrich(f) for f in raw_films])
 
     return WatchlistResponse(count=len(films), films=list(films))
+
+
+# ---------------------------------------------------------------------------
+# AI proxy endpoints
+# ---------------------------------------------------------------------------
+
+@app.post("/ai/test-key", dependencies=[Depends(check_app_token)])
+async def post_test_key(request: AITestKeyRequest):
+    """Validate an AI provider API key with a minimal ~10-token call."""
+    try:
+        await test_key(request.provider, request.api_key)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(502, f"network:{exc}")
+    return {"status": "ok"}
+
+
+@app.post("/ai/recommend", response_model=AIRecommendResponse, dependencies=[Depends(check_app_token)])
+async def post_recommend(request: AIRecommendRequest):
+    """Proxy a recommendation request to the configured AI provider."""
+    films_dicts = [f.model_dump() for f in request.films]
+    try:
+        rec = await ai_recommend(
+            request.provider,
+            request.api_key,
+            films_dicts,
+            request.answers,
+            request.refused_titles,
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(502, f"network:{exc}")
+    return AIRecommendResponse(recommendation=AIRecommendation(**rec))

@@ -51,7 +51,7 @@ Respecter l'ordre des phases — chaque phase dépend de la précédente.
   - Gérer l'absence de résultats TMDB (retourner dict avec None)
   - **Test** : `python -c "from tmdb import enrich_film; import asyncio; print(asyncio.run(enrich_film('Past Lives', '2023')))"`
 
-- [~] **TASK-07** — ~~Client Gemini backend~~ — **OBSOLÈTE** : l'IA appelle les providers directement depuis l'app (`src/services/llm.ts`, TASK-11b). Le backend ne détient aucune clé IA (voir CONSTRAINTS.md).
+- [x] **TASK-07** — ~~Client Gemini backend~~ → **Réactivé via TASK-28** : le backend contient maintenant `ai.py` qui proxifie tous les providers (Gemini, Groq, OpenAI, Anthropic). Voir TASK-28.
 
 - [x] **TASK-08** — Pydantic models
   - Créer `backend/models.py` avec `Film`, `RecommendRequest`, `RecommendResponse`
@@ -225,6 +225,18 @@ Respecter l'ordre des phases — chaque phase dépend de la précédente.
   - Haptic feedback léger sur le choix d'une option (questions) et sur les swipes
   - Transitions slide horizontales entre écrans onboarding
   - **Test** : Parcours complet sans accrocs visuels
+
+- [x] **TASK-28** — Proxy IA via Railway (fix CORS web)
+  - **Contexte** : l'app appelait les providers IA directement depuis le JS, ce qui fonctionne sur mobile (natif) mais est bloqué sur Expo Web par les restrictions CORS des navigateurs.
+  - Créer `backend/ai.py` : logique complète de proxy IA (routing providers, compression watchlist, pre-filter, build prompt, parse & validate réponse, retry)
+  - Ajouter modèles Pydantic dans `backend/models.py` : `AITestKeyRequest`, `FilmForAI`, `AIRecommendRequest`, `AIRecommendResponse`, `AIRecommendation`
+  - Ajouter endpoints dans `backend/main.py` : `POST /ai/test-key` et `POST /ai/recommend`
+  - Sécurité : middleware `X-App-Token` (activé si env var `APP_TOKEN` est définie dans Railway)
+  - Exporter `BASE_URL` depuis `app/src/services/api.ts`
+  - Réécrire `app/src/services/llm.ts` : suppression de tout le code provider direct, appels via proxy Railway uniquement
+  - **Sécurité** : HTTPS (TLS) chiffre la clé en transit. `X-App-Token` empêche l'usage du proxy par des tiers. La clé n'est jamais stockée côté serveur.
+  - Mettre à jour `.env.example`, `ARCHITECTURE.md`, `CONSTRAINTS.md`
+  - **Test** : Saisir une clé Groq dans l'app web → "Vérifier la clé" → succès
 
 - [ ] **TASK-26** — Déploiement backend Railway
   - Créer `backend/Procfile` : `web: uvicorn main:app --host 0.0.0.0 --port $PORT`

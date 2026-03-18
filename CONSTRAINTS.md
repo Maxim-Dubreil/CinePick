@@ -180,31 +180,36 @@ ENV=production
 
 ### App — clé IA
 La clé IA est saisie par l'utilisateur dans l'onboarding et stockée dans AsyncStorage.
-Elle est envoyée dans le header de chaque requête `/recommend`.
-**Elle ne transite jamais par le backend** — l'appel IA se fait directement depuis l'app.
+Elle est envoyée dans le body de chaque requête `/ai/recommend` et `/ai/test-key` vers Railway.
+Railway la relaie vers le provider choisi — elle n'est jamais stockée côté serveur.
 
-> Architecture : App → Gemini/Groq API (direct)
->                App → Backend (scraping TMDB uniquement)
+> Architecture : App → Railway proxy → Gemini/Groq API
+>                App → Railway → Letterboxd + TMDB
 
 Cela élimine tout risque de fuite de clé côté serveur et supprime les coûts IA côté Railway.
 
 ---
 
-## Architecture appel IA — direct depuis l'app
+## Architecture appel IA — proxy via Railway
 
 ```
-┌─────────────────────┐         ┌──────────────────────┐
-│    App (Expo)       │────────▶│  Gemini / Groq API   │
-│  clé stockée local  │  HTTPS  │  (provider choisi)   │
-└─────────────────────┘         └──────────────────────┘
-         │
-         │ scraping + TMDB
-         ▼
-┌─────────────────────┐         ┌──────────────────────┐
-│  Backend (Railway)  │────────▶│  Letterboxd + TMDB   │
-│  clé TMDB seulement │         └──────────────────────┘
-└─────────────────────┘
+┌─────────────────┐  HTTPS   ┌────────────────────┐  HTTPS  ┌──────────────────┐
+│   App (Expo)    │─────────▶│ Backend (Railway)  │────────▶│ Gemini/Groq API  │
+│ clé en mémoire  │          │ proxy IA + scraping│         │ (provider choisi)│
+│ X-App-Token: v1 │          │ TMDB_API_KEY       │         └──────────────────┘
+└─────────────────┘          │ APP_TOKEN          │
+                             └────────────────────┘
+                                      │ HTTPS
+                                      ▼
+                             ┌──────────────────┐
+                             │ Letterboxd + TMDB│
+                             └──────────────────┘
 ```
 
-L'app appelle Gemini/Groq **directement** (pas via le backend).
-Le backend n'a besoin que de la clé TMDB.
+L'app passe par le backend Railway pour les appels IA.
+**Pourquoi** : les navigateurs bloquent les appels directs vers des APIs tierces (CORS).
+La clé est chiffrée par TLS (HTTPS) sur les deux tronçons. Elle n'est jamais stockée côté serveur.
+
+**Sécurité :**
+- **HTTPS** (TLS) : chiffrement de la clé en transit — protection principale
+- **X-App-Token** : secret partagé (`cinepick-v1`) pour empêcher l'utilisation du proxy par des tiers. Configurer `APP_TOKEN=cinepick-v1` dans Railway pour activer la vérification.

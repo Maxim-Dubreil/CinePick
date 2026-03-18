@@ -12,7 +12,7 @@
 | Films | TMDB API | v3 | Affiches, résumés, providers |
 | Scraping | httpx + BeautifulSoup4 | latest | Letterboxd |
 | Storage local | AsyncStorage | 2.2.0 | Cache watchlist + clé API + état |
-| Hébergement backend | Railway | free tier | Scraping + TMDB uniquement |
+| Hébergement backend | Railway | free tier | Scraping + TMDB + proxy IA |
 
 ---
 
@@ -30,12 +30,13 @@ cinepick/
 │   └── tokens.json          ← Source de vérité du thème (couleurs, fonts, spacing, radius)
 │
 ├── backend/
-│   ├── main.py              ← App FastAPI (scraping + TMDB uniquement, PAS d'IA)
+│   ├── main.py              ← App FastAPI (scraping + TMDB + proxy IA)
+│   ├── ai.py                ← Proxy IA : routing vers Gemini/Groq/OpenAI/Anthropic
 │   ├── scraper.py           ← Logique scraping Letterboxd
 │   ├── tmdb.py              ← Client TMDB (enrichissement films)
-│   ├── models.py            ← Pydantic models (Film, WatchlistResponse, etc.)
+│   ├── models.py            ← Pydantic models (Film, WatchlistResponse, AI*, etc.)
 │   ├── requirements.txt
-│   ├── .env.example         ← TMDB_API_KEY uniquement
+│   ├── .env.example         ← TMDB_API_KEY + APP_TOKEN
 │   └── tests/
 │       ├── test_scraper.py
 │       └── test_tmdb.py
@@ -54,8 +55,8 @@ cinepick/
         │   └── index.ts         ← Types globaux (Film, Answer, Screen, etc.)
         │
         ├── services/
-        │   ├── api.ts           ← Appels backend (scraping/TMDB)
-        │   └── llm.ts           ← Appels IA directs (Gemini/Groq/OpenAI/Anthropic)
+        │   ├── api.ts           ← Appels backend (scraping/TMDB) — exporte BASE_URL
+        │   └── llm.ts           ← Appels IA via proxy Railway (Gemini/Groq/OpenAI/Anthropic)
         │
         ├── screens/
         │   ├── onboarding/
@@ -111,39 +112,49 @@ Scrape la watchlist Letterboxd et enrichit chaque film via TMDB.
 }
 ```
 
-### `POST /recommend`
-Envoie la watchlist + réponses aux questions à Gemini et retourne une recommandation.
+### `POST /ai/test-key`
+Valide une clé API auprès du provider choisi (~10 tokens). Utilisé lors de l'onboarding.
+
+**Headers :** `X-App-Token: cinepick-v1`
+
+**Body :**
+```json
+{ "provider": "groq", "api_key": "gsk_..." }
+```
+
+**Response :** `{ "status": "ok" }`
+
+**Erreurs :** `400 invalid_key:…` / `429 quota_exceeded:…` / `502 network:…`
+
+---
+
+### `POST /ai/recommend`
+Construit le prompt, appelle le provider, valide la réponse. Retry automatique si le titre n'est pas dans la watchlist.
+
+**Headers :** `X-App-Token: cinepick-v1`
 
 **Body :**
 ```json
 {
-  "watchlist": [...],
-  "answers": {
-    "energy": "chill",
-    "company": "solo",
-    "duration": "medium",
-    "mood": "moved"
-  },
-  "refused_titles": ["The Brutalist", "Nosferatu"],
-  "refused_reasons": ["swipé", "swipé"]
+  "provider": "groq",
+  "api_key": "gsk_...",
+  "films": [
+    { "title": "Past Lives", "year": "2023", "genres": ["Drame"], "runtime": 106 }
+  ],
+  "answers": { "energy": "chill", "duration": "medium" },
+  "refused_titles": ["The Brutalist"]
 }
 ```
 
 **Response :**
 ```json
 {
-  "film": {
+  "recommendation": {
     "title": "Past Lives",
     "reason": "Pour une soirée seul avec l'énergie d'une réflexion douce...",
     "match_score": 94,
     "mood_tags": ["mélancolie douce", "amour", "identité"],
-    "warning": null,
-    "poster": "https://...",
-    "overview": "...",
-    "runtime": 106,
-    "genres": ["Drame", "Romance"],
-    "providers": ["MUBI"],
-    "tmdb_url": "https://..."
+    "warning": null
   }
 }
 ```
@@ -215,13 +226,18 @@ const theme = useTheme()
 **Backend `.env` :**
 ```
 TMDB_API_KEY=
-GEMINI_API_KEY=
+APP_TOKEN=cinepick-v1   # secret partagé avec l'app pour sécuriser le proxy IA
 ```
 
 **App `src/services/api.ts` :**
 ```typescript
-const BASE_URL = "http://localhost:8000" // dev
-// const BASE_URL = "https://ton-app.up.railway.app" // prod
+export const BASE_URL = "http://192.168.68.108:8000" // dev
+// export const BASE_URL = "https://cinepick-production-95bc.up.railway.app" // prod
+```
+
+**App `src/services/llm.ts` :**
+```typescript
+const APP_TOKEN = 'cinepick-v1' // doit correspondre à APP_TOKEN côté Railway
 ```
 
 ---
