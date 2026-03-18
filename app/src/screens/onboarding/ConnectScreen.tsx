@@ -13,7 +13,7 @@ import {
   View,
 } from 'react-native'
 import OnboardingStepper from '../../components/OnboardingStepper'
-import { fetchWatchlist } from '../../services/api'
+import { fetchWatchlist, warmBackend } from '../../services/api'
 import { useTheme } from '../../theme/useTheme'
 import type { Theme } from '../../theme/tokens'
 import { Film, OnboardingError } from '../../types'
@@ -32,7 +32,7 @@ type LoadingStep = {
 }
 
 const INITIAL_STEPS: LoadingStep[] = [
-  { label: 'Connexion à Letterboxd', status: 'pending' },
+  { label: 'Connexion au serveur...', status: 'pending' },
   { label: 'Lecture de ta watchlist...', status: 'pending' },
   { label: 'Enrichissement des films', status: 'pending' },
 ]
@@ -91,7 +91,7 @@ export default function ConnectScreen({ onBack, onSuccess, onBackToInstructions 
 
     try {
       setStep(0, 'active')
-      await new Promise((r) => setTimeout(r, 400))
+      await warmBackend() // réveille Railway si cold start (3-5s)
       setStep(0, 'done')
 
       setStep(1, 'active')

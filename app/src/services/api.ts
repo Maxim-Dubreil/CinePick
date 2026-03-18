@@ -14,7 +14,7 @@ const STORAGE_KEYS = {
 
 const SYNC_REMINDER_DAYS = 7
 const SYNC_DISMISS_DAYS = 3
-const REQUEST_TIMEOUT_MS = 10_000
+const REQUEST_TIMEOUT_MS = 30_000 // 30s pour absorber le cold start Railway (3-5s) + scraping
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -33,6 +33,18 @@ async function fetchWithTimeout(url: string): Promise<Response> {
 // ---------------------------------------------------------------------------
 // Onboarding
 // ---------------------------------------------------------------------------
+
+/**
+ * Ping /health to wake up Railway before the real request.
+ * Silently ignores errors — warming up is best-effort.
+ */
+export async function warmBackend(): Promise<void> {
+  try {
+    await fetchWithTimeout(`${BASE_URL}/health`)
+  } catch {
+    // ignore — if it fails the main request will handle the error
+  }
+}
 
 export async function isOnboardingComplete(): Promise<boolean> {
   const value = await AsyncStorage.getItem(STORAGE_KEYS.ONBOARDING_COMPLETE)
