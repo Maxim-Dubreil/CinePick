@@ -20,7 +20,7 @@ import {
 } from './src/services/api'
 import { LLMError, recommend } from './src/services/llm'
 import { useTheme } from './src/theme/useTheme'
-import { Answers, Film, Screen } from './src/types'
+import { Answers, Film, RefusedFilm, Screen } from './src/types'
 
 const SWIPE_LIMIT = 3
 
@@ -60,7 +60,7 @@ export default function App() {
 
   // ── Swipe / recommendation state ───────────────────────────────────────────
   const [swipeCount, setSwipeCount] = useState(0)
-  const [refusedTitles, setRefusedTitles] = useState<string[]>([])
+  const [refusedFilms, setRefusedFilms] = useState<RefusedFilm[]>([])
   const [currentFilm, setCurrentFilm] = useState<Film | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
 
@@ -131,12 +131,12 @@ export default function App() {
   }
 
   // ── Recommend ──────────────────────────────────────────────────────────────
-  async function triggerRecommend(refused: string[]) {
+  async function triggerRecommend(refused: RefusedFilm[]) {
     setLoadError(null)
     navigateTo('loading')
 
     try {
-      const rec = await recommend({ watchlist, answers, refusedTitles: refused })
+      const rec = await recommend({ watchlist, answers, refusedFilms: refused })
       const baseFilm = watchlist.find(
         (f) => f.title.toLowerCase() === rec.title.toLowerCase(),
       )
@@ -169,7 +169,7 @@ export default function App() {
 
   // ── Home ───────────────────────────────────────────────────────────────────
   function handleStart() {
-    setRefusedTitles([])
+    setRefusedFilms([])
     setSwipeCount(0)
     setCurrentFilm(null)
     navigateTo('questions')
@@ -190,7 +190,7 @@ export default function App() {
   function handleQuestionsComplete(newAnswers: Answers) {
     setAnswers(newAnswers)
     setQuestionsBanner(null)
-    triggerRecommend(refusedTitles)
+    triggerRecommend(refusedFilms)
   }
 
   function handleQuestionsBack() {
@@ -198,21 +198,31 @@ export default function App() {
     navigateTo('home', 'back')
   }
 
+  function handleRecalibrateComplete(newAnswers: Answers) {
+    setAnswers(newAnswers)
+    triggerRecommend(refusedFilms)
+  }
+
+  function handleRecalibrateBack() {
+    navigateTo('home', 'back')
+  }
+
   // ── Swipe ──────────────────────────────────────────────────────────────────
   function handleSkip() {
     if (!currentFilm) return
 
-    const newRefused = [...refusedTitles, currentFilm.title]
+    const newRefused: RefusedFilm[] = [
+      ...refusedFilms,
+      { title: currentFilm.title, genres: currentFilm.genres, runtime: currentFilm.runtime, mood_tags: currentFilm.mood_tags },
+    ]
     const newCount = swipeCount + 1
 
-    setRefusedTitles(newRefused)
+    setRefusedFilms(newRefused)
     setSwipeCount(newCount)
 
     if (newCount >= SWIPE_LIMIT) {
-      // After 3 skips: reset count, go back to questions with contextual banner
       setSwipeCount(0)
-      setQuestionsBanner('On affine ! Dis-nous ce que tu veux vraiment.')
-      navigateTo('questions', 'back')
+      navigateTo('recalibrate', 'back')
     } else {
       triggerRecommend(newRefused)
     }
@@ -229,7 +239,7 @@ export default function App() {
           text: 'Recommencer',
           onPress: () => {
             setSwipeCount(0)
-            setRefusedTitles([])
+            setRefusedFilms([])
             setAnswers({})
             setCurrentFilm(null)
             setLoadError(null)
@@ -306,6 +316,17 @@ export default function App() {
           </View>
         )
 
+      case 'recalibrate':
+        return (
+          <QuestionsScreen
+            recalibrateMode
+            refusedFilms={refusedFilms}
+            initialAnswers={answers}
+            onComplete={handleRecalibrateComplete}
+            onBack={handleRecalibrateBack}
+          />
+        )
+
       case 'loading':
         return <LoadingScreen filmCount={watchlist.length} />
 
@@ -323,7 +344,7 @@ export default function App() {
                 </Text>
                 <TouchableOpacity
                   style={[styles.errorBtn, { backgroundColor: theme.colors.accent }]}
-                  onPress={() => triggerRecommend(refusedTitles)}
+                  onPress={() => triggerRecommend(refusedFilms)}
                   activeOpacity={0.8}
                 >
                   <Text style={[styles.errorBtnText, { color: theme.colors.bg }]}>

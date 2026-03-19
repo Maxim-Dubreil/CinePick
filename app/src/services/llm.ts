@@ -10,7 +10,7 @@
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { AIProvider, Answers, Film } from '../types'
+import { AIProvider, Answers, Film, RefusedFilm } from '../types'
 import { BASE_URL } from './api'
 
 // ---------------------------------------------------------------------------
@@ -54,7 +54,7 @@ export class LLMError extends Error {
 type RecommendParams = {
   watchlist: Film[]
   answers: Answers
-  refusedTitles: string[]
+  refusedFilms: RefusedFilm[]
 }
 
 export type Recommendation = Pick<Film, 'title' | 'reason' | 'match_score' | 'mood_tags' | 'warning'>
@@ -126,7 +126,7 @@ export async function testApiKey(provider: AIProvider, key: string): Promise<tru
 // ---------------------------------------------------------------------------
 
 export async function recommend(params: RecommendParams): Promise<Recommendation> {
-  const { watchlist, answers, refusedTitles } = params
+  const { watchlist, answers, refusedFilms } = params
 
   const [providerRaw, keyRaw] = await AsyncStorage.multiGet([
     STORAGE_KEYS.AI_PROVIDER,
@@ -151,9 +151,10 @@ export async function recommend(params: RecommendParams): Promise<Recommendation
         year: f.year,
         genres: f.genres,
         runtime: f.runtime,
+        providers: f.providers,
       })),
       answers,
-      refused_titles: refusedTitles,
+      refused_films: refusedFilms,
     }),
   })
 

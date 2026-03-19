@@ -34,6 +34,14 @@ class FilmForAI(BaseModel):
     year: Optional[str] = None
     genres: list[str] = []
     runtime: Optional[int] = None
+    providers: list[str] = []
+
+
+class RefusedFilm(BaseModel):
+    title: str
+    genres: list[str] = []
+    runtime: Optional[int] = None
+    mood_tags: list[str] = []
 
 
 class AIRecommendRequest(BaseModel):
@@ -41,7 +49,7 @@ class AIRecommendRequest(BaseModel):
     api_key: str
     films: list[FilmForAI]
     answers: dict[str, str] = {}
-    refused_titles: list[str] = []
+    refused_films: list[RefusedFilm] = []
 
 
 class AIRecommendation(BaseModel):

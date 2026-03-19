@@ -238,16 +238,33 @@ Respecter l'ordre des phases — chaque phase dépend de la précédente.
   - Mettre à jour `.env.example`, `ARCHITECTURE.md`, `CONSTRAINTS.md`
   - **Test** : Saisir une clé Groq dans l'app web → "Vérifier la clé" → succès
 
-- [ ] **TASK-26** — Déploiement backend Railway
+- [x] **TASK-26** — Déploiement backend Railway ✓ Backend déployé sur Railway
   - Créer `backend/Procfile` : `web: uvicorn main:app --host 0.0.0.0 --port $PORT`
   - Créer `backend/runtime.txt` : `python-3.11.0`
   - Mettre à jour `BASE_URL` dans `app/src/services/api.ts` avec l'URL Railway
   - **Test** : `curl https://ton-app.up.railway.app/health` → OK
 
-- [ ] **TASK-27** — Build Expo production
+- [N/A] **TASK-27** — Build Expo production — Pas de compte développeur Apple, app distribuée via Expo Go
   - Configurer `app.json` (name, slug, ios.bundleIdentifier)
   - `npx expo build:ios` ou `eas build --platform ios`
   - **Test** : L'app tourne sur un vrai iPhone sans Expo Go
+
+---
+
+## Phase 5 — Features futures (ne pas coder maintenant)
+
+- [ ] **TASK-29** — User Profile Context
+  - Questionnaire avancé sur les goûts durables (réalisateurs préférés, ambiances, références)
+  - Scraping des films notés/vus sur Letterboxd pour inférer le profil automatiquement
+  - Profil stocké en JSON dans AsyncStorage
+  - Checkbox "Utiliser mon profil" sur HomeScreen pour injecter ce contexte dans le prompt
+  - **Ne pas implémenter avant validation du flow V1 complet**
+
+- [ ] **TASK-30** — Sélection de la source avant le questionnaire
+  - Écran de sélection avant le questionnaire : Ma watchlist / Mes favoris Letterboxd / Mes films récemment vus / La watchlist de @quelqu'un
+  - Chaque source = scraping différent ou combinaison
+  - L'IA reçoit le bon corpus selon la sélection
+  - **Ne pas implémenter avant validation du flow V1 complet**
 
 ---
 

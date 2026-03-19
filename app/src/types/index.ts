@@ -7,6 +7,7 @@ export type Screen =
   | 'questions'
   | 'loading'
   | 'result'
+  | 'recalibrate'
 
 export type OnboardingError = 'not_found' | 'private' | 'network' | null
 
@@ -48,6 +49,28 @@ export type Question = {
 
 export type Answers = Record<string, string>
 
+export type RefusedFilm = {
+  title: string
+  genres?: string[]
+  runtime?: number | null
+  mood_tags?: string[]
+}
+
+export type RecalibrateQuestion = {
+  id: string
+  question: string
+  options: QuestionOption[]
+  updatesAnswerKey: string
+}
+
+export type StructuredAnswers = {
+  energy?: string
+  company?: string
+  duration?: string
+  platforms?: string
+  excluded_genres?: string
+}
+
 export type AppState = {
   screen: Screen
   username: string
@@ -55,7 +78,7 @@ export type AppState = {
   answers: Answers
   currentFilm: Film | null
   swipeCount: number
-  refusedTitles: string[]
+  refusedFilms: RefusedFilm[]
   lastSync: number | null
   error: string
 }

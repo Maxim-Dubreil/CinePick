@@ -106,7 +106,7 @@ async def post_recommend(request: AIRecommendRequest):
             request.api_key,
             films_dicts,
             request.answers,
-            request.refused_titles,
+            [f.model_dump() for f in request.refused_films],
         )
     except HTTPException:
         raise

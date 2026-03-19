@@ -11,6 +11,7 @@ import {
   Text,
   TouchableOpacity,
   View,
+  useWindowDimensions,
 } from 'react-native'
 import { useTheme } from '../theme/useTheme'
 import type { Theme } from '../theme/tokens'
@@ -19,7 +20,6 @@ import SwipeOverlay from './SwipeOverlay'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
 const CARD_WIDTH = SCREEN_WIDTH - 32
-const POSTER_HEIGHT = CARD_WIDTH * 1.35
 
 type Props = {
   film: Film
@@ -29,7 +29,9 @@ type Props = {
 
 export default function FilmCard({ film, onAccept, onSkip }: Props) {
   const theme = useTheme()
-  const styles = makeStyles(theme)
+  const { height: SCREEN_HEIGHT } = useWindowDimensions()
+  const POSTER_HEIGHT = Math.min(CARD_WIDTH * 1.35, SCREEN_HEIGHT * 0.45)
+  const styles = makeStyles(theme, POSTER_HEIGHT)
 
   const dragX = useRef(new Animated.Value(0)).current
   const dragY = useRef(new Animated.Value(0)).current
@@ -212,7 +214,7 @@ export default function FilmCard({ film, onAccept, onSkip }: Props) {
   )
 }
 
-function makeStyles(theme: Theme) {
+function makeStyles(theme: Theme, posterHeight: number) {
   return StyleSheet.create({
     card: {
       width: CARD_WIDTH,
@@ -232,7 +234,7 @@ function makeStyles(theme: Theme) {
     },
     posterContainer: {
       width: '100%',
-      height: POSTER_HEIGHT,
+      height: posterHeight,
       position: 'relative',
     },
     poster: {

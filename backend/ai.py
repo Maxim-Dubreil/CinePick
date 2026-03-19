@@ -27,15 +27,21 @@ PROVIDER_CONFIG: dict[str, dict[str, str]] = {
 
 REQUEST_TIMEOUT = 10.0
 
-SYSTEM_PROMPT = """Tu es un expert en recommandation de films.
-Ta mission : choisir UN film dans la watchlist fournie par l'utilisateur, en tenant compte de ses préférences.
+SYSTEM_PROMPT = """Tu es un ami cinéphile. Tu connais la watchlist de quelqu'un et tu lui recommandes ce soir le film parfait.
 
 RÈGLE ABSOLUE : le titre retourné DOIT être exactement tel qu'il apparaît dans la watchlist. Ne jamais inventer un titre.
+
+Ton pour "reason" : comme un pote qui envoie un message WhatsApp — 1-2 phrases, direct, enthousiaste, sans jargon.
+Exemples de bon ton :
+- "28 minutes de suspense pur — exactement ce qu'il faut pour ce soir en solo."
+- "Un thriller qui tient en haleine jusqu'à la dernière seconde, parfait pour une soirée à deux."
+- "Vibes chill garanties, ce film te laissera le sourire aux lèvres."
+Interdit : "ce film correspond à tes préférences", "conformément à tes critères", tout style académique.
 
 Réponds UNIQUEMENT en JSON valide, sans balises markdown, sans texte autour. Format exact :
 {
   "title": "Titre exact tel qu'il figure dans la watchlist",
-  "reason": "Critique cinéphile en 2-3 phrases expliquant pourquoi ce film correspond aux préférences",
+  "reason": "1-2 phrases style pote sur WhatsApp, en français",
   "match_score": 85,
   "mood_tags": ["tag1", "tag2", "tag3"],
   "warning": null
@@ -43,8 +49,8 @@ Réponds UNIQUEMENT en JSON valide, sans balises markdown, sans texte autour. Fo
 
 Champs :
 - title : string — titre exact de la watchlist
-- reason : string — 2-3 phrases, style critique ciné, en français
-- match_score : number 0-100 — correspondance avec les préférences
+- reason : string — 1-2 phrases, ton décontracté et direct, en français
+- match_score : number 0-100 — à quel point ce film colle au contexte du soir
 - mood_tags : string[] — 2 à 4 tags d'ambiance courts (ex: "contemplatif", "feel-good", "tendu")
 - warning : string | null — mise en garde si contenu sensible, sinon null"""
 
@@ -75,12 +81,58 @@ def _prefilter(films: list[dict], answers: dict) -> list[dict]:
     return filtered if len(filtered) >= 20 else films[:200]
 
 
-def _build_user_prompt(films: list[dict], answers: dict, refused_titles: list[str]) -> str:
+PLATFORM_LABELS: dict[str, str] = {
+    "netflix": "Netflix",
+    "canal":   "Canal+",
+    "disney":  "Disney+",
+}
+
+
+def _platform_filter(films: list[dict], platform: str) -> tuple[list[dict], str | None]:
+    """Keep only films available on the chosen platform.
+    If none match, returns the full list + a warning string."""
+    label = PLATFORM_LABELS.get(platform, platform)
+    matched = [f for f in films if label in (f.get("providers") or [])]
+    if matched:
+        return matched, None
+    return films, f"Non disponible sur {label} — vérifie avant de lancer"
+
+
+def _build_user_prompt(films: list[dict], answers: dict, refused_films: list[dict]) -> str:
     parts = ["## Watchlist (format: titre|année|genres|durée_min)\n" + _compress_watchlist(films)]
-    if answers:
-        parts.append("## Préférences de l'utilisateur\n" + "\n".join(f"{k}: {v}" for k, v in answers.items()))
-    if refused_titles:
-        parts.append("## Films déjà refusés (NE PAS proposer)\n" + "\n".join(refused_titles))
+
+    # Generic preferences — exclude fields handled separately
+    _SKIP_KEYS = {"platforms", "excluded_genres"}
+    pref_lines = [f"{k}: {v}" for k, v in answers.items() if k not in _SKIP_KEYS]
+    if pref_lines:
+        parts.append("## Préférences de l'utilisateur\n" + "\n".join(pref_lines))
+
+    # Refused films with context
+    if refused_films:
+        lines = []
+        for rf in refused_films:
+            desc = rf["title"]
+            details: list[str] = []
+            if rf.get("genres"):
+                details.append(f"genres: {', '.join(rf['genres'])}")
+            if rf.get("runtime"):
+                details.append(f"durée: {rf['runtime']}min")
+            if rf.get("mood_tags"):
+                details.append(f"ambiance: {', '.join(rf['mood_tags'])}")
+            if details:
+                desc += f" ({'; '.join(details)})"
+            lines.append(desc)
+        parts.append(
+            "## Films refusés — NE PAS proposer, évite les films avec les mêmes genres/ambiances\n"
+            + "\n".join(lines)
+        )
+
+    # Excluded genres
+    excluded_raw = answers.get("excluded_genres", "")
+    if excluded_raw and excluded_raw != "none":
+        genres_list = ", ".join(g.strip() for g in excluded_raw.split(","))
+        parts.append(f"## Genres à exclure absolument\nNe propose jamais un film de ces genres : {genres_list}")
+
     parts.append("Recommande UN film de cette watchlist en tenant compte de ces préférences.")
     return "\n\n".join(parts)
 
@@ -204,7 +256,7 @@ async def recommend(
     key: str,
     films: list[dict],
     answers: dict,
-    refused_titles: list[str],
+    refused_films: list[dict],
 ) -> dict:
     """
     Build prompt, call provider, validate that the returned title is in the
@@ -212,12 +264,18 @@ async def recommend(
     """
     filtered = _prefilter(films, answers)
 
-    async def attempt(extra_refused: list[str]) -> dict:
+    # Platform filter — priorize films on the chosen platform
+    platform_warning: str | None = None
+    platform = answers.get("platforms", "any")
+    if platform and platform != "any":
+        filtered, platform_warning = _platform_filter(filtered, platform)
+
+    async def attempt(extra_refused: list[dict]) -> dict:
         messages = [
             {"role": "system", "content": SYSTEM_PROMPT},
             {
                 "role": "user",
-                "content": _build_user_prompt(filtered, answers, refused_titles + extra_refused),
+                "content": _build_user_prompt(filtered, answers, refused_films + extra_refused),
             },
         ]
         raw = await call_provider(provider, key, messages)
@@ -230,12 +288,18 @@ async def recommend(
         return rec
 
     try:
-        return await attempt([])
+        rec = await attempt([])
     except _TitleNotInWatchlist as e:
         try:
-            return await attempt([e.bad_title])
+            rec = await attempt([{"title": e.bad_title}])
         except _TitleNotInWatchlist:
             raise HTTPException(
                 502,
                 "validation:Le provider IA n'a pas retourné un titre de ta watchlist après deux tentatives.",
             )
+
+    # Inject platform warning when the filter had to be bypassed
+    if platform_warning and not rec.get("warning"):
+        rec["warning"] = platform_warning
+
+    return rec

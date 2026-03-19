@@ -68,3 +68,41 @@ cd backend && pytest
 - Tu ne proposes pas de features non listées dans `PRD.md` sans demander
 - Tu ne modifies pas `design/tokens.json` — c'est la source de vérité du thème
 - Tu n'installes pas de librairies non listées dans `ARCHITECTURE.md` sans justification
+
+---
+
+## Règle de mise à jour de la documentation
+
+Après CHAQUE tâche complétée, tu dois obligatoirement :
+1. Cocher `[x]` la tâche dans `TASKS.md`
+2. Mettre à jour `ARCHITECTURE.md` si un fichier, endpoint ou type a changé
+3. Si une décision de design UI a été prise (couleurs, composants, layout), la noter dans `ARCHITECTURE.md` sous une section `## Décisions UI`
+4. Ne jamais laisser la doc désynchronisée avec le code
+
+Cette règle s'applique même si l'utilisateur ne le demande pas explicitement.
+
+---
+
+## Synchronisation avec Claude.ai
+
+À la fin de chaque session de travail ou après un groupe de tâches liées,
+génère automatiquement un résumé de ce format et affiche-le à l'utilisateur :
+
+---
+### Résumé à copier dans Claude.ai
+
+**Tâches complétées :**
+- [liste des tâches cochées cette session]
+
+**Fichiers modifiés :**
+- [liste]
+
+**Décisions prises :**
+- [design, archi, ou comportement]
+
+**Prochaine étape suggérée :**
+- [la prochaine tâche logique]
+---
+
+L'utilisateur peut copier ce résumé dans Claude.ai pour maintenir
+le contexte entre les sessions.
