@@ -25,6 +25,9 @@ Tu es l'agent de développement de **CinePick**, une app mobile Expo (React Nati
 1. Marque la tâche comme `[x]` dans `TASKS.md`
 2. Liste les fichiers créés/modifiés
 3. Indique comment tester manuellement
+4. Mets à jour `ARCHITECTURE.md` si besoin
+5. Lancer `bash scripts/sync-docs.sh` pour copier les docs vers ~/cinepick-claude-sync/
+   L'utilisateur upload ensuite ce dossier dans Project → Files sur claude.ai
 
 ---
 
@@ -106,3 +109,9 @@ génère automatiquement un résumé de ce format et affiche-le à l'utilisateur
 
 L'utilisateur peut copier ce résumé dans Claude.ai pour maintenir
 le contexte entre les sessions.
+
+Après avoir copié ce résumé dans Claude.ai, lance :
+```bash
+bash scripts/sync-docs.sh
+```
+puis upload le dossier ~/cinepick-claude-sync/ dans Project → Files

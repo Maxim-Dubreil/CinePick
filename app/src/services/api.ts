@@ -4,6 +4,14 @@ import { Film } from '../types'
 // const BASE_URL = 'http://192.168.68.108:8000' // dev — IP locale de la machine
 export const BASE_URL = 'https://cinepick-production-95bc.up.railway.app' // prod
 
+// ---------------------------------------------------------------------------
+// Dev mock — point d'activation unique
+// ---------------------------------------------------------------------------
+// Mettre à true pour développer sans backend ni clé API réelle.
+// Toutes les fonctions réseau retournent des fixtures de mockData.ts.
+// ⚠️ Toujours false avant commit — c'est la seule ligne à changer.
+export const DEV_MOCK = false
+
 const STORAGE_KEYS = {
   WATCHLIST: 'watchlist',
   LAST_SYNC: 'last_sync',
@@ -47,6 +55,7 @@ export async function warmBackend(): Promise<void> {
 }
 
 export async function isOnboardingComplete(): Promise<boolean> {
+  if (DEV_MOCK) return true
   const value = await AsyncStorage.getItem(STORAGE_KEYS.ONBOARDING_COMPLETE)
   return value === 'true'
 }
@@ -60,6 +69,15 @@ export async function setOnboardingComplete(): Promise<void> {
 // ---------------------------------------------------------------------------
 
 export async function getCachedWatchlist(): Promise<Film[]> {
+  if (DEV_MOCK) {
+    const { MOCK_WATCHLIST, MOCK_USERNAME } = await import('../dev/mockData')
+    await AsyncStorage.multiSet([
+      [STORAGE_KEYS.WATCHLIST, JSON.stringify(MOCK_WATCHLIST)],
+      [STORAGE_KEYS.LAST_SYNC, Date.now().toString()],
+      [STORAGE_KEYS.USERNAME, MOCK_USERNAME],
+    ])
+    return MOCK_WATCHLIST
+  }
   const raw = await AsyncStorage.getItem(STORAGE_KEYS.WATCHLIST)
   if (!raw) return []
   try {
@@ -70,6 +88,7 @@ export async function getCachedWatchlist(): Promise<Film[]> {
 }
 
 export async function getLastSyncTime(): Promise<number | null> {
+  if (DEV_MOCK) return Date.now()
   const raw = await AsyncStorage.getItem(STORAGE_KEYS.LAST_SYNC)
   return raw ? parseInt(raw, 10) : null
 }
@@ -116,6 +135,17 @@ export async function shouldShowSyncBanner(): Promise<boolean> {
 // ---------------------------------------------------------------------------
 
 export async function fetchWatchlist(username: string): Promise<Film[]> {
+  if (DEV_MOCK) {
+    const { MOCK_DELAY_MS, MOCK_WATCHLIST, MOCK_USERNAME } = await import('../dev/mockData')
+    await new Promise(r => setTimeout(r, MOCK_DELAY_MS))
+    await AsyncStorage.multiSet([
+      [STORAGE_KEYS.WATCHLIST, JSON.stringify(MOCK_WATCHLIST)],
+      [STORAGE_KEYS.LAST_SYNC, Date.now().toString()],
+      [STORAGE_KEYS.USERNAME, MOCK_USERNAME],
+    ])
+    return MOCK_WATCHLIST
+  }
+
   const response = await fetchWithTimeout(`${BASE_URL}/watchlist/${username}`)
 
   if (response.status === 404) {

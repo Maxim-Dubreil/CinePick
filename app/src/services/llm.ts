@@ -11,7 +11,7 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { AIProvider, Answers, Film, RefusedFilm } from '../types'
-import { BASE_URL } from './api'
+import { BASE_URL, DEV_MOCK } from './api'
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -112,6 +112,12 @@ function proxyHeaders(): HeadersInit {
 // ---------------------------------------------------------------------------
 
 export async function testApiKey(provider: AIProvider, key: string): Promise<true> {
+  if (DEV_MOCK) {
+    const { MOCK_DELAY_MS } = await import('../dev/mockData')
+    await new Promise(r => setTimeout(r, MOCK_DELAY_MS))
+    return true
+  }
+
   const res = await fetchWithTimeout(`${BASE_URL}/ai/test-key`, {
     method: 'POST',
     headers: proxyHeaders(),
@@ -126,6 +132,12 @@ export async function testApiKey(provider: AIProvider, key: string): Promise<tru
 // ---------------------------------------------------------------------------
 
 export async function recommend(params: RecommendParams): Promise<Recommendation> {
+  if (DEV_MOCK) {
+    const { MOCK_DELAY_MS, MOCK_RECOMMENDATION } = await import('../dev/mockData')
+    await new Promise(r => setTimeout(r, MOCK_DELAY_MS * 2))
+    return MOCK_RECOMMENDATION
+  }
+
   const { watchlist, answers, refusedFilms } = params
 
   const [providerRaw, keyRaw] = await AsyncStorage.multiGet([

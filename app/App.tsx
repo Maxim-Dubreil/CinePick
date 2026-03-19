@@ -15,6 +15,7 @@ import {
   dismissSyncReminder,
   getCachedWatchlist,
   getLastSyncTime,
+  isOnboardingComplete,
   setOnboardingComplete,
   shouldShowSyncBanner,
 } from './src/services/api'
@@ -72,18 +73,19 @@ export default function App() {
   // ── Bootstrap ──────────────────────────────────────────────────────────────
   useEffect(() => {
     async function bootstrap() {
-      const [cachedFilms, cachedSync, storedUsername, storedApiKey] = await Promise.all([
-        getCachedWatchlist(),
-        getLastSyncTime(),
-        AsyncStorage.getItem('username'),
-        AsyncStorage.getItem('ai_api_key'),
-      ])
-
-      if (cachedFilms.length > 0 && storedUsername && !storedApiKey) {
-        // Watchlist présente mais clé API manquante → demander la clé
-        setScreen('api_key')
+      const onboardingDone = await isOnboardingComplete()
+      if (!onboardingDone) {
+        setScreen('welcome')
         return
       }
+
+      // getCachedWatchlist() seed le storage (username, last_sync) en DEV_MOCK
+      // avant que les lectures suivantes n'aient lieu.
+      const cachedFilms = await getCachedWatchlist()
+      const [cachedSync, storedUsername] = await Promise.all([
+        getLastSyncTime(),
+        AsyncStorage.getItem('username'),
+      ])
 
       if (cachedFilms.length > 0 && storedUsername) {
         setWatchlist(cachedFilms)

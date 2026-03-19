@@ -221,6 +221,7 @@ type Props = {
   recalibrateMode?: boolean
   refusedFilms?: RefusedFilm[]
   initialAnswers?: Answers
+  lastRefusedFilm?: import('../types').Film
 }
 
 // ---------------------------------------------------------------------------
