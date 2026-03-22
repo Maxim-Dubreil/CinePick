@@ -16,8 +16,10 @@ type Props = {
   username: string
   watchlist: Film[]
   lastSync: number | null
+  historyCount: number
   onStart: () => void
   onSyncComplete: (films: Film[], syncedAt: number) => void
+  onHistory: () => void
 }
 
 function formatSyncDate(timestamp: number): string {
@@ -29,7 +31,7 @@ function daysSince(timestamp: number): number {
   return Math.floor((Date.now() - timestamp) / (1000 * 60 * 60 * 24))
 }
 
-export default function HomeScreen({ username, watchlist, lastSync, onStart, onSyncComplete }: Props) {
+export default function HomeScreen({ username, watchlist, lastSync, historyCount, onStart, onSyncComplete, onHistory }: Props) {
   const theme = useTheme()
   const styles = makeStyles(theme)
 
@@ -116,6 +118,33 @@ export default function HomeScreen({ username, watchlist, lastSync, onStart, onS
           ) : (
             <Text style={styles.syncButtonText}>↻ Sync Letterboxd</Text>
           )}
+        </TouchableOpacity>
+
+        {/* History button */}
+        <TouchableOpacity
+          style={styles.historyButton}
+          onPress={onHistory}
+          activeOpacity={0.7}
+        >
+          <View style={styles.historyLeft}>
+            <Text style={styles.historyIcon}>🎬</Text>
+            <View>
+              <Text style={styles.historyLabel}>Mes films validés</Text>
+              <Text style={styles.historySub}>
+                {historyCount === 0
+                  ? "Aucun film pour l'instant"
+                  : `${historyCount} film${historyCount > 1 ? 's' : ''} regard\u00e9${historyCount > 1 ? 's' : ''}`}
+              </Text>
+            </View>
+          </View>
+          <View style={styles.historyRight}>
+            {historyCount > 0 && (
+              <View style={styles.historyBadge}>
+                <Text style={styles.historyBadgeText}>{historyCount}</Text>
+              </View>
+            )}
+            <Text style={styles.historyChevron}>›</Text>
+          </View>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -219,6 +248,57 @@ function makeStyles(theme: Theme) {
     },
     buttonDisabled: {
       opacity: 0.4,
+    },
+    historyButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      backgroundColor: theme.colors.surface,
+      borderRadius: theme.radius.lg,
+      paddingVertical: theme.spacing.md,
+      paddingHorizontal: theme.spacing.md,
+      borderWidth: 1,
+      borderColor: theme.colors.borderSubtle,
+    },
+    historyLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.spacing.md,
+    },
+    historyIcon: {
+      fontSize: theme.fontSizes.xl,
+    },
+    historyLabel: {
+      fontSize: theme.fontSizes.base,
+      fontWeight: theme.fontWeights.medium as '500',
+      color: theme.colors.text,
+    },
+    historySub: {
+      fontSize: theme.fontSizes.xs,
+      color: theme.colors.textSubtle,
+      marginTop: theme.spacing.xs / 2,
+    },
+    historyRight: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.spacing.sm,
+    },
+    historyBadge: {
+      backgroundColor: theme.colors.accentMuted,
+      borderRadius: theme.radius.full,
+      paddingHorizontal: theme.spacing.sm,
+      paddingVertical: 2,
+      borderWidth: 1,
+      borderColor: theme.colors.accentDark,
+    },
+    historyBadgeText: {
+      fontSize: theme.fontSizes.xs,
+      fontWeight: theme.fontWeights.semibold as '600',
+      color: theme.colors.accent,
+    },
+    historyChevron: {
+      fontSize: theme.fontSizes.xl,
+      color: theme.colors.textDisabled,
     },
   })
 }

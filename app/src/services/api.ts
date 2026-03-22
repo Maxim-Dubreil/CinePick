@@ -10,7 +10,7 @@ export const BASE_URL = 'https://cinepick-production-95bc.up.railway.app' // pro
 // Mettre à true pour développer sans backend ni clé API réelle.
 // Toutes les fonctions réseau retournent des fixtures de mockData.ts.
 // ⚠️ Toujours false avant commit — c'est la seule ligne à changer.
-export const DEV_MOCK = false
+export const DEV_MOCK = true
 
 const STORAGE_KEYS = {
   WATCHLIST: 'watchlist',
@@ -18,7 +18,10 @@ const STORAGE_KEYS = {
   USERNAME: 'username',
   ONBOARDING_COMPLETE: 'onboarding_complete',
   SYNC_DISMISSED_AT: 'sync_dismissed_at',
+  HISTORY: 'watch_history',
 } as const
+
+const MAX_HISTORY = 50
 
 const SYNC_REMINDER_DAYS = 7
 const SYNC_DISMISS_DAYS = 3
@@ -128,6 +131,27 @@ export async function shouldShowSyncBanner(): Promise<boolean> {
   if (!raw) return true
   const elapsed = Date.now() - parseInt(raw, 10)
   return elapsed > SYNC_DISMISS_DAYS * 24 * 60 * 60 * 1000
+}
+
+// ---------------------------------------------------------------------------
+// History — films accepted by the user
+// ---------------------------------------------------------------------------
+
+export async function getHistory(): Promise<Film[]> {
+  const raw = await AsyncStorage.getItem(STORAGE_KEYS.HISTORY)
+  if (!raw) return []
+  try {
+    return JSON.parse(raw) as Film[]
+  } catch {
+    return []
+  }
+}
+
+export async function saveToHistory(film: Film): Promise<void> {
+  const existing = await getHistory()
+  const deduped = existing.filter((f) => f.title !== film.title)
+  const updated = [film, ...deduped].slice(0, MAX_HISTORY)
+  await AsyncStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(updated))
 }
 
 // ---------------------------------------------------------------------------

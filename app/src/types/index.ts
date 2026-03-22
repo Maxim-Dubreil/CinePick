@@ -8,6 +8,8 @@ export type Screen =
   | 'loading'
   | 'result'
   | 'recalibrate'
+  | 'history'
+  | 'film_detail'
 
 export type OnboardingError = 'not_found' | 'private' | 'network' | null
 

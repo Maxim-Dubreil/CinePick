@@ -578,8 +578,10 @@ function makeStyles(theme: Theme) {
     // Scroll
     scroll: {
       flex: 1,
+      backgroundColor: theme.colors.bg,
     },
     scrollContent: {
+      flexGrow: 1,
       paddingHorizontal: theme.spacing.screen,
       paddingBottom: theme.spacing.xl,
     },
@@ -587,6 +589,7 @@ function makeStyles(theme: Theme) {
       flexDirection: 'row',
       flexWrap: 'wrap',
       gap: theme.spacing.sm,
+      alignContent: 'center',
     },
 
     // List layout
@@ -623,7 +626,7 @@ function makeStyles(theme: Theme) {
       paddingHorizontal: theme.spacing.sm,
       alignItems: 'center',
       justifyContent: 'center',
-      minHeight: 56,
+      minHeight: theme.spacing.xxl,
     },
     gridCardSelected: {
       borderColor: theme.colors.accentDark,

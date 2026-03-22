@@ -71,20 +71,28 @@ Ta watchlist Letterboxd grossit sans fin. Quand vient le moment de regarder un f
 - Après 1 ou 2 skips : nouvelle recommandation directe (Gemini prend en compte les refus)
 - Après 3 skips : retour au flow de questions avec bannière "On affine !"
 - Les titres refusés sont toujours passés à Gemini dans le contexte
-- À l'acceptation : alerte "Bon film 🍿" avec option "Recommencer"
+- À l'acceptation : overlay plein-écran "Bon film ! 🍿" avec titre du film + bouton "Retour à l'accueil"
+- Le film accepté est automatiquement sauvegardé dans l'historique local (AsyncStorage)
 
 ### F6 — Home screen
 - Affiche username, nombre de films dans la watchlist
 - Date/heure de la dernière sync
 - Bouton principal "Trouver mon film ce soir"
 - Bouton sync manuelle
+- Bouton "🎬 Mes films validés (N)" → ouvre l'historique
 - Message d'erreur si sync échoue
+
+### F7 — Historique des films validés
+- Liste scrollable des films acceptés, triés du plus récent au plus ancien (max 50)
+- Chaque entrée : poster miniature, titre, année, genres, durée
+- Tap sur un film → écran de détail (FilmDetailScreen)
+- FilmDetailScreen : poster plein-cadre, titre, année, genres, runtime, match score, synopsis, raison IA, providers, warning
+- Persisté en local (AsyncStorage, clé `watch_history`), dédupliqué par titre
 
 ---
 
 ## Features — V2 (future)
-- Historique des films regardés (marquer comme "vu")
-- Filtres par genre exclu (ex: "jamais d'horreur")
+- Filtres par genre exclu persistants (ex: "jamais d'horreur")
 - Support Android
 - Partage de la reco (screenshot stylé)
 - Mode "blind pick" (pas de questions, reco immédiate)

@@ -1,9 +1,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { StatusBar } from 'expo-status-bar'
 import React, { useEffect, useRef, useState } from 'react'
-import { Alert, Animated, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { Animated, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import ErrorBanner from './src/components/ErrorBanner'
 import FilmCard from './src/components/FilmCard'
+import FilmDetailScreen from './src/screens/FilmDetailScreen'
+import HistoryScreen from './src/screens/HistoryScreen'
 import HomeScreen from './src/screens/HomeScreen'
 import LoadingScreen from './src/screens/LoadingScreen'
 import ApiKeyScreen from './src/screens/onboarding/ApiKeyScreen'
@@ -14,8 +16,10 @@ import QuestionsScreen from './src/screens/QuestionsScreen'
 import {
   dismissSyncReminder,
   getCachedWatchlist,
+  getHistory,
   getLastSyncTime,
   isOnboardingComplete,
+  saveToHistory,
   setOnboardingComplete,
   shouldShowSyncBanner,
 } from './src/services/api'
@@ -65,6 +69,11 @@ export default function App() {
   const [currentFilm, setCurrentFilm] = useState<Film | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
 
+  // ── History ────────────────────────────────────────────────────────────────
+  const [history, setHistory] = useState<Film[]>([])
+  const [selectedFilm, setSelectedFilm] = useState<Film | null>(null)
+  const [showBonFilmOverlay, setShowBonFilmOverlay] = useState(false)
+
   // ── Banners ────────────────────────────────────────────────────────────────
   const [syncBanner, setSyncBanner] = useState(false)
   const [syncBannerMsg, setSyncBannerMsg] = useState('')
@@ -82,15 +91,17 @@ export default function App() {
       // getCachedWatchlist() seed le storage (username, last_sync) en DEV_MOCK
       // avant que les lectures suivantes n'aient lieu.
       const cachedFilms = await getCachedWatchlist()
-      const [cachedSync, storedUsername] = await Promise.all([
+      const [cachedSync, storedUsername, cachedHistory] = await Promise.all([
         getLastSyncTime(),
         AsyncStorage.getItem('username'),
+        getHistory(),
       ])
 
       if (cachedFilms.length > 0 && storedUsername) {
         setWatchlist(cachedFilms)
         setLastSync(cachedSync)
         setUsername(storedUsername)
+        setHistory(cachedHistory)
         setScreen('home')
 
         const showBanner = await shouldShowSyncBanner()
@@ -231,26 +242,38 @@ export default function App() {
   }
 
   function handleAccept() {
-    const title = currentFilm?.title ?? 'le film'
+    setShowBonFilmOverlay(true)
+    if (currentFilm) {
+      saveToHistory(currentFilm).then(() => {
+        setHistory((prev) => {
+          const deduped = prev.filter((f) => f.title !== currentFilm.title)
+          return [currentFilm, ...deduped].slice(0, 50)
+        })
+      })
+    }
+  }
 
-    Alert.alert(
-      `Bon film 🍿`,
-      `"${title}" — bonne séance !`,
-      [
-        {
-          text: 'Recommencer',
-          onPress: () => {
-            setSwipeCount(0)
-            setRefusedFilms([])
-            setAnswers({})
-            setCurrentFilm(null)
-            setLoadError(null)
-            navigateTo('home', 'back')
-          },
-        },
-      ],
-      { cancelable: false },
-    )
+  function handleBonFilmDone() {
+    setShowBonFilmOverlay(false)
+    setSwipeCount(0)
+    setRefusedFilms([])
+    setAnswers({})
+    setCurrentFilm(null)
+    setLoadError(null)
+    navigateTo('home', 'back')
+  }
+
+  // ── History ────────────────────────────────────────────────────────────────
+  function handleOpenHistory() { navigateTo('history') }
+  function handleHistoryBack() { navigateTo('home', 'back') }
+
+  function handleSelectFilm(film: Film) {
+    setSelectedFilm(film)
+    navigateTo('film_detail')
+  }
+
+  function handleFilmDetailBack() {
+    navigateTo('history', 'back')
   }
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -294,11 +317,27 @@ export default function App() {
               username={username}
               watchlist={watchlist}
               lastSync={lastSync}
+              historyCount={history.length}
               onStart={handleStart}
               onSyncComplete={handleSyncComplete}
+              onHistory={handleOpenHistory}
             />
           </View>
         )
+
+      case 'history':
+        return (
+          <HistoryScreen
+            history={history}
+            onBack={handleHistoryBack}
+            onSelect={handleSelectFilm}
+          />
+        )
+
+      case 'film_detail':
+        return selectedFilm ? (
+          <FilmDetailScreen film={selectedFilm} onBack={handleFilmDetailBack} />
+        ) : null
 
       case 'questions':
         return (
@@ -386,6 +425,28 @@ export default function App() {
       <Animated.View style={[styles.flex, { transform: [{ translateX: slideAnim }] }]}>
         {renderScreen()}
       </Animated.View>
+
+      {/* Bon film! overlay — rendered above everything */}
+      {showBonFilmOverlay && currentFilm && (
+        <View style={styles.overlayBackdrop}>
+          <View style={[styles.overlayCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+            <Text style={styles.overlayEmoji}>🍿</Text>
+            <Text style={[styles.overlayTitle, { color: theme.colors.text }]}>Bon film !</Text>
+            <Text style={[styles.overlayFilm, { color: theme.colors.textSubtle }]} numberOfLines={2}>
+              {currentFilm.title}
+            </Text>
+            <TouchableOpacity
+              style={[styles.overlayBtn, { backgroundColor: theme.colors.accent }]}
+              onPress={handleBonFilmDone}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.overlayBtnText, { color: theme.colors.bg }]}>
+                Retour à l'accueil
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
     </View>
   )
 }
@@ -393,6 +454,44 @@ export default function App() {
 const styles = StyleSheet.create({
   flex: {
     flex: 1,
+  },
+  overlayBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.75)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  overlayCard: {
+    width: '100%',
+    borderRadius: 20,
+    borderWidth: 1,
+    padding: 32,
+    alignItems: 'center',
+    gap: 12,
+  },
+  overlayEmoji: {
+    fontSize: 56,
+  },
+  overlayTitle: {
+    fontSize: 28,
+    fontWeight: '700',
+  },
+  overlayFilm: {
+    fontSize: 16,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  overlayBtn: {
+    marginTop: 8,
+    width: '100%',
+    borderRadius: 999,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  overlayBtnText: {
+    fontSize: 16,
+    fontWeight: '600',
   },
   bannerOverlay: {
     position: 'absolute',
