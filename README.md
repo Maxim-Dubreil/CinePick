@@ -21,7 +21,7 @@ Web app analysant une watchlist Letterboxd pour recommander un film via un flow 
 
 ### Installation
 
-**Frontend**
+#### Frontend
 
 ```sh
 cd frontend && \
@@ -29,7 +29,7 @@ pnpm install && \
 pnpm run dev
 ```
 
-**Backend**
+#### Backend
 
 ```sh
 cd backend && \
@@ -39,7 +39,7 @@ uvicorn main:app --reload
 
 ## Structure du projet
 
-```
+```sh
 CinePick/
 ├── frontend/
 ├── backend/
@@ -49,7 +49,7 @@ CinePick/
 
 ## Conventions
 
-**Branches**
+### Branches
 
 main : Production - PR merge only - _protected_
 develop : Work - Feature done - _default_
@@ -57,7 +57,7 @@ feat/CIN-XX-name : New feature
 fix/CIN-XX-name : Bug correction
 chore/CIN-XX-name : Config, Setup, Refacto
 
-**Commits**
+### Commits
 
 ```sh
 type(scope): [CIN-XX] short description
