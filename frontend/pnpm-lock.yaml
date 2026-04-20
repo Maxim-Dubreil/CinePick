@@ -8,12 +8,12 @@ importers:
 
   .:
     dependencies:
+      '@fontsource-variable/cormorant-garamond':
+        specifier: ^5.2.6
+        version: 5.2.6
       '@fontsource-variable/dm-sans':
         specifier: ^5.2.8
         version: 5.2.8
-      '@fontsource-variable/eb-garamond':
-        specifier: ^5.2.7
-        version: 5.2.7
       '@supabase/supabase-js':
         specifier: ^2.104.0
         version: 2.104.0
@@ -291,11 +291,11 @@ packages:
   '@floating-ui/utils@0.2.11':
     resolution: {integrity: sha512-RiB/yIh78pcIxl6lLMG0CgBXAZ2Y0eVHqMPYugu+9U0AeT6YBeiJpf7lbdJNIugFP5SIjwNRgo4DhR1Qxi26Gg==}
 
+  '@fontsource-variable/cormorant-garamond@5.2.6':
+    resolution: {integrity: sha512-5vHPJWMuTbVoB6OnorCflWJ51NJZ7eQWw58tVFUE/hHphTi/z2vrKESbuMSJ3diOC5KgPm/RLv2ULur+N1NLJQ==}
+
   '@fontsource-variable/dm-sans@5.2.8':
     resolution: {integrity: sha512-AxkvMTvNWgfrmlyjiV05vlHYJa+nRQCf1EfvIrQAPBpFJW0O9VTz7oAFr9S3lvbWdmnFoBk7yFqQL86u64nl2g==}
-
-  '@fontsource-variable/eb-garamond@5.2.7':
-    resolution: {integrity: sha512-TbR+Pun4k5g85lgdxRNSbWka5vJgi9pzdFzFswgf7/7NRhKssvoumft1+ZGz3n91YYet96JcnjWrgPGGj6JTzg==}
 
   '@hono/node-server@1.19.14':
     resolution: {integrity: sha512-GwtvgtXxnWsucXvbQXkRgqksiH2Qed37H9xHZocE5sA3N8O8O8/8FA3uclQXxXVzc9XBZuEOMK7+r02FmSpHtw==}
@@ -3379,9 +3379,9 @@ snapshots:
 
   '@floating-ui/utils@0.2.11': {}
 
-  '@fontsource-variable/dm-sans@5.2.8': {}
+  '@fontsource-variable/cormorant-garamond@5.2.6': {}
 
-  '@fontsource-variable/eb-garamond@5.2.7': {}
+  '@fontsource-variable/dm-sans@5.2.8': {}
 
   '@hono/node-server@1.19.14(hono@4.12.14)':
     dependencies:
