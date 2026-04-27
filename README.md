@@ -1,6 +1,6 @@
 # CinePick
 
-Web app analysant une watchlist Letterboxd pour recommander un film via un flow de questions et une IA.
+A web app that analyzes a Letterboxd watchlist to recommend a movie through a question flow and AI.
 
 ## Stack
 
@@ -8,12 +8,12 @@ Web app analysant une watchlist Letterboxd pour recommander un film via un flow 
 - _Backend_ : FastAPI (Python)
 - _Database_ : Supabase (PostgreSQL)
 - _Auth_ : Google OAuth via Supabase
-- _IA_ : Gemini AI
-- _Hosting_ : Vercel (frontend) et Railway (backend)
+- _AI_ : Gemini AI
+- _Hosting_ : Vercel (frontend) and Railway (backend)
 
-## Setup local
+## Local setup
 
-### Prérequis
+### Prerequisites
 
 - Node.js 18+
 - Python 3.11+
@@ -37,7 +37,16 @@ pip install -r requirements.txt && \
 uvicorn main:app --reload
 ```
 
-## Structure du projet
+#### Docker (recommended)
+
+```sh
+docker compose up --build
+```
+
+Frontend available at: `http://localhost:5173`
+Backend available at: `http://localhost:8000`
+
+## Project structure
 
 ```sh
 CinePick/
@@ -51,11 +60,11 @@ CinePick/
 
 ### Branches
 
-main : Production - PR merge only - _protected_
-develop : Work - Feature done - _default_
+main : Production - PR merges only - _protected_
+develop : Ongoing work - Completed features - _default_
 feat/CIN-XX-name : New feature
-fix/CIN-XX-name : Bug correction
-chore/CIN-XX-name : Config, Setup, Refacto
+fix/CIN-XX-name : Bug fix
+chore/CIN-XX-name : Config, setup, refactor
 
 ### Commits
 
@@ -63,11 +72,11 @@ chore/CIN-XX-name : Config, Setup, Refacto
 type(scope): [CIN-XX] short description
 ```
 
-| Type    | Usage                          |
-| ------- | ------------------------------ |
-| `feat`  | Nouvelle fonctionnalité        |
-| `fix`   | Correction de bug              |
-| `chore` | Config, setup, refacto         |
-| `docs`  | Documentation                  |
-| `test`  | Ajout ou modification de tests |
-| `style` | Formatage, pas de logique      |
+| Type    | Usage                        |
+| ------- | ---------------------------- |
+| `feat`  | New feature                  |
+| `fix`   | Bug fix                      |
+| `chore` | Config, setup, refactor      |
+| `docs`  | Documentation                |
+| `test`  | Add or update tests          |
+| `style` | Formatting, no logic changes |
