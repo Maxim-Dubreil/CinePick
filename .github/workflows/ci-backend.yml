@@ -1,0 +1,44 @@
+name: CI Backend
+
+on:
+  push:
+    branches: [develop, main]
+    paths:
+      - "backend/**"
+      - ".github/actions/setup-backend/**"
+      - ".github/workflows/ci-backend.yml"
+  pull_request:
+    branches: [develop, main]
+    paths:
+      - "backend/**"
+      - ".github/actions/setup-backend/**"
+      - ".github/workflows/ci-backend.yml"
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup backend
+        uses: ./.github/actions/setup-backend
+
+      - name: Run Ruff
+        working-directory: backend
+        run: ruff check .
+
+  typecheck:
+    name: Typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup backend
+        uses: ./.github/actions/setup-backend
+
+      - name: Run Pyright
+        working-directory: backend
+        run: pyright
