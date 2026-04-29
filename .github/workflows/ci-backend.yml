@@ -42,3 +42,17 @@ jobs:
       - name: Run Pyright
         working-directory: backend
         run: pyright
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup backend
+        uses: ./.github/actions/setup-backend
+
+      - name: Run pytest
+        working-directory: backend
+        run: pytest

@@ -42,3 +42,16 @@ jobs:
       - name: Run TypeScript compiler
         working-directory: frontend
         run: pnpm typecheck
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup frontend
+        uses: ./.github/actions/setup-frontend
+
+      - name: Run Vitest
+        working-directory: frontend
+        run: pnpm test
