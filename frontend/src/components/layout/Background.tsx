@@ -121,7 +121,7 @@ export function Background({ variant = "landing", onLoaded }: BackgroundProps) {
       };
       img.src = src;
     });
-  }, []);
+  }, [onLoaded, posters, variant]);
 
   if (variant === "landing") {
     return (

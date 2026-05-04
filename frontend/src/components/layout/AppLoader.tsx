@@ -10,7 +10,6 @@ interface AppLoaderProps {
 }
 
 export function AppLoader({ visible, onFadeComplete }: AppLoaderProps) {
-  const [opacity, setOpacity] = useState(1);
   const [mounted, setMounted] = useState(true);
   const [minTimePassed, setMinTimePassed] = useState(false);
 
@@ -23,14 +22,15 @@ export function AppLoader({ visible, onFadeComplete }: AppLoaderProps) {
   // Fade out when visible=false AND minimum duration has passed
   useEffect(() => {
     if (!visible && minTimePassed) {
-      setOpacity(0);
       const timer = setTimeout(() => {
         setMounted(false);
         onFadeComplete?.();
       }, 400); // fade duration
       return () => clearTimeout(timer);
     }
-  }, [visible, minTimePassed]);
+  }, [visible, minTimePassed, onFadeComplete]);
+
+  const opacity = !visible && minTimePassed ? 0 : 1;
 
   if (!mounted) return null;
 
