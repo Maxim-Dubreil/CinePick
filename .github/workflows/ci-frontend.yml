@@ -46,6 +46,10 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
+    env:
+      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+      VITE_API_URL: ${{ vars.VITE_API_URL }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -61,6 +65,10 @@ jobs:
     name: Build
     runs-on: ubuntu-latest
     if: github.base_ref == 'main' || github.ref == 'refs/heads/main'
+    env:
+      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+      VITE_API_URL: ${{ vars.VITE_API_URL }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
