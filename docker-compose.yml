@@ -22,6 +22,6 @@ services:
     volumes:
       - ./backend:/app
     environment:
-      - ENV=development
+      - ENV=dev
     env_file:
-      - ./backend/.env
+      - ./backend/.env.dev

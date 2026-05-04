@@ -19,6 +19,10 @@ A web app that analyzes a Letterboxd watchlist to recommend a movie through a qu
 - Python 3.11+
 - Docker / Docker Desktop
 
+### Environment variables
+
+Copy `.env.example` to `.env.dev` in both `frontend/` and `backend/`, then fill in the values.
+
 ### Installation
 
 #### Frontend
