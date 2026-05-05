@@ -19,7 +19,7 @@ def test_health_endpoint():
 
 
 @pytest.mark.integration
-def test_health_ready_endpoint():
+def test_health_ready_endpoint(require_integration):
     response = client.get("/health/ready")
     assert response.status_code == 200
     data = response.json()
