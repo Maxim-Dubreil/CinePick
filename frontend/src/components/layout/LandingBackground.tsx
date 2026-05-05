@@ -1,7 +1,6 @@
 import { useMemo, useEffect } from "react";
 
-interface BackgroundProps {
-  variant?: "landing" | "app";
+interface LandingBackgroundProps {
   onLoaded?: () => void;
 }
 
@@ -68,7 +67,7 @@ const ALL_POSTERS = [
   "/posters/qEr65B4yGlsmLQjcM0xjSUMfZS2.webp",
   "/posters/qfuO1yue5bQnocFiOUM07dwLdmo.jpg",
   "/posters/r9a6jyW4CBsQ5QyF12eJC84YdAd.jpg",
-  "/posters/r50wDuYKYA4iAO36X0kTivUHhFz.jpg",
+  "/posters/r50wDuYKYA4iAO36X0kTivUHhfZz.jpg",
   "/posters/rBrJl1vUtaM6NU0EwxKSnc3nBxE.jpg",
   "/posters/s27zqyyCJvSm72f3uThjxcgmX6M.webp",
   "/posters/scaiAT7I2KZ2GAeMvoU6Ro1515J.jpg",
@@ -101,15 +100,10 @@ function getRandomPosters(count: number): string[] {
   return [...ALL_POSTERS].sort(() => Math.random() - 0.5).slice(0, count);
 }
 
-export function Background({ variant = "landing", onLoaded }: BackgroundProps) {
+export function LandingBackground({ onLoaded }: LandingBackgroundProps) {
   const posters = useMemo(() => getRandomPosters(40), []);
 
   useEffect(() => {
-    if (variant !== "landing") {
-      onLoaded?.();
-      return;
-    }
-
     let loadedCount = 0;
     posters.forEach((src) => {
       const img = new Image();
@@ -121,114 +115,74 @@ export function Background({ variant = "landing", onLoaded }: BackgroundProps) {
       };
       img.src = src;
     });
-  }, [onLoaded, posters, variant]);
-
-  if (variant === "landing") {
-    return (
-      <div className="fixed inset-0 -z-10 overflow-hidden">
-        {/* Grille d'affiches */}
-        <div
-          className="absolute inset-0 grid"
-          style={{
-            gridTemplateColumns: "repeat(10, 1fr)",
-            gridTemplateRows: "repeat(4, 1fr)",
-          }}
-        >
-          {posters.map((src, i) => (
-            <div
-              key={i}
-              className="w-full h-full bg-cover bg-center"
-              style={{ backgroundImage: `url(${src})` }}
-            />
-          ))}
-        </div>
-
-        {/* Overlay blur */}
-        <div
-          className="absolute inset-0"
-          style={{
-            background: "rgba(8, 8, 16, 0.76)",
-            backdropFilter: "blur(40px)",
-            WebkitBackdropFilter: "blur(34px)",
-          }}
-        />
-
-        {/* Orbe 1 */}
-        <div
-          className="absolute rounded-full pointer-events-none"
-          style={{
-            width: 600,
-            height: 600,
-            background: "#5B21B6",
-            opacity: 0.35,
-            filter: "blur(120px)",
-            top: -180,
-            left: -100,
-          }}
-        />
-        {/* Orbe 2 */}
-        <div
-          className="absolute rounded-full pointer-events-none"
-          style={{
-            width: 400,
-            height: 400,
-            background: "#7C3AED",
-            opacity: 0.25,
-            filter: "blur(90px)",
-            top: -100,
-            right: -60,
-          }}
-        />
-        {/* Orbe 3 */}
-        <div
-          className="absolute rounded-full pointer-events-none"
-          style={{
-            width: 300,
-            height: 300,
-            background: "#4C1D95",
-            opacity: 0.3,
-            filter: "blur(80px)",
-            bottom: 60,
-            left: "40%",
-          }}
-        />
-      </div>
-    );
-  }
+  }, [onLoaded, posters]);
 
   return (
-    <div className="fixed inset-0 -z-10" style={{ background: "#080810" }}>
+    <div className="fixed inset-0 -z-10 overflow-hidden">
+      {/* Grille d'affiches */}
+      <div
+        className="absolute inset-0 grid"
+        style={{
+          gridTemplateColumns: "repeat(10, 1fr)",
+          gridTemplateRows: "repeat(4, 1fr)",
+        }}
+      >
+        {posters.map((src, i) => (
+          <div
+            key={i}
+            className="w-full h-full bg-cover bg-center"
+            style={{ backgroundImage: `url(${src})` }}
+          />
+        ))}
+      </div>
+
+      {/* Overlay blur */}
+      <div
+        className="absolute inset-0"
+        style={{
+          background: "rgba(8, 8, 16, 0.76)",
+          backdropFilter: "blur(40px)",
+          WebkitBackdropFilter: "blur(34px)",
+        }}
+      />
+
+      {/* Orbe 1 */}
       <div
         className="absolute rounded-full pointer-events-none"
         style={{
           width: 600,
-          height: 400,
-          background: "radial-gradient(ellipse, #1e0a3c 0%, transparent 70%)",
-          top: -100,
+          height: 600,
+          background: "#5B21B6",
+          opacity: 0.35,
+          filter: "blur(120px)",
+          top: -180,
           left: -100,
-          opacity: 0.9,
         }}
       />
+      {/* Orbe 2 */}
       <div
         className="absolute rounded-full pointer-events-none"
         style={{
-          width: 500,
-          height: 400,
-          background: "radial-gradient(ellipse, #0a1a2e 0%, transparent 70%)",
-          top: 0,
-          right: -80,
-          opacity: 0.8,
-        }}
-      />
-      <div
-        className="absolute pointer-events-none"
-        style={{
           width: 400,
           height: 400,
-          background: "radial-gradient(ellipse, #1a0a0a 0%, transparent 70%)",
-          bottom: -80,
-          left: "30%",
-          opacity: 0.7,
+          background: "#7C3AED",
+          opacity: 0.25,
+          filter: "blur(90px)",
+          top: -100,
+          right: -60,
+        }}
+      />
+      {/* Orbe 3 */}
+      <div
+        className="absolute rounded-full pointer-events-none"
+        style={{
+          width: 300,
+          height: 300,
+          background: "#4C1D95",
+          opacity: 0.3,
+          filter: "blur(80px)",
+          bottom: 60,
+          left: "40%",
         }}
       />
     </div>

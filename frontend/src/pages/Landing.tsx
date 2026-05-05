@@ -1,5 +1,5 @@
 import { Topbar } from "@/components/layout/Topbar";
-import { Background } from "@/components/layout/Background";
+import { LandingBackground } from "@/components/layout/LandingBackground";
 import {
   GoogleAuthButton,
   StepsSection,
@@ -13,7 +13,7 @@ interface LandingProps {
 export function Landing({ onLoaded }: LandingProps) {
   return (
     <div className="relative h-screen w-full overflow-hidden flex flex-col">
-      <Background variant="landing" onLoaded={onLoaded} />
+      <LandingBackground onLoaded={onLoaded} />
       <Topbar variant="landing" />
 
       {/* Hero section - vertically centered */}

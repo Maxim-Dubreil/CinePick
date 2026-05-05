@@ -8,3 +8,4 @@ export {
   CardFooter,
   CardAction,
 } from "./card";
+export { Spinner } from "./spinner";

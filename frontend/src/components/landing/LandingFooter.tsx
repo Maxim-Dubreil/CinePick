@@ -14,15 +14,9 @@ export function LandingFooter() {
       {PARTNERS.map((item, i) => (
         <div key={item} className="flex items-center gap-6">
           {i > 0 && (
-            <div
-              className="w-0.75 h-0.75 rounded-full"
-              style={{ background: "var(--border-strong)" }}
-            />
+            <div className="w-0.75 h-0.75 rounded-full bg-border-strong" />
           )}
-          <span
-            className="text-[11px] tracking-[0.08em]"
-            style={{ color: "var(--text-disabled)" }}
-          >
+          <span className="text-[11px] tracking-[0.08em] text-text-disabled">
             {item}
           </span>
         </div>

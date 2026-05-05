@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Spinner } from "@/components/ui/spinner";
-import { Background } from "@/components/layout/Background";
+import { AppBackground } from "@/components/layout/AppBackground";
 
 const MIN_DISPLAY_MS = 800;
 
@@ -39,12 +39,12 @@ export function AppLoader({ visible, onFadeComplete }: AppLoaderProps) {
       className="fixed inset-0 z-100 flex items-center justify-center transition-opacity duration-400"
       style={{ opacity }}
     >
-      <Background variant="app" />
+      <AppBackground />
 
       <div className="relative z-10 flex flex-col items-center gap-8">
         {/* Shimmer effect logo */}
         <span
-          className="text-[48px] font-bold tracking-[0.04em]"
+          className="text-[48px] font-bold tracking-[0.04em] animate-shimmer"
           style={{
             fontFamily: "var(--font-heading)",
             background:
@@ -52,22 +52,14 @@ export function AppLoader({ visible, onFadeComplete }: AppLoaderProps) {
             backgroundSize: "200% auto",
             WebkitBackgroundClip: "text",
             WebkitTextFillColor: "transparent",
-            animation: "shimmer 2.5s linear infinite",
           }}
         >
           CinePick
         </span>
 
         {/* Custom styled Spinner component */}
-        <Spinner className="size-8" style={{ color: "var(--cp-accent)" }} />
+        <Spinner className="size-8 text-cp-accent" />
       </div>
-
-      <style>{`
-        @keyframes shimmer {
-          0% { background-position: 200% center; }
-          100% { background-position: -200% center; }
-        }
-      `}</style>
     </div>
   );
 }

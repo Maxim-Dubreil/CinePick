@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/ui";
 import { signInWithGoogle, signOut } from "@/lib/auth";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -22,7 +22,7 @@ export function Topbar({ variant = "landing" }: TopbarProps) {
     >
       {/* Logo */}
       <span
-        className="text-[22px] font-medium tracking-[0.04em] text-[var(--text-primary)]"
+        className="text-[22px] font-medium tracking-[0.04em] text-text-primary"
         style={{ fontFamily: "var(--font-heading)" }}
       >
         CinePick
@@ -31,13 +31,7 @@ export function Topbar({ variant = "landing" }: TopbarProps) {
       {/* Right side */}
       <div className="flex items-center gap-3">
         {variant === "app" && user && (
-          <div
-            className="flex items-center gap-2 pl-3 pr-1 py-1 rounded-[var(--radius-pill)]"
-            style={{
-              background: "var(--bg-card)",
-              border: "0.5px solid var(--border-default)",
-            }}
-          >
+          <div className="flex items-center gap-2 pl-3 pr-1 py-1 rounded-pill bg-bg-card border border-border-default">
             {user.user_metadata?.avatar_url && (
               <img
                 src={user.user_metadata.avatar_url}
@@ -45,7 +39,7 @@ export function Topbar({ variant = "landing" }: TopbarProps) {
                 className="w-7 h-7 rounded-full"
               />
             )}
-            <span className="text-sm text-[var(--text-secondary)] pr-2">
+            <span className="text-sm text-text-secondary pr-2">
               {user.user_metadata?.full_name?.split(" ")[0]}
             </span>
           </div>
@@ -53,22 +47,13 @@ export function Topbar({ variant = "landing" }: TopbarProps) {
 
         {!loading &&
           (!user ? (
-            <button
+            <Button
+              variant="glass"
+              size="sm"
               onClick={signInWithGoogle}
-              className="text-sm font-medium cursor-pointer transition-all hover:opacity-80"
-              style={{
-                padding: "7px 18px",
-                borderRadius: "var(--radius-pill)",
-                background: "rgba(255,255,255,0.08)",
-                border: "0.5px solid rgba(255,255,255,0.2)",
-                color: "var(--text-primary)",
-                backdropFilter: "blur(20px)",
-                WebkitBackdropFilter: "blur(20px)",
-                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.12)",
-              }}
             >
               Se connecter
-            </button>
+            </Button>
           ) : (
             <Button variant="ghost" size="sm" onClick={signOut}>
               Se déconnecter

@@ -6,6 +6,15 @@
 
 @custom-variant dark (&:is(.dark *));
 
+@keyframes shimmer {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
+
 :root {
   /* ===========================
      ShadCN — commun variables
@@ -174,6 +183,30 @@
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) * 1.4);
+  /* CinePick tokens */
+  --color-bg-base: var(--bg-base);
+  --color-bg-page: var(--bg-page);
+  --color-bg-topbar: var(--bg-topbar);
+  --color-bg-card: var(--bg-card);
+  --color-bg-input: var(--bg-input);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-tertiary: var(--text-tertiary);
+  --color-text-disabled: var(--text-disabled);
+  --color-cp-accent: var(--cp-accent);
+  --color-accent-subtle: var(--accent-subtle);
+  --color-accent-border: var(--accent-border);
+  --color-glass-bg: var(--glass-bg);
+  --color-glass-border: var(--glass-border);
+  --color-glass-shine: var(--glass-shine);
+  --color-glass-shadow: var(--glass-shadow);
+  --color-border-default: var(--border-default);
+  --color-border-subtle: var(--border-subtle);
+  --color-border-strong: var(--border-strong);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --animate-shimmer: shimmer 3s infinite;
 }
 
 @layer base {
