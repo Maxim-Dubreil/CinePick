@@ -53,17 +53,17 @@ jobs:
       - name: Setup backend
         uses: ./.github/actions/setup-backend
 
-      - name: Run pytest
+      - name: Run pytest mocked
         working-directory: backend
         run: pytest
 
-  smoke-test:
-    name: Smoke Test
+  integration-test:
+    name: Integration Test
     runs-on: ubuntu-latest
     if: github.base_ref == 'main' || github.ref == 'refs/heads/main'
     env:
-      SUPABASE_URL: https://fake.supabase.co
-      SUPABASE_SERVICE_ROLE_KEY: fake-service-role-key-for-smoke-test
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -71,31 +71,6 @@ jobs:
       - name: Setup backend
         uses: ./.github/actions/setup-backend
 
-      - name: Start FastAPI server in background
+      - name: Run pytest with Supabase
         working-directory: backend
-        run: |
-          uvicorn main:app --host 0.0.0.0 --port 8000 &
-          echo $! > /tmp/uvicorn.pid
-
-      - name: Wait for server to be ready
-        run: |
-          for i in {1..30}; do
-            if curl -sf http://localhost:8000/health > /dev/null; then
-              echo "Server is up after ${i} seconds"
-              exit 0
-            fi
-            sleep 1
-          done
-          echo "Server did not start in 30 seconds"
-          exit 1
-
-      - name: Hit /health endpoint
-        run: |
-          response=$(curl -sf http://localhost:8000/health)
-          echo "Response: $response"
-          echo "$response" | grep -q '"status":"ok"' || exit 1
-
-      - name: Stop server
-        if: always()
-        run: |
-          kill $(cat /tmp/uvicorn.pid) || true
+        run: pytest -v
