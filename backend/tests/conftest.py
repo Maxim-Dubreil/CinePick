@@ -5,12 +5,20 @@ from unittest.mock import MagicMock
 import pytest
 from supabase import create_client
 
-SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
-SUPABASE_SERVICE_ROLE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
-IS_INTEGRATION_TEST = bool(SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY)
 
-if IS_INTEGRATION_TEST:
-    supabase_client = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+def _is_integration_test():
+    """Check if integration test credentials are available."""
+    return bool(
+        os.environ.get("SUPABASE_URL")
+        and os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+    )
+
+
+# Setup Supabase client based on credentials
+if _is_integration_test():
+    supabase_client = create_client(
+        os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"]
+    )
     sys.modules["supabase_client"] = MagicMock(supabase=supabase_client)
 else:
     mock_supabase_client = MagicMock()
@@ -24,7 +32,7 @@ def pytest_configure(config):
 
 
 def pytest_collection_modifyitems(config, items):
-    if not IS_INTEGRATION_TEST:
+    if not _is_integration_test():
         skip_integration = pytest.mark.skip(
             reason="Integration tests only run in CI with real DB"
         )
@@ -34,14 +42,21 @@ def pytest_collection_modifyitems(config, items):
 
 
 @pytest.fixture
+def require_integration():
+    """Fixture que les tests d'intégration doivent utiliser pour être skippés en PR."""
+    if not _is_integration_test():
+        pytest.skip("Integration test: requires real DB (CI main only)")
+
+
+@pytest.fixture
 def supabase_mock():
-    if not IS_INTEGRATION_TEST:
+    if not _is_integration_test():
         return sys.modules["supabase_client"].supabase
     return None
 
 
 @pytest.fixture(autouse=True)
 def reset_supabase_mock():
-    if not IS_INTEGRATION_TEST:
+    if not _is_integration_test():
         sys.modules["supabase_client"].supabase.reset_mock()
     yield
