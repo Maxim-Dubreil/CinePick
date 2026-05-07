@@ -87,6 +87,19 @@ GitHub Actions with path-filtered triggers. Each side (frontend/backend) has its
 
 Reusable setup actions live in `.github/actions/setup-frontend` and `setup-backend`.
 
+## Session Logging
+
+After each significant commit, update `/home/maxim/.claude/projects/-home-maxim-work-CinePick/logs.md` with:
+- **Action number and status** (✅ for completed)
+- **Date/time range** of the work
+- **Description** (one sentence summary)
+- **Details** (what was done, what changed)
+- **Files** (created, modified, deleted)
+- **Commits** (list of commit hashes and messages)
+- Update the Summary section at the bottom with current totals
+
+This keeps a persistent record of work across sessions.
+
 ## Language Policy
 
 All code (identifiers, comments, documentation files) must be written in English. Frontend GUI text (labels, buttons, messages visible in the browser) must be in French. An i18n system is not yet implemented; French strings are currently hardcoded.
