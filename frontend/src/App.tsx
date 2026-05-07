@@ -9,21 +9,18 @@ import { ThemeToggle } from '@/components/layout'
 
 function App() {
   const { loading: authLoading } = useAuth()
-  const [appLoaded, setAppLoaded] = useState(false)
   const [loaderMounted, setLoaderMounted] = useState(true)
-
-  const showLoader = authLoading || !appLoaded
 
   return (
     <>
       {loaderMounted && (
         <AppLoader
-          visible={showLoader}
+          visible={authLoading}
           onFadeComplete={() => setLoaderMounted(false)}
         />
       )}
       <Routes>
-        <Route path="/" element={<Landing onLoaded={() => setAppLoaded(true)} />} />
+        <Route path="/" element={<Landing />} />
         <Route path="/home/*" element={<Home />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
