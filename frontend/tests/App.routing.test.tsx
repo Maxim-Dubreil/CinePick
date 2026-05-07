@@ -3,10 +3,15 @@ import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import App from '@/App'
 
+interface AppLoaderProps {
+  visible: boolean
+  onFadeComplete: () => void
+}
+
 // Mock the ThemeToggle to avoid complications
 vi.mock('@/components/layout', () => ({
   ThemeToggle: () => <div>Theme Toggle</div>,
-  AppLoader: ({ visible, onFadeComplete }: any) => {
+  AppLoader: ({ visible, onFadeComplete }: AppLoaderProps) => {
     if (!visible) onFadeComplete()
     return null
   },
