@@ -140,7 +140,7 @@ export function LandingBackground({ onLoaded }: LandingBackgroundProps) {
       <div
         className="absolute inset-0"
         style={{
-          background: "rgba(8, 8, 16, 0.76)",
+          background: "var(--bg-overlay)",
           backdropFilter: "blur(40px)",
           WebkitBackdropFilter: "blur(34px)",
         }}
@@ -152,8 +152,8 @@ export function LandingBackground({ onLoaded }: LandingBackgroundProps) {
         style={{
           width: 600,
           height: 600,
-          background: "#5B21B6",
-          opacity: 0.35,
+          background: "var(--orb-1)",
+          opacity: "var(--orb-1-a)",
           filter: "blur(120px)",
           top: -180,
           left: -100,
@@ -165,8 +165,8 @@ export function LandingBackground({ onLoaded }: LandingBackgroundProps) {
         style={{
           width: 400,
           height: 400,
-          background: "#7C3AED",
-          opacity: 0.25,
+          background: "var(--orb-2)",
+          opacity: "var(--orb-2-a)",
           filter: "blur(90px)",
           top: -100,
           right: -60,
@@ -178,8 +178,8 @@ export function LandingBackground({ onLoaded }: LandingBackgroundProps) {
         style={{
           width: 300,
           height: 300,
-          background: "#4C1D95",
-          opacity: 0.3,
+          background: "var(--orb-3)",
+          opacity: "var(--orb-3-a)",
           filter: "blur(80px)",
           bottom: 60,
           left: "40%",

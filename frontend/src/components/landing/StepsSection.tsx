@@ -35,7 +35,7 @@ export function StepsSection() {
       {STEPS.map((step) => (
         <Card key={step.number} variant={step.variant}>
           <CardHeader>
-            <p className="text-[11px] font-medium uppercase tracking-widest mb-2 text-text-disabled">
+            <p className="text-[11px] font-medium uppercase tracking-widest mb-2 text-text-secondary">
               {step.number}
             </p>
             <CardTitle>{step.title}</CardTitle>
