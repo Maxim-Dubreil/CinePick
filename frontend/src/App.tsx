@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Landing } from "@/pages/Landing";
-import { AppLoader } from "@/components/layout/AppLoader";
+import { AppLoader } from "@/components/layout";
+import { ThemeToggle } from "@/components/layout";
 
 function App() {
   const { loading: authLoading } = useAuth();
@@ -19,6 +20,7 @@ function App() {
         />
       )}
       <Landing onLoaded={() => setAppLoaded(true)} />
+      <ThemeToggle />
     </>
   );
 }

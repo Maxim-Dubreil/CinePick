@@ -11,13 +11,12 @@ export function Topbar({ variant = "landing" }: TopbarProps) {
 
   return (
     <header
-      className="relative z-50 h-[60px] flex items-center justify-between px-10 flex-shrink-0"
+      className="relative z-50 h-15 flex items-center justify-between px-10 shrink-0"
       style={{
-        background:
-          "linear-gradient(180deg, rgba(4,4,10,0.3) 0%, transparent 100%)",
+        background: "var(--topbar-gradient)",
         backdropFilter: "blur(40px)",
         WebkitBackdropFilter: "blur(40px)",
-        borderBottom: "0.5px solid rgba(255,255,255,0.08)",
+        borderBottom: "0.5px solid var(--topbar-border)",
       }}
     >
       {/* Logo */}
@@ -47,15 +46,11 @@ export function Topbar({ variant = "landing" }: TopbarProps) {
 
         {!loading &&
           (!user ? (
-            <Button
-              variant="glass"
-              size="sm"
-              onClick={signInWithGoogle}
-            >
+            <Button variant="glass" size="sm" onClick={signInWithGoogle}>
               Se connecter
             </Button>
           ) : (
-            <Button variant="ghost" size="sm" onClick={signOut}>
+            <Button variant="glass" size="sm" onClick={signOut}>
               Se déconnecter
             </Button>
           ))}

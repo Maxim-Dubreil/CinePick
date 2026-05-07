@@ -6,7 +6,7 @@ export function AppBackground() {
         style={{
           width: 600,
           height: 400,
-          background: "radial-gradient(ellipse, #1e0a3c 0%, transparent 70%)",
+          background: "var(--app-orb-1)",
           top: -100,
           left: -100,
           opacity: 0.9,
@@ -17,7 +17,7 @@ export function AppBackground() {
         style={{
           width: 500,
           height: 400,
-          background: "radial-gradient(ellipse, #0a1a2e 0%, transparent 70%)",
+          background: "var(--app-orb-2)",
           top: 0,
           right: -80,
           opacity: 0.8,
@@ -28,7 +28,7 @@ export function AppBackground() {
         style={{
           width: 400,
           height: 400,
-          background: "radial-gradient(ellipse, #1a0a0a 0%, transparent 70%)",
+          background: "var(--app-orb-3)",
           bottom: -80,
           left: "30%",
           opacity: 0.7,

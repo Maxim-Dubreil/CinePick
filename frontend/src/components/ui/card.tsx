@@ -20,8 +20,7 @@ function Card({
         "group/card flex flex-col gap-3 overflow-hidden rounded-[var(--radius-xl)] text-sm",
         "backdrop-blur-xl",
         // Inset shine en haut
-        "shadow-[inset_0_1px_0_var(--glass-shine),inset_0_-1px_0_var(--glass-shadow),0_4px_24px_rgba(0,0,0,0.3)]",
-        // Variantes
+        "shadow-[var(--shadow-glass)]", // Variantes
         variant === "default" && [
           "bg-[var(--glass-bg)]",
           "ring-1 ring-[var(--glass-border)]",
@@ -29,7 +28,7 @@ function Card({
         variant === "accent" && [
           "bg-[var(--accent-subtle)]",
           "ring-1 ring-[var(--accent-border)]",
-          "shadow-[inset_0_1px_0_rgba(196,181,253,0.2),0_4px_24px_rgba(109,40,217,0.2)]",
+          "shadow-[var(--shadow-glass-accent)]",
         ],
         // Tailles
         size === "default" && "py-5 px-5",

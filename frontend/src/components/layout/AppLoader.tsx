@@ -47,8 +47,7 @@ export function AppLoader({ visible, onFadeComplete }: AppLoaderProps) {
           className="text-[48px] font-bold tracking-[0.04em] animate-shimmer"
           style={{
             fontFamily: "var(--font-heading)",
-            background:
-              "linear-gradient(90deg, rgba(255,255,255,0.5) 0%, #fff 40%, rgba(255,255,255,0.5) 100%)",
+            background: "var(--logo-shimmer)",
             backgroundSize: "200% auto",
             WebkitBackgroundClip: "text",
             WebkitTextFillColor: "transparent",

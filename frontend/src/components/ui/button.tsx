@@ -21,9 +21,9 @@ const buttonVariants = cva(
 
         // CinePick custom
         glass:
-          "bg-[var(--glass-bg)] border-[var(--glass-border)] text-[var(--text-primary)] backdrop-blur-xl hover:bg-white/10 shadow-[inset_0_1.5px_0_var(--glass-shine),inset_0_-1px_0_var(--glass-shadow),0_8px_24px_rgba(0,0,0,0.35)]",
+          "bg-[var(--glass-bg)] border-[var(--glass-border)] text-[var(--text-primary)] backdrop-blur-xl hover:bg-[var(--hover-glass-bg)] shadow-[var(--shadow-glass)]",
         "glass-accent":
-          "bg-[var(--accent-subtle)] border-[var(--accent-border)] text-[var(--cp-accent)] backdrop-blur-xl hover:bg-[var(--accent-subtle)]/80 shadow-[inset_0_1.5px_0_rgba(196,181,253,0.2),0_4px_20px_rgba(109,40,217,0.2)]",
+          "bg-[var(--accent-subtle)] border-[var(--accent-border)] text-[var(--cp-accent)] backdrop-blur-xl hover:bg-[var(--accent-subtle)]/80 shadow-[var(--shadow-glass-accent)]",
       },
       size: {
         default: "h-9 gap-2 px-4",
