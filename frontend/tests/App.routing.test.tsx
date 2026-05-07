@@ -39,9 +39,9 @@ describe('App Routing', () => {
   })
 
   it('should display NotFound page at /invalid', () => {
-    renderWithRouter('/invalid')
+    const { container } = renderWithRouter('/invalid')
     expect(screen.getByText('Not Found')).toBeInTheDocument()
-    expect(screen.getByText('🎬')).toBeInTheDocument()
+    expect(container.querySelector('svg.lucide-clapperboard')).toBeInTheDocument()
     expect(screen.getByText('Désolé, cette page n\'existe pas')).toBeInTheDocument()
   })
 

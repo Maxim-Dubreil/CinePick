@@ -1,33 +1,35 @@
 import { useNavigate } from 'react-router-dom'
+import { Clapperboard } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { AppBackground } from '@/components/layout/AppBackground'
 
 export function NotFound() {
   const navigate = useNavigate()
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-4">
-      {/* Light theme background */}
-      <div className="absolute inset-0 -z-10 dark:hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50" />
-      </div>
-
-      {/* Dark theme background */}
-      <div className="absolute inset-0 -z-10 hidden dark:block">
-        <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900" />
-      </div>
+    <div className="relative min-h-screen flex flex-col items-center justify-center px-4">
+      <AppBackground />
 
       {/* Content */}
-      <div className="text-center space-y-6 max-w-md">
-        {/* Emoji */}
-        <div className="text-6xl">🎬</div>
+      <div className="relative z-10 text-center space-y-6 max-w-md">
+        {/* Icon */}
+        <div className="flex justify-center">
+          <Clapperboard size={64} style={{ color: 'var(--cp-accent)' }} strokeWidth={1.5} />
+        </div>
 
         {/* Title */}
-        <h1 className="text-4xl font-bold italic dark:text-white">
+        <h1
+          className="text-4xl font-bold italic"
+          style={{ color: 'var(--text-primary)' }}
+        >
           Not Found
         </h1>
 
         {/* Error message */}
-        <p className="text-lg text-gray-600 dark:text-gray-300">
+        <p
+          className="text-lg"
+          style={{ color: 'var(--text-secondary)' }}
+        >
           Désolé, cette page n'existe pas
         </p>
 
