@@ -6,6 +6,20 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* App Background — Light theme only */
+[data-theme="light"] .app-bg {
+  background:
+    radial-gradient(55% 45% at 12% 8%, #fce7f3 0%, transparent 62%),
+    radial-gradient(50% 45% at 88% 14%, #d4deff 0%, transparent 65%),
+    radial-gradient(45% 40% at 78% 78%, #d4deff 0%, transparent 64%),
+    radial-gradient(60% 50% at 25% 95%, #fbcfe8 0%, transparent 60%),
+    linear-gradient(180deg, #faf9fb, #f6f4f9) !important;
+}
+
+[data-theme="light"] .app-orb {
+  display: none;
+}
+
 @keyframes shimmer {
   0% {
     background-position: -200% center;
@@ -173,7 +187,7 @@
   --sidebar-border: rgba(26, 24, 37, 0.1);
   --sidebar-ring: rgba(124, 58, 237, 0.28);
 
-  /* CinePick */
+  /* CinePick Light Theme */
   --bg-base: #faf9fb;
   --bg-page: #f6f4f9;
   --bg-topbar: rgba(250, 249, 251, 0.62);
@@ -186,6 +200,7 @@
   --text-disabled: rgba(26, 24, 37, 0.22);
 
   --cp-accent: #c4b5fd;
+  --accent-text: #6d28d9;
   --accent-subtle: rgba(196, 181, 253, 0.22);
   --accent-border: rgba(124, 58, 237, 0.28);
 
@@ -194,19 +209,23 @@
   --danger: #c84545;
 
   --glass-bg: rgba(255, 255, 255, 0.62);
+  --glass-bg-hi: rgba(255, 255, 255, 0.76);
   --glass-border: rgba(255, 255, 255, 0.85);
   --glass-shine: rgba(255, 255, 255, 0.9);
-  --glass-shadow: rgba(26, 24, 37, 0.05);
 
-  --border-default: rgba(26, 24, 37, 0.1);
   --border-subtle: rgba(26, 24, 37, 0.06);
+  --border-default: rgba(26, 24, 37, 0.1);
   --border-strong: rgba(26, 24, 37, 0.18);
 
+  --shadow-soft:
+    0 1px 2px rgba(26, 24, 37, 0.04), 0 4px 16px rgba(26, 24, 37, 0.06);
+  --shadow-strong:
+    0 2px 6px rgba(26, 24, 37, 0.05), 0 16px 48px rgba(76, 29, 149, 0.1);
   --shadow-glass:
-    0 2px 8px rgba(26, 24, 37, 0.08), inset 0 1.5px 0 rgba(255, 255, 255, 0.95),
-    inset 0 -1px 0 rgba(26, 24, 37, 0.04);
+    0 2px 8px rgba(26, 24, 37, 0.08), 0 8px 32px rgba(76, 29, 149, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
   --shadow-glass-accent:
-    0 4px 24px rgba(124, 58, 237, 0.14),
+    0 4px 24px rgba(124, 58, 237, 0.20),
     inset 0 1.5px 0 rgba(255, 255, 255, 0.85);
   --shadow-topbar: 0 1px 2px rgba(26, 24, 37, 0.04);
   --hover-glass-bg: rgba(26, 24, 37, 0.06);
@@ -218,11 +237,11 @@
   --topbar-border: rgba(26, 24, 37, 0.1);
 
   --orb-1: #c4b5fd;
-  --orb-1-a: 0.55;
+  --orb-1-a: 0.90;
   --orb-2: #fbcfe8;
-  --orb-2-a: 0.4;
+  --orb-2-a: 0.80;
   --orb-3: #ddd6fe;
-  --orb-3-a: 0.55;
+  --orb-3-a: 0.90;
   --bg-overlay: rgba(250, 249, 251, 0.74);
 
   --footer-gradient: linear-gradient(

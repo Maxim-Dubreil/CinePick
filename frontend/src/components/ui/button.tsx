@@ -24,6 +24,8 @@ const buttonVariants = cva(
           "bg-[var(--glass-bg)] border-[var(--glass-border)] text-[var(--text-primary)] backdrop-blur-xl hover:bg-[var(--hover-glass-bg)] shadow-[var(--shadow-glass)]",
         "glass-accent":
           "bg-[var(--accent-subtle)] border-[var(--accent-border)] text-[var(--cp-accent)] backdrop-blur-xl hover:bg-[var(--accent-subtle)]/80 shadow-[var(--shadow-glass-accent)]",
+        "glass-primary":
+          "bg-[var(--primary)] text-[var(--primary-foreground)] backdrop-blur-xl hover:bg-[var(--primary)]/90 shadow-[var(--shadow-glass)] border border-transparent",
       },
       size: {
         default: "h-9 gap-2 px-4",

@@ -1,8 +1,8 @@
 export function AppBackground() {
   return (
-    <div className="fixed inset-0 -z-10 bg-bg-page">
+    <div className="app-bg fixed inset-0 -z-10 bg-bg-page">
       <div
-        className="absolute rounded-full pointer-events-none"
+        className="app-orb absolute rounded-full pointer-events-none"
         style={{
           width: 600,
           height: 400,
@@ -13,7 +13,7 @@ export function AppBackground() {
         }}
       />
       <div
-        className="absolute rounded-full pointer-events-none"
+        className="app-orb absolute rounded-full pointer-events-none"
         style={{
           width: 500,
           height: 400,
@@ -24,7 +24,7 @@ export function AppBackground() {
         }}
       />
       <div
-        className="absolute pointer-events-none"
+        className="app-orb absolute pointer-events-none"
         style={{
           width: 400,
           height: 400,

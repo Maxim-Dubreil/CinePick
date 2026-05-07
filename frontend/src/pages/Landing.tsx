@@ -25,7 +25,7 @@ export function Landing({ onLoaded }: LandingProps) {
         >
           Ce soir, tu trouves
           <br />
-          <em className="text-(--cp-accent)">le bon film.</em>
+          <em className="text-(--accent-text)">le bon film.</em>
         </h1>
 
         {/* Subtitle description */}
