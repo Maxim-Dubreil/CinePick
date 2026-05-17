@@ -1,4 +1,11 @@
-import { Avatar, AvatarFallback, Button, Tabs, TabsList, TabsTrigger } from "@/components/ui";
+import {
+  Avatar,
+  AvatarFallback,
+  Button,
+  Tabs,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui";
 import { signInWithGoogle, signOut } from "@/lib/auth";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -40,20 +47,7 @@ export function Topbar({ variant = "landing" }: TopbarProps) {
       </div>
 
       {/* Right side */}
-      <div className="flex items-center gap-3">
-        {variant === "app" && user && (
-          <div className="flex items-center gap-2 pl-3 pr-1 py-1 rounded-pill bg-bg-card border border-border-default">
-            <span className="text-sm font-medium text-text-primary">
-              {user.user_metadata?.full_name?.split(" ")[0]}
-            </span>
-            <Avatar size="sm">
-              <AvatarFallback className="bg-accent-subtle text-cp-accent font-semibold">
-                {user.user_metadata?.full_name?.split(" ")[0]?.[0]?.toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-          </div>
-        )}
-
+      <div className="flex items-center gap-6">
         {!loading &&
           (!user ? (
             <Button variant="glass" size="sm" onClick={signInWithGoogle}>
@@ -64,6 +58,24 @@ export function Topbar({ variant = "landing" }: TopbarProps) {
               Se déconnecter
             </Button>
           ))}
+
+        {variant === "app" && user && (
+          <button
+            type="button"
+            className="flex items-center gap-2 hover:opacity-70 transition-opacity"
+          >
+            <span className="text-sm font-medium text-text-primary">
+              {user.user_metadata?.full_name?.split(" ")[0]}
+            </span>
+            <Avatar size="default">
+              <AvatarFallback className="bg-accent-subtle text-cp-accent font-semibold">
+                {user.user_metadata?.full_name
+                  ?.split(" ")[0]?.[0]
+                  ?.toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+          </button>
+        )}
       </div>
     </header>
   );
