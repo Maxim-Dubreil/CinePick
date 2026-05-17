@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui";
+import { Button, Tabs, TabsList, TabsTrigger } from "@/components/ui";
 import { signInWithGoogle, signOut } from "@/lib/auth";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -26,6 +26,18 @@ export function Topbar({ variant = "landing" }: TopbarProps) {
       >
         CinePick
       </span>
+
+      {/* Center tabs — app only */}
+      {variant === "app" && (
+        <div className="absolute left-1/2 -translate-x-1/2">
+          <Tabs defaultValue="watchlist">
+            <TabsList variant="line">
+              <TabsTrigger value="watchlist">Watchlist</TabsTrigger>
+              <TabsTrigger value="historique">Historique</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
+      )}
 
       {/* Right side */}
       <div className="flex items-center gap-3">
