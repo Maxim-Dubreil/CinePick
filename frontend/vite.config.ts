@@ -9,6 +9,9 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      ...(process.env.VITE_MOCK_AUTH === "true" && {
+        "@/hooks/useAuth": path.resolve(__dirname, "./__mocks__/useAuth.ts"),
+      }),
     },
   },
 });
