@@ -1,8 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { Clock } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-
-type TimeOfDay = "morning" | "afternoon" | "evening" | "night";
+import { type TimeOfDay, getTimeOfDay, formatTime } from "@/lib/timeOfDay";
 
 const periodLabel: Record<TimeOfDay, string> = {
   morning: "CE MATIN",
@@ -35,20 +34,6 @@ const subtitles: Record<TimeOfDay, string[]> = {
   night: ["Tant qu'à faire, un film...", "Un dernier film avant de dormir ?"],
 };
 
-function getTimeOfDay(hour: number): TimeOfDay {
-  if (hour >= 5 && hour < 12) return "morning";
-  if (hour >= 12 && hour < 18) return "afternoon";
-  if (hour >= 18 && hour < 24) return "evening";
-  return "night";
-}
-
-function formatTime(date: Date): string {
-  return date.toLocaleTimeString("fr-FR", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
 function pickRandom<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
 }
@@ -70,12 +55,11 @@ export function HomeHeader() {
       greeting: pickRandom(greetings[timeOfDay]),
       subtitle: pickRandom(subtitles[timeOfDay]),
     }),
-    [timeOfDay, firstName],
+    [timeOfDay],
   );
 
   return (
     <section className="flex flex-col items-center text-center px-10 pt-16 pb-8">
-      {/* Time label */}
       <div className="flex items-center gap-2 text-xs font-medium tracking-widest text-text-tertiary uppercase mb-6">
         <span>{periodLabel[timeOfDay]}</span>
         <span>•</span>
@@ -83,7 +67,6 @@ export function HomeHeader() {
         <span className="text-cp-accent">{formatTime(now)}</span>
       </div>
 
-      {/* Title */}
       <h1
         className="text-[52px] font-medium leading-[1.1] tracking-[-0.5px] max-w-155"
         style={{ fontFamily: "var(--font-heading)" }}

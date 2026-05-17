@@ -1,8 +1,7 @@
 export function Question() {
   return (
-    <div className="p-8">
-      <h1 className="text-2xl font-bold">Questions</h1>
-      <p className="text-gray-600 dark:text-gray-300 mt-2">Page questions - à implémenter</p>
+    <div className="flex items-center justify-center h-full">
+      <p className="text-text-secondary text-sm">Question page</p>
     </div>
-  )
+  );
 }
