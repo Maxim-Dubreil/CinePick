@@ -42,6 +42,23 @@ pyright                                # type check
 docker compose up --build   # start frontend + backend together
 ```
 
+## Frontend-Specific Conventions
+
+For detailed frontend architecture, development patterns, and mocked auth setup, see [`frontend/CLAUDE.md`](frontend/CLAUDE.md).
+
+### Developing Without Supabase (Mocked Auth)
+
+When Supabase is unavailable or you're building UI in isolation:
+
+```bash
+cd frontend
+VITE_MOCK_AUTH=true pnpm dev
+```
+
+This aliases `useAuth` to a mock that returns a hardcoded user session. **Perfect for feature development when Supabase is paused.**
+
+To disable, simply run `pnpm dev` (requires live Supabase).
+
 ## Environment Setup
 
 Copy `.env.example` to `.env.dev` in both `frontend/` and `backend/`. For local production testing, use `.env.prod` (optional; in real production environments, Railway and Vercel inject vars directly).
@@ -90,6 +107,7 @@ Reusable setup actions live in `.github/actions/setup-frontend` and `setup-backe
 ## Session Logging
 
 After each significant commit, update `/home/maxim/.claude/projects/-home-maxim-work-CinePick/logs.md` with:
+
 - **Action number and status** (✅ for completed)
 - **Date/time range** of the work
 - **Description** (one sentence summary)
