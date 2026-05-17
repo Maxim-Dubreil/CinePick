@@ -1,4 +1,4 @@
-import { Button, Tabs, TabsList, TabsTrigger } from "@/components/ui";
+import { Avatar, AvatarFallback, Button, Tabs, TabsList, TabsTrigger } from "@/components/ui";
 import { signInWithGoogle, signOut } from "@/lib/auth";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -43,16 +43,14 @@ export function Topbar({ variant = "landing" }: TopbarProps) {
       <div className="flex items-center gap-3">
         {variant === "app" && user && (
           <div className="flex items-center gap-2 pl-3 pr-1 py-1 rounded-pill bg-bg-card border border-border-default">
-            {user.user_metadata?.avatar_url && (
-              <img
-                src={user.user_metadata.avatar_url}
-                alt="avatar"
-                className="w-7 h-7 rounded-full"
-              />
-            )}
-            <span className="text-sm text-text-secondary pr-2">
+            <span className="text-sm font-medium text-text-primary">
               {user.user_metadata?.full_name?.split(" ")[0]}
             </span>
+            <Avatar size="sm">
+              <AvatarFallback className="bg-accent-subtle text-cp-accent font-semibold">
+                {user.user_metadata?.full_name?.split(" ")[0]?.[0]?.toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
           </div>
         )}
 
