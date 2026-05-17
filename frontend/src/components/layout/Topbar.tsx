@@ -11,7 +11,7 @@ export function Topbar({ variant = "landing" }: TopbarProps) {
 
   return (
     <header
-      className="relative z-50 h-15 flex items-center justify-between px-10 shrink-0"
+      className="z-50 h-15 flex items-center justify-between px-10 shrink-0"
       style={{
         background: "var(--topbar-gradient)",
         backdropFilter: "blur(40px)",
@@ -19,25 +19,25 @@ export function Topbar({ variant = "landing" }: TopbarProps) {
         borderBottom: "0.5px solid var(--topbar-border)",
       }}
     >
-      {/* Logo */}
-      <span
-        className="text-[22px] font-medium tracking-[0.04em] text-text-primary"
-        style={{ fontFamily: "var(--font-heading)" }}
-      >
-        CinePick
-      </span>
+      {/* Left: logo + nav */}
+      <div className="flex items-center gap-8">
+        <span
+          className="text-[22px] font-medium tracking-[0.04em] text-text-primary"
+          style={{ fontFamily: "var(--font-heading)" }}
+        >
+          CinePick
+        </span>
 
-      {/* Center tabs — app only */}
-      {variant === "app" && (
-        <div className="absolute left-1/2 -translate-x-1/2">
-          <Tabs defaultValue="watchlist">
+        {variant === "app" && (
+          <Tabs defaultValue="Aujourd'hui">
             <TabsList variant="line">
+              <TabsTrigger value="Aujourd'hui">Aujourd'hui</TabsTrigger>
               <TabsTrigger value="watchlist">Watchlist</TabsTrigger>
               <TabsTrigger value="historique">Historique</TabsTrigger>
             </TabsList>
           </Tabs>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Right side */}
       <div className="flex items-center gap-3">
