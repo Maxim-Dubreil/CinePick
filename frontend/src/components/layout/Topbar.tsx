@@ -1,6 +1,7 @@
 import {
   Avatar,
   AvatarFallback,
+  AvatarImage,
   Button,
   Tabs,
   TabsList,
@@ -68,6 +69,10 @@ export function Topbar({ variant = "landing" }: TopbarProps) {
               {user.user_metadata?.full_name?.split(" ")[0]}
             </span>
             <Avatar size="default">
+              <AvatarImage
+                src={user.user_metadata?.picture}
+                alt={user.user_metadata?.full_name ?? "Avatar"}
+              />
               <AvatarFallback className="bg-accent-subtle text-cp-accent font-semibold">
                 {user.user_metadata?.full_name
                   ?.split(" ")[0]?.[0]
