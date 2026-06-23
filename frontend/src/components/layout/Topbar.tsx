@@ -1,4 +1,12 @@
-import { Button } from "@/components/ui";
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+  Button,
+  Tabs,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui";
 import { signInWithGoogle, signOut } from "@/lib/auth";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -11,7 +19,7 @@ export function Topbar({ variant = "landing" }: TopbarProps) {
 
   return (
     <header
-      className="relative z-50 h-15 flex items-center justify-between px-10 shrink-0"
+      className="z-50 h-15 flex items-center justify-between px-10 shrink-0"
       style={{
         background: "var(--topbar-gradient)",
         backdropFilter: "blur(40px)",
@@ -19,31 +27,28 @@ export function Topbar({ variant = "landing" }: TopbarProps) {
         borderBottom: "0.5px solid var(--topbar-border)",
       }}
     >
-      {/* Logo */}
-      <span
-        className="text-[22px] font-medium tracking-[0.04em] text-text-primary"
-        style={{ fontFamily: "var(--font-heading)" }}
-      >
-        CinePick
-      </span>
+      {/* Left: logo + nav */}
+      <div className="flex items-center gap-8">
+        <span
+          className="text-[22px] font-medium tracking-[0.04em] text-text-primary"
+          style={{ fontFamily: "var(--font-heading)" }}
+        >
+          CinePick
+        </span>
+
+        {variant === "app" && (
+          <Tabs defaultValue="Aujourd'hui">
+            <TabsList variant="line">
+              <TabsTrigger value="Aujourd'hui">Aujourd'hui</TabsTrigger>
+              <TabsTrigger value="watchlist">Watchlist</TabsTrigger>
+              <TabsTrigger value="historique">Historique</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        )}
+      </div>
 
       {/* Right side */}
-      <div className="flex items-center gap-3">
-        {variant === "app" && user && (
-          <div className="flex items-center gap-2 pl-3 pr-1 py-1 rounded-pill bg-bg-card border border-border-default">
-            {user.user_metadata?.avatar_url && (
-              <img
-                src={user.user_metadata.avatar_url}
-                alt="avatar"
-                className="w-7 h-7 rounded-full"
-              />
-            )}
-            <span className="text-sm text-text-secondary pr-2">
-              {user.user_metadata?.full_name?.split(" ")[0]}
-            </span>
-          </div>
-        )}
-
+      <div className="flex items-center gap-6">
         {!loading &&
           (!user ? (
             <Button variant="glass" size="sm" onClick={signInWithGoogle}>
@@ -54,6 +59,28 @@ export function Topbar({ variant = "landing" }: TopbarProps) {
               Se déconnecter
             </Button>
           ))}
+
+        {variant === "app" && user && (
+          <button
+            type="button"
+            className="flex items-center gap-2 hover:opacity-70 transition-opacity"
+          >
+            <span className="text-sm font-medium text-text-primary">
+              {user.user_metadata?.full_name?.split(" ")[0]}
+            </span>
+            <Avatar size="default">
+              <AvatarImage
+                src={user.user_metadata?.picture}
+                alt={user.user_metadata?.full_name ?? "Avatar"}
+              />
+              <AvatarFallback className="bg-accent-subtle text-cp-accent font-semibold">
+                {user.user_metadata?.full_name
+                  ?.split(" ")[0]?.[0]
+                  ?.toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+          </button>
+        )}
       </div>
     </header>
   );

@@ -22,10 +22,9 @@
     "noFallthroughCasesInSwitch": true,
 
     "ignoreDeprecations": "6.0",
-    "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src", "tests/App.test.tsx"]
+  "include": ["src", "tests"]
 }

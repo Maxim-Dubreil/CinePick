@@ -9,3 +9,5 @@ export {
   CardAction,
 } from "./card";
 export { Spinner } from "./spinner";
+export { Tabs, TabsList, TabsTrigger, TabsContent } from "./tabs";
+export { Avatar, AvatarImage, AvatarFallback } from "./avatar";
