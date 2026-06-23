@@ -60,10 +60,10 @@ export function HomeHeader() {
 
   return (
     <section className="flex flex-col items-center text-center px-10 pt-16 pb-8">
-      <div className="flex items-center gap-2 text-xs font-medium tracking-widest text-text-tertiary uppercase mb-6">
+      <div className="flex items-center gap-2 text-xs font-medium tracking-widest text-text-primary uppercase mb-6">
         <span>{periodLabel[timeOfDay]}</span>
         <span>•</span>
-        <Clock size={12} className="text-text-tertiary" />
+        <Clock size={12} className="text-text-primary" />
         <span className="text-cp-accent">{formatTime(now)}</span>
       </div>
 

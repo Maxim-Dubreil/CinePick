@@ -21,7 +21,7 @@ export function Footer({ variant = 'landing' }: FooterProps) {
           {i > 0 && (
             <div className="w-0.75 h-0.75 rounded-full bg-border-strong" />
           )}
-          <span className="text-[11px] tracking-[0.08em] text-text-tertiary">
+          <span className="text-[11px] tracking-[0.08em] text-text-secondary">
             {item}
           </span>
         </div>
