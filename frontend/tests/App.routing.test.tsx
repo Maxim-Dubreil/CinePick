@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import App from "@/App";
@@ -21,12 +21,25 @@ vi.mock("@/components/layout", async (importOriginal) => {
   };
 });
 
-// Mock useAuth hook
+// Mock useAuth hook (configurable per test via authMock)
+const { authMock } = vi.hoisted(() => ({
+  authMock: {
+    user: { id: "test-user" } as { id: string } | null,
+    loading: false,
+  },
+}));
+
 vi.mock("@/hooks/useAuth", () => ({
-  useAuth: () => ({ loading: false }),
+  useAuth: () => authMock,
 }));
 
 describe("App Routing", () => {
+  beforeEach(() => {
+    // Default: authenticated user
+    authMock.user = { id: "test-user" };
+    authMock.loading = false;
+  });
+
   const renderWithRouter = (initialRoute: string) => {
     return render(
       <MemoryRouter initialEntries={[initialRoute]}>
@@ -72,5 +85,14 @@ describe("App Routing", () => {
     renderWithRouter("/home/profile");
     expect(screen.getByText("Profile")).toBeInTheDocument();
     expect(screen.getByText(/Page profil/i)).toBeInTheDocument();
+  });
+
+  it("should redirect /home/* to Landing when not authenticated", () => {
+    authMock.user = null;
+    renderWithRouter("/home/profile");
+    expect(
+      screen.getByRole("heading", { name: /Ce soir, tu trouves/i }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Page profil/i)).not.toBeInTheDocument();
   });
 });

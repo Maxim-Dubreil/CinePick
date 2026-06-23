@@ -1,4 +1,4 @@
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, Navigate } from 'react-router-dom'
 import { useState } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { Landing } from '@/pages/Landing'
@@ -8,7 +8,7 @@ import { AppLoader } from '@/components/layout'
 import { ThemeToggle } from '@/components/layout'
 
 function App() {
-  const { loading: authLoading } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   const [loaderMounted, setLoaderMounted] = useState(true)
 
   return (
@@ -21,7 +21,12 @@ function App() {
       )}
       <Routes>
         <Route path="/" element={<Landing />} />
-        <Route path="/home/*" element={<Home />} />
+        <Route
+          path="/home/*"
+          element={
+            authLoading ? null : user ? <Home /> : <Navigate to="/" replace />
+          }
+        />
         <Route path="*" element={<NotFound />} />
       </Routes>
       <ThemeToggle />
