@@ -4,130 +4,98 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-CinePick is a movie recommendation app. Users connect their Letterboxd watchlist, answer questions, and receive AI-powered film recommendations. The stack is:
+CinePick is a movie recommendation app. Users connect their Letterboxd watchlist, answer
+questions, and receive AI-powered film recommendations.
 
 - **Frontend**: React 19 + TypeScript + Vite + Tailwind CSS v4 + shadcn/ui
 - **Backend**: FastAPI (Python 3.12) + Uvicorn
 - **Database/Auth**: Supabase (PostgreSQL with RLS, Google OAuth)
-- **AI**: Gemini API (key provisioned, not yet wired)
+- **AI**: Gemini API
 - **Movie metadata**: TMDB API
+
+Frontend-specific conventions live in [frontend/CLAUDE.md](frontend/CLAUDE.md).
 
 ## Development Commands
 
-### Frontend (`/frontend`)
+### Frontend (`/frontend`, pnpm only)
 
 ```bash
-pnpm dev          # start dev server (localhost:5173)
+pnpm dev          # dev server (localhost:5173)
 pnpm build        # production build
-pnpm lint         # ESLint (must pass with 0 warnings)
+pnpm lint         # ESLint (zero-warning policy)
 pnpm typecheck    # tsc --noEmit
-pnpm test         # Vitest (run once)
-pnpm test:watch   # Vitest watch mode
+pnpm test         # Vitest (run once) — pnpm test:watch for watch mode
 ```
 
 ### Backend (`/backend`)
 
 ```bash
-uvicorn main:app --reload              # start dev server (localhost:8000)
-pytest                                  # run all tests
-pytest tests/test_main.py::test_name   # run a single test
-ruff check .                           # lint
-ruff format .                          # format
-pyright                                # type check
+uvicorn main:app --reload   # dev server (localhost:8000)
+pytest                       # tests (single: pytest tests/test_main.py::test_name)
+ruff check . / ruff format . # lint / format
+pyright                      # type check
 ```
 
 ### Docker (full stack)
 
 ```bash
-docker compose up --build   # start frontend + backend together
+docker compose up --build
 ```
-
-## Frontend-Specific Conventions
-
-For detailed frontend architecture, development patterns, and mocked auth setup, see [`frontend/CLAUDE.md`](frontend/CLAUDE.md).
-
-### Developing Without Supabase (Mocked Auth)
-
-When Supabase is unavailable or you're building UI in isolation:
-
-```bash
-cd frontend
-VITE_MOCK_AUTH=true pnpm dev
-```
-
-This aliases `useAuth` to a mock that returns a hardcoded user session. **Perfect for feature development when Supabase is paused.**
-
-To disable, simply run `pnpm dev` (requires live Supabase).
 
 ## Environment Setup
 
-Copy `.env.example` to `.env.dev` in both `frontend/` and `backend/`. For local production testing, use `.env.prod` (optional; in real production environments, Railway and Vercel inject vars directly).
+Copy `.env.example` to `.env.dev` in both `frontend/` and `backend/` (use `.env.prod` for local
+prod testing). The authoritative variable lists are in each `.env.example` — refer to them rather
+than duplicating here.
 
-**Backend** (`.env.dev`): `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `ALLOWED_ORIGINS`, `GEMINI_API_KEY`, `TMDB_API_KEY`
-
-**Frontend** (`.env.dev`): `VITE_API_URL`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`
-
-The backend reads the correct file via `ENV` variable: `load_dotenv(f".env.{ENV}")` (defaults to `dev`). The frontend uses Vite's `--mode dev` / `--mode prod` flags, which natively load `.env.dev` / `.env.prod`.
+The backend selects the file via `ENV` (`load_dotenv(f".env.{ENV}")`, defaults to `dev`). The
+frontend uses Vite's `--mode dev|prod`, which natively loads `.env.dev` / `.env.prod`.
 
 ## Architecture
 
 ### Auth Flow
 
-Google OAuth is handled entirely by Supabase. On first login, a database trigger auto-creates a row in `profiles`. The frontend uses `useAuth.ts` (wraps `supabase.auth.onAuthStateChange`) to track session state; `auth.ts` exposes `signInWithGoogle` / `signOut` helpers.
+Google OAuth is handled entirely by Supabase. On first login, a database trigger auto-creates a
+row in `profiles`. The frontend tracks session state via `useAuth.ts` (wraps
+`supabase.auth.onAuthStateChange`); `auth.ts` exposes `signInWithGoogle` / `signOut`.
 
 ### Backend
 
-Minimal FastAPI app — currently only health check endpoints. The Supabase Python client is initialized in `supabase_client.py` using `SUPABASE_SERVICE_ROLE_KEY` (server-side, bypasses RLS). New API routes should be added as FastAPI routers.
+FastAPI app. The Supabase Python client is initialized in `supabase_client.py` using
+`SUPABASE_SERVICE_ROLE_KEY` (server-side, bypasses RLS). New API routes are added as FastAPI routers.
 
-### Frontend Component Structure
+### Database Schema
 
-- `App.tsx` — root; manages auth loading state and delegates to pages
-- `pages/Landing.tsx` — the only page currently; renders auth + feature intro
-- `components/layout/` — `Topbar`, `Background` (two variants: `landing`/`app`), `AppLoader`
-- `components/ui/` — shadcn/ui primitives (Button, Card, Spinner, etc.)
-- `lib/supabase.ts` — browser Supabase client (uses anon key)
-
-### Database Schema (Supabase/PostgreSQL)
-
-- `profiles` — user info + Letterboxd username/sync timestamp
-- `watchlist_films` — enriched film records (TMDB id, genres, poster, runtime)
-- `watch_history` — per-user decision log (`accepted`/`skipped`) with AI critique and match score stored as JSONB
-
-All tables have Row Level Security enabled; users can only access their own rows.
+The schema (tables, columns, RLS policies) is versioned in
+[backend/db/schema.sql](backend/db/schema.sql) — read it there. Core tables: `profiles`,
+`watchlist_films`, `watch_history`. **All tables have Row Level Security enabled; users can only
+access their own rows.**
 
 ### CI/CD
 
-GitHub Actions with path-filtered triggers. Each side (frontend/backend) has its own workflow:
+GitHub Actions with path-filtered triggers, one workflow per side — see
+[.github/workflows/](.github/workflows/). Lint → Typecheck → Test on every push to
+`develop`/`main`; build / integration tests gated to `main`. Reusable setup actions in
+`.github/actions/`.
 
-1. Lint → Typecheck → Test (on all pushes to `develop`/`main`)
-2. Build / Smoke test (only on `main`)
+## Git
 
-Reusable setup actions live in `.github/actions/setup-frontend` and `setup-backend`.
+Solo developer on a monorepo: commit directly to `develop`, no feature branches. Commit message
+format (English):
 
-## Session Logging
+```text
+type: [CIN-XX] description
+```
 
-After each significant commit, update `/home/maxim/.claude/projects/-home-maxim-work-CinePick/logs.md` with:
-
-- **Action number and status** (✅ for completed)
-- **Date/time range** of the work
-- **Description** (one sentence summary)
-- **Details** (what was done, what changed)
-- **Files** (created, modified, deleted)
-- **Commits** (list of commit hashes and messages)
-- Update the Summary section at the bottom with current totals
-
-This keeps a persistent record of work across sessions.
+Types: `feat`, `fix`, `chore`, `docs`, `test`, `style`.
 
 ## Language Policy
 
-All code (identifiers, comments, documentation files) must be written in English. Frontend GUI text (labels, buttons, messages visible in the browser) must be in French. An i18n system is not yet implemented; French strings are currently hardcoded.
+All code (identifiers, comments, documentation) in English. Frontend GUI text (labels, buttons,
+messages) in French — currently hardcoded (no i18n layer).
 
 ## Key Conventions
 
-- **Package manager**: pnpm (frontend only; never use npm/yarn in `frontend/`)
-- **Python version**: 3.12 (enforced in CI)
-- **Ruff line length**: 100, target Python 3.12
-- **Tailwind**: v4 Vite plugin — no `tailwind.config.js`; design tokens are CSS variables in `index.css`
-- **shadcn/ui style**: `nova` variant with Radix UI primitives
-- **ESLint**: zero-warning policy enforced in CI
-- **Tests**: Backend tests mock Supabase in `conftest.py` before importing `main`; frontend tests use jsdom + React Testing Library
+- **Package manager**: pnpm (frontend only; never npm/yarn)
+- **Python**: 3.12 (enforced in CI); Ruff line length 100
+- **Tests**: backend mocks Supabase in `conftest.py` before importing `main`

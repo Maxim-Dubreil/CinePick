@@ -1,101 +1,45 @@
 # Frontend — CLAUDE.md
 
-This file supplements the root [CLAUDE.md](../CLAUDE.md) with frontend-specific conventions and guidance.
+Supplements the root [CLAUDE.md](../CLAUDE.md) with frontend-specific conventions.
 
-## Quick Start
+## Tooling
 
-```bash
-cd frontend
-pnpm dev              # Start dev server (localhost:5173)
-pnpm test:watch      # Run tests in watch mode
-VITE_MOCK_AUTH=true pnpm dev  # Dev with mocked authentication (no Supabase needed)
-```
+- **pnpm** only (Node 22, pnpm 9 — matches CI). Never npm/yarn.
+- `pnpm dev` (localhost:5173) · `pnpm build` · `pnpm lint` · `pnpm typecheck` · `pnpm test` /
+  `pnpm test:watch`.
 
-## Development with Mocked Auth
+## Mocked Auth
 
-When Supabase is unavailable or during feature development, use the **mock authentication**:
+`VITE_MOCK_AUTH=true pnpm dev` aliases `@/hooks/useAuth` → `__mocks__/useAuth.ts`, returning a
+hardcoded session so the UI runs without a live Supabase connection. Omit the flag to use real
+Supabase. The mock user is defined in `__mocks__/useAuth.ts`.
 
-```bash
-VITE_MOCK_AUTH=true pnpm dev
-```
-
-**How it works:**
-
-- Vite aliases `@/hooks/useAuth` → `__mocks__/useAuth.ts`
-- The mock returns a hardcoded user session (see `__mocks__/useAuth.ts`)
-- All pages can be built/tested without a live Supabase connection
-- **To disable**: Simply omit `VITE_MOCK_AUTH=true` and ensure Supabase is running
-
-**Mock user details:**
-
-- Email: `dev@example.com`
-- Name: `Dev User`
-- ID: `mock-user-123`
-
-## Component Structure
-
-```sh
-src/
-├── pages/               # Page components (routed)
-│   ├── Landing.tsx      # Auth + landing (unauthenticated)
-│   ├── Home.tsx         # Main post-login page
-│   ├── Question.tsx     # Q&A survey
-│   ├── Résultat.tsx     # Recommendations result
-│   ├── Profile.tsx      # User profile
-│   └── NotFound.tsx     # 404 fallback
-├── components/
-│   ├── layout/          # Layout wrappers (Topbar, Background)
-│   ├── ui/              # shadcn/ui primitives (Button, Card, Spinner, etc.)
-│   ├── landing/         # Landing page sub-components
-│   └── [feature]/       # Feature-specific components
-├── hooks/
-│   ├── useAuth.ts       # Auth state hook (real Supabase)
-│   └── useTheme.ts      # Theme toggle hook
-├── lib/
-│   ├── supabase.ts      # Supabase client (anon key, browser-side)
-│   ├── auth.ts          # Auth helpers (signInWithGoogle, signOut)
-│   └── utils.ts         # Utility functions
-└── App.tsx              # Root component (routes + auth guard)
-```
-
-## Key Conventions
+## Conventions
 
 ### Imports
 
-- Use `@` alias for `src/` imports: `import { Button } from "@/components/ui/button"`
-- Avoid `../../../` relative paths
+- Use the `@` alias for `src/` imports (`@/components/ui/button`); avoid `../../../` paths.
 
 ### Typing
 
-- Strict TypeScript: no `any` types
-- Import types from `@supabase/supabase-js` when needed
-- Use `React.FC` sparingly; prefer function components with `React.ReactNode` return types
+- Strict TypeScript, no `any`. Import Supabase types from `@supabase/supabase-js`.
+- Prefer plain function components over `React.FC`.
 
 ### Styling
 
-- Tailwind CSS v4 (no `tailwind.config.js`)
-- Design tokens are CSS variables in `index.css`
-- shadcn/ui components use `nova` style variant
-- No inline styles; all styling via Tailwind + CSS modules if needed
+- Tailwind CSS v4 via the Vite plugin — no `tailwind.config.js`; design tokens are CSS variables
+  in `index.css`.
+- shadcn/ui primitives use the `nova` style variant.
+- Style via Tailwind classes; no inline styles.
 
-### Form Handling
+### State & Forms
 
-- Use React hooks for form state (no form library yet)
-- Validate on submit and display errors inline
+- Auth state via Context (`useAuth`); other state via React hooks.
+- Form state via React hooks; validate on submit and display errors inline.
 
-### Async/Data
+## Quality
 
-- Use React hooks (`useState`, `useEffect`) for async operations
-- Mock API calls during development; integrate backend endpoints when ready
-- No global state manager yet (Context API for auth only)
-
-## Testing & Quality
-
-- Tests: **jsdom** + React Testing Library (query by role, label, text)
-- All checks from root `CLAUDE.md` apply: `pnpm lint`, `pnpm typecheck`, `pnpm test:watch`
-- Mock Supabase in test setup; see `vitest.config.ts`
-
-## Quick Troubleshooting
-
-- **Module alias error** or **Supabase failed** → Run `VITE_MOCK_AUTH=true pnpm dev` first
-- **ESLint on save** → `pnpm lint --fix` (formatter runs in CI)
+- ESLint **zero-warning** policy (enforced in CI). Lint/format runs in CI — don't run formatters
+  locally.
+- Tests: Vitest + jsdom + React Testing Library (query by role / label / text). Supabase is mocked
+  in test setup (`vitest.config.ts`).

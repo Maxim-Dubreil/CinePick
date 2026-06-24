@@ -15,8 +15,8 @@ A web app that analyzes a Letterboxd watchlist to recommend a movie through a qu
 
 ### Prerequisites
 
-- Node.js 18+
-- Python 3.11+
+- Node.js 22
+- Python 3.12
 - Docker / Docker Desktop
 
 ### Environment variables
@@ -64,16 +64,13 @@ CinePick/
 
 ### Branches
 
-main : Production - PR merges only - _protected_
-develop : Ongoing work - Completed features - _default_
-feat/CIN-XX-name : New feature
-fix/CIN-XX-name : Bug fix
-chore/CIN-XX-name : Config, setup, refactor
+Solo developer: commit directly to `develop` (default branch). `main` is the protected
+production branch (merges only).
 
 ### Commits
 
 ```sh
-type(scope): [CIN-XX] short description
+type: [CIN-XX] description
 ```
 
 | Type    | Usage                        |

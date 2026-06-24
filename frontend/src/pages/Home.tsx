@@ -3,7 +3,7 @@ import { AppLayout } from "@/components/layout";
 import { HomeHeader, HomeCTA } from "@/components/home";
 import { Profile } from "./Profile";
 import { Question } from "./Question";
-import { Résultat } from "./Résultat";
+import { Result } from "./Result";
 
 export function Home() {
   return (
@@ -19,7 +19,7 @@ export function Home() {
           }
         />
         <Route path="profile" element={<Profile />} />
-        <Route path="résultat" element={<Résultat />} />
+        <Route path="result" element={<Result />} />
       </Route>
       <Route
         path="question"

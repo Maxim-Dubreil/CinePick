@@ -1,4 +1,4 @@
-export function Résultat() {
+export function Result() {
   return (
     <div className="p-8">
       <h1 className="text-2xl font-bold">Résultats</h1>
