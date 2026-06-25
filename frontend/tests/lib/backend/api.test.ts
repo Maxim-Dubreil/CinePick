@@ -112,10 +112,9 @@ describe("syncWatchlist", () => {
 
   it("throws ApiError on non-2xx response", async () => {
     vi.mocked(fetch).mockResolvedValue(new Response("", { status: 500 }));
-    await expect(syncWatchlist("cinephile", null)).rejects.toThrow(ApiError);
-    await expect(syncWatchlist("cinephile", null)).rejects.toMatchObject({
-      status: 500,
-    });
+    const err = syncWatchlist("cinephile", null);
+    await expect(err).rejects.toThrow(ApiError);
+    await expect(err).rejects.toMatchObject({ status: 500 });
   });
 
   it("throws ApiError(0) on network failure", async () => {
