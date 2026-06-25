@@ -86,6 +86,7 @@ export function LetterboxdConfigModal({
   }
 
   async function handleSync() {
+    if (syncStatus === "syncing") return;
     setSyncStatus("syncing");
     onSyncingChange(true);
     try {
