@@ -104,10 +104,10 @@ export function LetterboxdConfigModal({
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2.5">
+          <div className="space-y-3">
             <label
               htmlFor="letterboxd-username"
-              className="font-heading text-base font-medium text-[var(--text-primary)]"
+              className="pl-2 font-heading text-base font-medium text-[var(--text-primary)]"
             >
               Entrez votre pseudo Letterboxd
             </label>
