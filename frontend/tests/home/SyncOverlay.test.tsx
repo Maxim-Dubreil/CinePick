@@ -17,6 +17,6 @@ describe("SyncOverlay", () => {
   it("overlay has aria-hidden=false when visible", () => {
     const { container } = render(<SyncOverlay visible={true} />);
     const overlay = container.firstChild as HTMLElement;
-    expect(overlay).toBeInTheDocument();
+    expect(overlay).not.toHaveAttribute("aria-hidden", "true");
   });
 });
