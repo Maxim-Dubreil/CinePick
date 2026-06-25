@@ -9,15 +9,18 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui";
-import { ApiError, getWatchlistCount } from "@/lib/backend/api";
+import { ApiError, getWatchlistCount, syncWatchlist } from "@/lib/backend/api";
 
 interface LetterboxdConfigModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: (username: string) => void;
+  onSyncingChange: (syncing: boolean) => void;
+  token: string | null;
 }
 
-type Status = "idle" | "loading" | "success" | "error";
+type VerifyStatus = "idle" | "loading" | "success" | "error";
+type SyncStatus = "idle" | "syncing" | "synced" | "sync_error";
 type ErrorType = "404" | "403" | "network";
 
 const ERROR_MESSAGES: Record<ErrorType, string> = {
@@ -34,11 +37,18 @@ export function LetterboxdConfigModal({
   open,
   onOpenChange,
   onSuccess,
+  onSyncingChange,
+  token,
 }: LetterboxdConfigModalProps) {
   const [username, setUsername] = useState("");
-  const [status, setStatus] = useState<Status>("idle");
+  const [status, setStatus] = useState<VerifyStatus>("idle");
   const [errorType, setErrorType] = useState<ErrorType | null>(null);
   const [filmCount, setFilmCount] = useState<number | null>(null);
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>("idle");
+  const [syncResult, setSyncResult] = useState<{
+    count: number;
+    synced_at: string;
+  } | null>(null);
 
   function handleOpenChange(value: boolean) {
     if (!value) {
@@ -46,20 +56,23 @@ export function LetterboxdConfigModal({
       setStatus("idle");
       setErrorType(null);
       setFilmCount(null);
+      setSyncStatus("idle");
+      setSyncResult(null);
     }
     onOpenChange(value);
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleVerify(e: React.FormEvent) {
     e.preventDefault();
     if (!isValidUsername(username)) return;
     setStatus("loading");
     setErrorType(null);
+    setSyncStatus("idle");
+    setSyncResult(null);
     try {
       const { count } = await getWatchlistCount(username.trim());
       setFilmCount(count);
       setStatus("success");
-      onSuccess(username.trim());
     } catch (err) {
       setStatus("error");
       if (err instanceof ApiError) {
@@ -72,7 +85,21 @@ export function LetterboxdConfigModal({
     }
   }
 
-  const isSubmitDisabled = !isValidUsername(username) || status === "loading";
+  async function handleSync() {
+    setSyncStatus("syncing");
+    onSyncingChange(true);
+    try {
+      const result = await syncWatchlist(username.trim(), token);
+      setSyncResult(result);
+      setSyncStatus("synced");
+    } catch {
+      setSyncStatus("sync_error");
+    } finally {
+      onSyncingChange(false);
+    }
+  }
+
+  const isVerifyDisabled = !isValidUsername(username) || status === "loading";
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -102,8 +129,8 @@ export function LetterboxdConfigModal({
           </p>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Verify form */}
+        <form onSubmit={handleVerify} className="space-y-4">
           <div className="space-y-3">
             <label
               htmlFor="letterboxd-username"
@@ -120,6 +147,8 @@ export function LetterboxdConfigModal({
                   setStatus("idle");
                   setErrorType(null);
                   setFilmCount(null);
+                  setSyncStatus("idle");
+                  setSyncResult(null);
                 }
               }}
               placeholder="cinephile"
@@ -134,7 +163,7 @@ export function LetterboxdConfigModal({
             )}
           </div>
 
-          <Button type="submit" disabled={isSubmitDisabled} className="w-full">
+          <Button type="submit" disabled={isVerifyDisabled} className="w-full">
             {status === "loading" ? (
               <>
                 <Loader2 size={16} className="animate-spin" />
@@ -146,27 +175,93 @@ export function LetterboxdConfigModal({
           </Button>
         </form>
 
-        {/* Success */}
+        {/* Post-verify actions */}
         {status === "success" && filmCount !== null && (
           <div className="space-y-4">
-            <div className="flex items-center gap-2 text-[var(--success)]">
-              <CheckCircle2 size={16} />
-              <span className="text-sm font-medium">
-                {filmCount} films trouvés
-              </span>
-            </div>
-            <div className="flex gap-3">
-              <Button variant="glass-primary" className="flex-1" disabled>
-                Synchroniser
-              </Button>
-              <Button
-                variant="outline"
-                className="flex-1"
-                onClick={() => handleOpenChange(false)}
-              >
-                Plus tard
-              </Button>
-            </div>
+            {syncStatus === "idle" && (
+              <>
+                <div className="flex items-center gap-2 text-[var(--success)]">
+                  <CheckCircle2 size={16} />
+                  <span className="text-sm font-medium">
+                    {filmCount} films trouvés
+                  </span>
+                </div>
+                <div className="flex gap-3">
+                  <Button
+                    variant="glass-primary"
+                    className="flex-1"
+                    onClick={handleSync}
+                  >
+                    Synchroniser
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => handleOpenChange(false)}
+                  >
+                    Plus tard
+                  </Button>
+                </div>
+              </>
+            )}
+
+            {syncStatus === "syncing" && (
+              <div className="flex gap-3">
+                <Button variant="glass-primary" className="flex-1" disabled>
+                  <Loader2 size={16} className="animate-spin" />
+                  Synchronisation…
+                </Button>
+              </div>
+            )}
+
+            {syncStatus === "sync_error" && (
+              <>
+                <p className="text-sm text-[var(--danger)]">
+                  La synchronisation a échoué. Réessayez.
+                </p>
+                <div className="flex gap-3">
+                  <Button
+                    variant="glass-primary"
+                    className="flex-1"
+                    onClick={handleSync}
+                  >
+                    Synchroniser
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => handleOpenChange(false)}
+                  >
+                    Plus tard
+                  </Button>
+                </div>
+              </>
+            )}
+
+            {syncStatus === "synced" && syncResult !== null && (
+              <>
+                <div className="flex items-center gap-2 text-[var(--success)]">
+                  <CheckCircle2 size={16} />
+                  <span className="text-sm font-medium">
+                    {syncResult.count} films synchronisés
+                  </span>
+                </div>
+                <p className="text-sm text-[var(--text-secondary)]">
+                  Dernière synchronisation :{" "}
+                  {new Date(syncResult.synced_at).toLocaleDateString("fr-FR")}
+                </p>
+                <Button
+                  variant="glass-primary"
+                  className="w-full"
+                  onClick={() => {
+                    onSuccess(username.trim());
+                    handleOpenChange(false);
+                  }}
+                >
+                  Commencer
+                </Button>
+              </>
+            )}
           </div>
         )}
       </DialogContent>

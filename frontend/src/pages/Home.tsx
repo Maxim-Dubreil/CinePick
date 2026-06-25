@@ -10,8 +10,10 @@ import {
 import { Profile } from "./Profile";
 import { Question } from "./Question";
 import { Result } from "./Result";
+import { useAuth } from "@/hooks/useAuth";
 
 export function Home() {
+  const { session } = useAuth();
   const [letterboxdUsername, setLetterboxdUsername] = useState<string | null>(
     null,
   );
@@ -35,6 +37,8 @@ export function Home() {
                 open={modalOpen}
                 onOpenChange={setModalOpen}
                 onSuccess={setLetterboxdUsername}
+                onSyncingChange={() => {}}
+                token={session?.access_token ?? null}
               />
             </>
           }
