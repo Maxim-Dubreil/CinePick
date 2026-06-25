@@ -3,8 +3,6 @@ import { Clapperboard } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui";
 import { type TimeOfDay, getTimeOfDay } from "@/lib/timeOfDay";
-import { WatchlistBanner } from "./WatchlistBanner";
-import { LetterboxdConfigModal } from "./LetterboxdConfigModal";
 
 const ctaLabel: Record<TimeOfDay, string> = {
   morning: "Lancer le pick de ce matin",
@@ -13,13 +11,13 @@ const ctaLabel: Record<TimeOfDay, string> = {
   night: "Lancer le pick de cette nuit",
 };
 
-export function HomeCTA() {
+interface HomeCTAProps {
+  letterboxdUsername: string | null;
+}
+
+export function HomeCTA({ letterboxdUsername }: HomeCTAProps) {
   const navigate = useNavigate();
   const [now, setNow] = useState(() => new Date());
-  const [letterboxdUsername, setLetterboxdUsername] = useState<string | null>(
-    null,
-  );
-  const [modalOpen, setModalOpen] = useState(false);
 
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 60_000);
@@ -41,16 +39,6 @@ export function HomeCTA() {
         <Clapperboard size={18} />
         {ctaLabel[timeOfDay]}
       </Button>
-
-      {!letterboxdUsername && (
-        <WatchlistBanner onOpenModal={() => setModalOpen(true)} />
-      )}
-
-      <LetterboxdConfigModal
-        open={modalOpen}
-        onOpenChange={setModalOpen}
-        onSuccess={setLetterboxdUsername}
-      />
     </section>
   );
 }

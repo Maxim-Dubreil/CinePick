@@ -1,4 +1,3 @@
-import { Film } from "lucide-react";
 import { Button } from "@/components/ui";
 
 interface WatchlistBannerProps {
@@ -7,14 +6,20 @@ interface WatchlistBannerProps {
 
 export function WatchlistBanner({ onOpenModal }: WatchlistBannerProps) {
   return (
-    <div className="mt-4 flex items-center justify-between gap-4 rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--glass-bg)] px-4 py-3 backdrop-blur-xl">
-      <div className="flex items-center gap-3">
-        <Film size={16} className="shrink-0 text-[var(--text-secondary)]" />
-        <span className="text-sm text-[var(--text-secondary)]">
-          Connectez votre watchlist Letterboxd pour lancer un pick
-        </span>
-      </div>
-      <Button variant="glass-accent" size="sm" onClick={onOpenModal}>
+    <div className="flex items-center gap-3 rounded-[var(--radius-lg)] border border-[var(--warning-border)] bg-[var(--warning-subtle)] px-3 py-2 shadow-[var(--shadow-glass)] backdrop-blur-xl">
+      <span className="relative flex size-2 shrink-0">
+        <span className="absolute inline-flex size-full animate-ping rounded-full bg-[var(--warning)] opacity-60" />
+        <span className="relative inline-flex size-2 rounded-full bg-[var(--warning)]" />
+      </span>
+      <span className="text-sm font-medium text-[var(--warning)]">
+        Watchlist non configurée
+      </span>
+      <Button
+        variant="glass"
+        size="xs"
+        onClick={onOpenModal}
+        className="border-[var(--warning-border)] bg-[var(--warning-subtle)] text-[var(--warning)] hover:bg-[var(--warning)]/20"
+      >
         Configurer
       </Button>
     </div>

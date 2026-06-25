@@ -105,6 +105,8 @@
 
   --success: #4ec9a0;
   --warning: #d4983a;
+  --warning-subtle: rgba(212, 152, 58, 0.12);
+  --warning-border: rgba(212, 152, 58, 0.35);
   --danger: #e07070;
 
   --glass-bg: rgba(255, 255, 255, 0.07);
@@ -214,6 +216,8 @@
 
   --success: #0f8a5f;
   --warning: #b46f1c;
+  --warning-subtle: rgba(180, 111, 28, 0.10);
+  --warning-border: rgba(180, 111, 28, 0.30);
   --danger: #c84545;
 
   --glass-bg: rgba(255, 255, 255, 0.62);

@@ -6,8 +6,7 @@ import { ApiError } from "@/lib/backend/api";
 
 // Garde ApiError réel pour instanceof, mock uniquement getWatchlistCount
 vi.mock("@/lib/backend/api", async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import("@/lib/backend/api")>();
+  const actual = await importOriginal<typeof import("@/lib/backend/api")>();
   return { ...actual, getWatchlistCount: vi.fn() };
 });
 
@@ -40,9 +39,7 @@ describe("LetterboxdConfigModal", () => {
 
   it("disables Vérifier when input is empty", () => {
     render(<LetterboxdConfigModal {...defaultProps} />);
-    expect(
-      screen.getByRole("button", { name: /Vérifier/i }),
-    ).toBeDisabled();
+    expect(screen.getByRole("button", { name: /Vérifier/i })).toBeDisabled();
   });
 
   it("disables Vérifier when input contains spaces", async () => {
@@ -51,20 +48,16 @@ describe("LetterboxdConfigModal", () => {
       screen.getByLabelText(/Pseudo Letterboxd/i),
       "john doe",
     );
-    expect(
-      screen.getByRole("button", { name: /Vérifier/i }),
-    ).toBeDisabled();
+    expect(screen.getByRole("button", { name: /Vérifier/i })).toBeDisabled();
   });
 
   it("enables Vérifier with a valid username", async () => {
     render(<LetterboxdConfigModal {...defaultProps} />);
     await userEvent.type(
       screen.getByLabelText(/Pseudo Letterboxd/i),
-      "johndoe",
+      "your-pseudo",
     );
-    expect(
-      screen.getByRole("button", { name: /Vérifier/i }),
-    ).toBeEnabled();
+    expect(screen.getByRole("button", { name: /Vérifier/i })).toBeEnabled();
   });
 
   it("shows loading state during API call", async () => {
@@ -74,7 +67,7 @@ describe("LetterboxdConfigModal", () => {
     render(<LetterboxdConfigModal {...defaultProps} />);
     await userEvent.type(
       screen.getByLabelText(/Pseudo Letterboxd/i),
-      "johndoe",
+      "cinephile",
     );
     await userEvent.click(screen.getByRole("button", { name: /Vérifier/i }));
     expect(screen.getByText(/Vérification/i)).toBeInTheDocument();
@@ -87,7 +80,7 @@ describe("LetterboxdConfigModal", () => {
     render(<LetterboxdConfigModal {...defaultProps} />);
     await userEvent.type(
       screen.getByLabelText(/Pseudo Letterboxd/i),
-      "johndoe",
+      "cinephile",
     );
     await userEvent.click(screen.getByRole("button", { name: /Vérifier/i }));
     await waitFor(() =>
@@ -102,7 +95,7 @@ describe("LetterboxdConfigModal", () => {
     render(<LetterboxdConfigModal {...defaultProps} />);
     await userEvent.type(
       screen.getByLabelText(/Pseudo Letterboxd/i),
-      "johndoe",
+      "cinephile",
     );
     await userEvent.click(screen.getByRole("button", { name: /Vérifier/i }));
     await waitFor(() =>
@@ -115,7 +108,7 @@ describe("LetterboxdConfigModal", () => {
     render(<LetterboxdConfigModal {...defaultProps} />);
     await userEvent.type(
       screen.getByLabelText(/Pseudo Letterboxd/i),
-      "johndoe",
+      "cinephile",
     );
     await userEvent.click(screen.getByRole("button", { name: /Vérifier/i }));
     await waitFor(() =>
@@ -127,13 +120,13 @@ describe("LetterboxdConfigModal", () => {
 
   it("shows success state with film count", async () => {
     vi.mocked(getWatchlistCount).mockResolvedValue({
-      username: "johndoe",
+      username: "cinephile",
       count: 760,
     });
     render(<LetterboxdConfigModal {...defaultProps} />);
     await userEvent.type(
       screen.getByLabelText(/Pseudo Letterboxd/i),
-      "johndoe",
+      "cinephile",
     );
     await userEvent.click(screen.getByRole("button", { name: /Vérifier/i }));
     await waitFor(() =>
@@ -143,13 +136,13 @@ describe("LetterboxdConfigModal", () => {
 
   it("Synchroniser button is disabled in success state", async () => {
     vi.mocked(getWatchlistCount).mockResolvedValue({
-      username: "johndoe",
+      username: "cinephile",
       count: 760,
     });
     render(<LetterboxdConfigModal {...defaultProps} />);
     await userEvent.type(
       screen.getByLabelText(/Pseudo Letterboxd/i),
-      "johndoe",
+      "cinephile",
     );
     await userEvent.click(screen.getByRole("button", { name: /Vérifier/i }));
     await waitFor(() =>
@@ -162,17 +155,57 @@ describe("LetterboxdConfigModal", () => {
   it("calls onSuccess with trimmed username on success", async () => {
     const onSuccess = vi.fn();
     vi.mocked(getWatchlistCount).mockResolvedValue({
-      username: "johndoe",
+      username: "cinephile",
       count: 760,
     });
     render(<LetterboxdConfigModal {...defaultProps} onSuccess={onSuccess} />);
     await userEvent.type(
       screen.getByLabelText(/Pseudo Letterboxd/i),
-      "johndoe",
+      "cinephile",
+    );
+    await userEvent.click(screen.getByRole("button", { name: /Vérifier/i }));
+    await waitFor(() => expect(onSuccess).toHaveBeenCalledWith("cinephile"));
+  });
+
+  it("re-enables Vérifier after editing input post-success", async () => {
+    vi.mocked(getWatchlistCount).mockResolvedValue({
+      username: "cinephile",
+      count: 760,
+    });
+    render(<LetterboxdConfigModal {...defaultProps} />);
+    const input = screen.getByLabelText(/Pseudo Letterboxd/i);
+    await userEvent.type(input, "cinephile");
+    await userEvent.click(screen.getByRole("button", { name: /Vérifier/i }));
+    await waitFor(() =>
+      expect(screen.getByText(/760 films trouvés/i)).toBeInTheDocument(),
+    );
+    // Editing input clears success state and re-enables Vérifier
+    await userEvent.clear(input);
+    await userEvent.type(input, "autre");
+    expect(screen.queryByText(/760 films trouvés/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Vérifier/i })).toBeEnabled();
+  });
+
+  it("Plus tard button closes the modal", async () => {
+    const onOpenChange = vi.fn();
+    vi.mocked(getWatchlistCount).mockResolvedValue({
+      username: "cinephile",
+      count: 42,
+    });
+    render(
+      <LetterboxdConfigModal {...defaultProps} onOpenChange={onOpenChange} />,
+    );
+    await userEvent.type(
+      screen.getByLabelText(/Pseudo Letterboxd/i),
+      "cinephile",
     );
     await userEvent.click(screen.getByRole("button", { name: /Vérifier/i }));
     await waitFor(() =>
-      expect(onSuccess).toHaveBeenCalledWith("johndoe"),
+      expect(
+        screen.getByRole("button", { name: /Plus tard/i }),
+      ).toBeInTheDocument(),
     );
+    await userEvent.click(screen.getByRole("button", { name: /Plus tard/i }));
+    expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 });

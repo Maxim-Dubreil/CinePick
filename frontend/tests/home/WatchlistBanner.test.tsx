@@ -6,7 +6,7 @@ describe("WatchlistBanner", () => {
   it("renders the banner text and Configurer button", () => {
     render(<WatchlistBanner onOpenModal={() => {}} />);
     expect(
-      screen.getByText(/Connectez votre watchlist Letterboxd/i),
+      screen.getByText(/Watchlist non configurée/i),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /Configurer/i }),
