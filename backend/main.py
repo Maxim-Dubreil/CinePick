@@ -1,5 +1,8 @@
+from datetime import UTC, datetime
+
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, Field
 
 import scraper
 from supabase_client import supabase
@@ -43,6 +46,22 @@ async def watchlist_count(username: str = Query(min_length=1)):
             status_code=502, detail="Could not reach Letterboxd"
         ) from exc
     return {"username": username, "count": count}
+
+
+class SyncRequest(BaseModel):
+    username: str = Field(min_length=1)
+
+
+@app.post("/watchlist/sync")
+async def watchlist_sync(body: SyncRequest):
+    """Stub — renvoie un résultat fictif pour débloquer CIN-69 frontend.
+
+    Remplacé par l'implémentation complète dans CIN-46.
+    """
+    return {
+        "count": 42,
+        "synced_at": datetime.now(UTC).isoformat(),
+    }
 
 
 @app.get("/health/ready")

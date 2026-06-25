@@ -65,3 +65,21 @@ def test_watchlist_count_scrape_error(monkeypatch):
 def test_watchlist_count_requires_username():
     response = client.get("/watchlist/count")
     assert response.status_code == 422
+
+
+def test_watchlist_sync_nominal(monkeypatch):
+    response = client.post("/watchlist/sync", json={"username": "cinephile"})
+    assert response.status_code == 200
+    data = response.json()
+    assert data["count"] == 42
+    assert "synced_at" in data
+
+
+def test_watchlist_sync_missing_username():
+    response = client.post("/watchlist/sync", json={})
+    assert response.status_code == 422
+
+
+def test_watchlist_sync_empty_username():
+    response = client.post("/watchlist/sync", json={"username": ""})
+    assert response.status_code == 422
