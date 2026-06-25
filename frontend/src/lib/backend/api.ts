@@ -28,11 +28,11 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-export async function getWatchlistCount(
+export async function validateLetterboxdAccount(
   username: string,
 ): Promise<{ username: string; count: number }> {
   return apiFetch(
-    `/watchlist/count?username=${encodeURIComponent(username)}`,
+    `/letterboxd/validate?username=${encodeURIComponent(username)}`,
   );
 }
 

@@ -4,17 +4,17 @@ import { vi } from "vitest";
 import { LetterboxdConfigModal } from "@/components/home/LetterboxdConfigModal";
 import { ApiError } from "@/lib/backend/api";
 
-// Garde ApiError réel pour instanceof, mock uniquement getWatchlistCount et syncWatchlist
+// Garde ApiError réel pour instanceof, mock uniquement validateLetterboxdAccount et syncWatchlist
 vi.mock("@/lib/backend/api", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/backend/api")>();
   return {
     ...actual,
-    getWatchlistCount: vi.fn(),
+    validateLetterboxdAccount: vi.fn(),
     syncWatchlist: vi.fn(),
   };
 });
 
-import { getWatchlistCount, syncWatchlist } from "@/lib/backend/api";
+import { validateLetterboxdAccount, syncWatchlist } from "@/lib/backend/api";
 
 const defaultProps = {
   open: true,
@@ -67,7 +67,7 @@ describe("LetterboxdConfigModal", () => {
   });
 
   it("shows loading state during API call", async () => {
-    vi.mocked(getWatchlistCount).mockImplementation(
+    vi.mocked(validateLetterboxdAccount).mockImplementation(
       () => new Promise(() => {}), // ne se résout jamais
     );
     render(<LetterboxdConfigModal {...defaultProps} />);
@@ -80,7 +80,7 @@ describe("LetterboxdConfigModal", () => {
   });
 
   it("shows 404 error inline", async () => {
-    vi.mocked(getWatchlistCount).mockRejectedValue(
+    vi.mocked(validateLetterboxdAccount).mockRejectedValue(
       new ApiError(404, "Not found"),
     );
     render(<LetterboxdConfigModal {...defaultProps} />);
@@ -95,7 +95,7 @@ describe("LetterboxdConfigModal", () => {
   });
 
   it("shows 403 error inline", async () => {
-    vi.mocked(getWatchlistCount).mockRejectedValue(
+    vi.mocked(validateLetterboxdAccount).mockRejectedValue(
       new ApiError(403, "Forbidden"),
     );
     render(<LetterboxdConfigModal {...defaultProps} />);
@@ -110,7 +110,7 @@ describe("LetterboxdConfigModal", () => {
   });
 
   it("shows network error inline", async () => {
-    vi.mocked(getWatchlistCount).mockRejectedValue(new Error("Network"));
+    vi.mocked(validateLetterboxdAccount).mockRejectedValue(new Error("Network"));
     render(<LetterboxdConfigModal {...defaultProps} />);
     await userEvent.type(
       screen.getByLabelText(/Pseudo Letterboxd/i),
@@ -125,7 +125,7 @@ describe("LetterboxdConfigModal", () => {
   });
 
   it("shows success state with film count", async () => {
-    vi.mocked(getWatchlistCount).mockResolvedValue({
+    vi.mocked(validateLetterboxdAccount).mockResolvedValue({
       username: "cinephile",
       count: 760,
     });
@@ -141,7 +141,7 @@ describe("LetterboxdConfigModal", () => {
   });
 
   it("Synchroniser button is enabled in success state", async () => {
-    vi.mocked(getWatchlistCount).mockResolvedValue({
+    vi.mocked(validateLetterboxdAccount).mockResolvedValue({
       username: "cinephile",
       count: 760,
     });
@@ -159,7 +159,7 @@ describe("LetterboxdConfigModal", () => {
 
   it("calls onSuccess with trimmed username after sync + Commencer", async () => {
     const onSuccess = vi.fn();
-    vi.mocked(getWatchlistCount).mockResolvedValue({
+    vi.mocked(validateLetterboxdAccount).mockResolvedValue({
       username: "cinephile",
       count: 760,
     });
@@ -185,7 +185,7 @@ describe("LetterboxdConfigModal", () => {
   });
 
   it("re-enables Vérifier after editing input post-success", async () => {
-    vi.mocked(getWatchlistCount).mockResolvedValue({
+    vi.mocked(validateLetterboxdAccount).mockResolvedValue({
       username: "cinephile",
       count: 760,
     });
@@ -205,7 +205,7 @@ describe("LetterboxdConfigModal", () => {
 
   it("Plus tard button closes the modal", async () => {
     const onOpenChange = vi.fn();
-    vi.mocked(getWatchlistCount).mockResolvedValue({
+    vi.mocked(validateLetterboxdAccount).mockResolvedValue({
       username: "cinephile",
       count: 42,
     });
@@ -228,7 +228,7 @@ describe("LetterboxdConfigModal", () => {
 
   describe("sync flow", () => {
     beforeEach(async () => {
-      vi.mocked(getWatchlistCount).mockResolvedValue({
+      vi.mocked(validateLetterboxdAccount).mockResolvedValue({
         username: "cinephile",
         count: 760,
       });

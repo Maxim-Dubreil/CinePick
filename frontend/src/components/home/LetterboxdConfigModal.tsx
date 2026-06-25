@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui";
-import { ApiError, getWatchlistCount, syncWatchlist } from "@/lib/backend/api";
+import { ApiError, validateLetterboxdAccount, syncWatchlist } from "@/lib/backend/api";
 
 interface LetterboxdConfigModalProps {
   open: boolean;
@@ -70,7 +70,7 @@ export function LetterboxdConfigModal({
     setSyncStatus("idle");
     setSyncResult(null);
     try {
-      const { count } = await getWatchlistCount(username.trim());
+      const { count } = await validateLetterboxdAccount(username.trim());
       setFilmCount(count);
       setStatus("success");
     } catch (err) {

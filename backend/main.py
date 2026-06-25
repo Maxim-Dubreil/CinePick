@@ -28,9 +28,9 @@ async def health():
     return {"status": "ok"}
 
 
-@app.get("/watchlist/count")
-async def watchlist_count(username: str = Query(min_length=1)):
-    """Return the total film count of a public Letterboxd watchlist."""
+@app.get("/letterboxd/validate")
+async def letterboxd_validate(username: str = Query(min_length=1)):
+    """Validate a Letterboxd username: exists + watchlist public. Returns film count."""
     try:
         count = await scraper.get_watchlist_count(username)
     except scraper.ProfileNotFoundError as exc:
