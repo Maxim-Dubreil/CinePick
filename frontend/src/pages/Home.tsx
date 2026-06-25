@@ -6,6 +6,7 @@ import {
   HomeCTA,
   WatchlistBanner,
   LetterboxdConfigModal,
+  SyncOverlay,
 } from "@/components/home";
 import { Profile } from "./Profile";
 import { Question } from "./Question";
@@ -18,6 +19,7 @@ export function Home() {
     null,
   );
   const [modalOpen, setModalOpen] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   return (
     <Routes>
@@ -26,6 +28,7 @@ export function Home() {
           index
           element={
             <>
+              <SyncOverlay visible={isSyncing} />
               {!letterboxdUsername && (
                 <div className="flex justify-end px-4 pt-3">
                   <WatchlistBanner onOpenModal={() => setModalOpen(true)} />
@@ -37,7 +40,7 @@ export function Home() {
                 open={modalOpen}
                 onOpenChange={setModalOpen}
                 onSuccess={setLetterboxdUsername}
-                onSyncingChange={() => {}}
+                onSyncingChange={setIsSyncing}
                 token={session?.access_token ?? null}
               />
             </>
