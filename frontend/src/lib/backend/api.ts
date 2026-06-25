@@ -35,3 +35,17 @@ export async function getWatchlistCount(
     `/watchlist/count?username=${encodeURIComponent(username)}`,
   );
 }
+
+export async function syncWatchlist(
+  username: string,
+  token: string | null,
+): Promise<{ count: number; synced_at: string }> {
+  return apiFetch("/watchlist/sync", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token !== null ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ username }),
+  });
+}

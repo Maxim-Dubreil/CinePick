@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ApiError, getWatchlistCount } from "@/lib/backend/api";
+import { ApiError, getWatchlistCount, syncWatchlist } from "@/lib/backend/api";
 
 describe("getWatchlistCount", () => {
   beforeEach(() => {
@@ -50,5 +50,78 @@ describe("getWatchlistCount", () => {
     );
     await getWatchlistCount("jo hn");
     expect(vi.mocked(fetch).mock.calls[0][0]).toContain("jo%20hn");
+  });
+});
+
+describe("syncWatchlist", () => {
+  beforeEach(() => {
+    vi.stubGlobal("fetch", vi.fn());
+  });
+
+  it("returns count and synced_at on 200", async () => {
+    const payload = { count: 42, synced_at: "2026-06-25T10:00:00.000Z" };
+    vi.mocked(fetch).mockResolvedValue(
+      new Response(JSON.stringify(payload), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    const result = await syncWatchlist("cinephile", null);
+    expect(result).toEqual(payload);
+  });
+
+  it("sends username in JSON body", async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      new Response(JSON.stringify({ count: 1, synced_at: "2026-06-25T10:00:00.000Z" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    await syncWatchlist("cinephile", null);
+    const [, options] = vi.mocked(fetch).mock.calls[0];
+    expect(JSON.parse((options as RequestInit).body as string)).toEqual({
+      username: "cinephile",
+    });
+  });
+
+  it("includes Authorization header when token is provided", async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      new Response(JSON.stringify({ count: 1, synced_at: "2026-06-25T10:00:00.000Z" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    await syncWatchlist("cinephile", "my-token");
+    const [, options] = vi.mocked(fetch).mock.calls[0];
+    expect((options as RequestInit).headers).toMatchObject({
+      Authorization: "Bearer my-token",
+    });
+  });
+
+  it("omits Authorization header when token is null", async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      new Response(JSON.stringify({ count: 1, synced_at: "2026-06-25T10:00:00.000Z" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    await syncWatchlist("cinephile", null);
+    const [, options] = vi.mocked(fetch).mock.calls[0];
+    expect((options as RequestInit).headers).not.toHaveProperty("Authorization");
+  });
+
+  it("throws ApiError on non-2xx response", async () => {
+    vi.mocked(fetch).mockResolvedValue(new Response("", { status: 500 }));
+    await expect(syncWatchlist("cinephile", null)).rejects.toThrow(ApiError);
+    await expect(syncWatchlist("cinephile", null)).rejects.toMatchObject({
+      status: 500,
+    });
+  });
+
+  it("throws ApiError(0) on network failure", async () => {
+    vi.mocked(fetch).mockRejectedValue(new TypeError("Failed to fetch"));
+    await expect(syncWatchlist("cinephile", null)).rejects.toMatchObject({
+      status: 0,
+    });
   });
 });
