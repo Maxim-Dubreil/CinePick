@@ -43,10 +43,7 @@ export function ProfileHero({ user, letterboxdUsername }: ProfileHeroProps) {
       </Avatar>
 
       <div className="flex-1 min-w-0">
-        <h1
-          className="font-medium italic text-[clamp(28px,4vw,40px)] leading-tight text-[var(--text-primary)] tracking-tight"
-          style={{ fontFamily: 'var(--font-heading)' }}
-        >
+        <h1 className="font-heading font-medium italic text-[clamp(28px,4vw,40px)] leading-tight text-[var(--text-primary)] tracking-tight">
           {fullName}
         </h1>
 
