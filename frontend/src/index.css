@@ -155,9 +155,36 @@
   );
   --footer-border: rgba(255, 255, 255, 0.08);
 
-  --app-orb-1: radial-gradient(ellipse, #1e0a3c 0%, transparent 70%);
-  --app-orb-2: radial-gradient(ellipse, #0a1a2e 0%, transparent 70%);
-  --app-orb-3: radial-gradient(ellipse, #1a0a0a 0%, transparent 70%);
+  --app-orb-1: radial-gradient(
+    ellipse,
+    rgba(91, 33, 182, 0.55) 0%,
+    transparent 70%
+  );
+  --app-orb-2: radial-gradient(
+    ellipse,
+    rgba(124, 58, 237, 0.4) 0%,
+    transparent 70%
+  );
+  --app-orb-3: radial-gradient(
+    ellipse,
+    rgba(76, 29, 149, 0.45) 0%,
+    transparent 70%
+  );
+  --app-orb-4: radial-gradient(
+    ellipse,
+    rgba(109, 40, 217, 0.35) 0%,
+    transparent 70%
+  );
+  --app-orb-5: radial-gradient(
+    ellipse,
+    rgba(139, 92, 246, 0.3) 0%,
+    transparent 70%
+  );
+  --app-orb-6: radial-gradient(
+    ellipse,
+    rgba(67, 20, 140, 0.4) 0%,
+    transparent 70%
+  );
 
   --logo-shimmer: linear-gradient(
     90deg,
@@ -216,8 +243,8 @@
 
   --success: #0f8a5f;
   --warning: #b46f1c;
-  --warning-subtle: rgba(180, 111, 28, 0.10);
-  --warning-border: rgba(180, 111, 28, 0.30);
+  --warning-subtle: rgba(180, 111, 28, 0.1);
+  --warning-border: rgba(180, 111, 28, 0.3);
   --danger: #c84545;
 
   --glass-bg: rgba(255, 255, 255, 0.62);
@@ -275,6 +302,9 @@
   --app-orb-1: radial-gradient(ellipse, #e9e5ff 0%, transparent 70%);
   --app-orb-2: radial-gradient(ellipse, #f3e8ff 0%, transparent 70%);
   --app-orb-3: radial-gradient(ellipse, #faf5ff 0%, transparent 70%);
+  --app-orb-4: radial-gradient(ellipse, #ede9fe 0%, transparent 70%);
+  --app-orb-5: radial-gradient(ellipse, #f5f3ff 0%, transparent 70%);
+  --app-orb-6: radial-gradient(ellipse, #e8e4ff 0%, transparent 70%);
 
   --logo-shimmer: linear-gradient(
     90deg,

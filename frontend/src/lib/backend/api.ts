@@ -36,6 +36,18 @@ export async function validateLetterboxdAccount(
   );
 }
 
+export interface UserProfile {
+  letterboxd_username: string | null;
+  last_sync: string | null;
+  film_count: number;
+}
+
+export async function getProfile(token: string): Promise<UserProfile> {
+  return apiFetch("/profile", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
 export async function syncWatchlist(
   username: string,
   token: string | null,

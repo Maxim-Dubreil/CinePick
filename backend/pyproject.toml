@@ -11,6 +11,9 @@ select = [
     "B",   # flake8-bugbear (common bugs)
     "UP",  # pyupgrade (modernize syntax)
 ]
+ignore = [
+    "B008",  # FastAPI Depends() in argument defaults is intentional
+]
 
 [tool.pyright]
 include = ["."]

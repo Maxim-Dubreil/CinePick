@@ -6,6 +6,7 @@ create table profiles (
   avatar_url text,
   letterboxd_username text,
   letterboxd_last_sync timestamptz,
+  letterboxd_film_count integer default 0,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
