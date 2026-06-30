@@ -10,7 +10,6 @@ import {
   LetterboxdConfigModal,
   SyncOverlay,
 } from "@/components/home";
-import { Profile } from "./Profile";
 import { Question } from "./Question";
 import { Result } from "./Result";
 import { useAuth } from "@/hooks/useAuth";
@@ -19,7 +18,7 @@ import { syncWatchlist } from "@/lib/backend/api";
 
 export function Home() {
   const { session } = useAuth();
-  const { profile, refetch } = useProfile();
+  const { profile, loading: profileLoading, refetch } = useProfile();
   const [modalOpen, setModalOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
 
@@ -45,7 +44,7 @@ export function Home() {
           element={
             <>
               <SyncOverlay visible={isSyncing} />
-              {!letterboxdUsername && (
+              {!profileLoading && !letterboxdUsername && (
                 <div className="flex justify-end px-4 pt-3">
                   <WatchlistBanner onOpenModal={() => setModalOpen(true)} />
                 </div>
@@ -80,7 +79,6 @@ export function Home() {
             </>
           }
         />
-        <Route path="profile" element={<Profile />} />
         <Route path="result" element={<Result />} />
       </Route>
       <Route

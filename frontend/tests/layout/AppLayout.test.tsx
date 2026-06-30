@@ -1,13 +1,17 @@
 import { render, screen } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
 
 vi.mock("@/hooks/useAuth", () => ({
   useAuth: () => ({ user: null, loading: false }),
 }));
 
+const renderInRouter = (ui: React.ReactNode) =>
+  render(<MemoryRouter>{ui}</MemoryRouter>);
+
 describe("AppLayout", () => {
   it("renders children", () => {
-    render(
+    renderInRouter(
       <AppLayout>
         <p>content</p>
       </AppLayout>,
@@ -16,7 +20,7 @@ describe("AppLayout", () => {
   });
 
   it("renders topbar by default", () => {
-    render(
+    renderInRouter(
       <AppLayout>
         <p>content</p>
       </AppLayout>,
@@ -25,7 +29,7 @@ describe("AppLayout", () => {
   });
 
   it("hides topbar when showTopbar=false", () => {
-    render(
+    renderInRouter(
       <AppLayout showTopbar={false}>
         <p>content</p>
       </AppLayout>,
@@ -34,7 +38,7 @@ describe("AppLayout", () => {
   });
 
   it("renders footer by default", () => {
-    render(
+    renderInRouter(
       <AppLayout>
         <p>content</p>
       </AppLayout>,
@@ -43,7 +47,7 @@ describe("AppLayout", () => {
   });
 
   it("hides footer when showFooter=false", () => {
-    render(
+    renderInRouter(
       <AppLayout showFooter={false}>
         <p>content</p>
       </AppLayout>,

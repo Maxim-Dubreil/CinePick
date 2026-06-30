@@ -24,7 +24,10 @@ vi.mock("@/components/layout", async (importOriginal) => {
 // Mock useAuth hook (configurable per test via authMock)
 const { authMock } = vi.hoisted(() => ({
   authMock: {
-    user: { id: "test-user" } as { id: string } | null,
+    user: { id: "test-user", created_at: "2024-01-01T00:00:00Z" } as {
+      id: string;
+      created_at: string;
+    } | null,
     loading: false,
   },
 }));
@@ -33,10 +36,14 @@ vi.mock("@/hooks/useAuth", () => ({
   useAuth: () => authMock,
 }));
 
+vi.mock("@/hooks/useProfile", () => ({
+  useProfile: () => ({ profile: null, refetch: () => {} }),
+}));
+
 describe("App Routing", () => {
   beforeEach(() => {
     // Default: authenticated user
-    authMock.user = { id: "test-user" };
+    authMock.user = { id: "test-user", created_at: "2024-01-01T00:00:00Z" };
     authMock.loading = false;
   });
 
@@ -81,18 +88,17 @@ describe("App Routing", () => {
     expect(button).toBeInTheDocument();
   });
 
-  it("should display Profile page at /home/profile", () => {
-    renderWithRouter("/home/profile");
-    expect(screen.getByText("Profile")).toBeInTheDocument();
-    expect(screen.getByText(/Page profil/i)).toBeInTheDocument();
+  it("should display Profile page at /profile", () => {
+    renderWithRouter("/profile");
+    expect(screen.getByText("Paramètres du compte")).toBeInTheDocument();
   });
 
-  it("should redirect /home/* to Landing when not authenticated", () => {
+  it("should redirect /profile to Landing when not authenticated", () => {
     authMock.user = null;
-    renderWithRouter("/home/profile");
+    renderWithRouter("/profile");
     expect(
       screen.getByRole("heading", { name: /Ce soir, tu trouves/i }),
     ).toBeInTheDocument();
-    expect(screen.queryByText(/Page profil/i)).not.toBeInTheDocument();
+    expect(screen.queryByText("Paramètres du compte")).not.toBeInTheDocument();
   });
 });

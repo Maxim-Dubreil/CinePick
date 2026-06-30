@@ -1,3 +1,4 @@
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Avatar,
   AvatarFallback,
@@ -16,6 +17,10 @@ interface TopbarProps {
 
 export function Topbar({ variant = "landing" }: TopbarProps) {
   const { user, loading } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const activeTab = location.pathname === "/home" ? "Aujourd'hui" : "";
 
   return (
     <header
@@ -29,18 +34,33 @@ export function Topbar({ variant = "landing" }: TopbarProps) {
     >
       {/* Left: logo + nav */}
       <div className="flex items-center gap-8">
-        <span
-          className="text-[22px] font-medium tracking-[0.04em] text-text-primary"
-          style={{ fontFamily: "var(--font-heading)" }}
-        >
-          CinePick
-        </span>
+        {variant === "app" ? (
+          <Link
+            to="/home"
+            className="text-[22px] font-medium tracking-[0.04em] text-text-primary hover:opacity-80 transition-opacity"
+            style={{ fontFamily: "var(--font-heading)" }}
+          >
+            CinePick
+          </Link>
+        ) : (
+          <span
+            className="text-[22px] font-medium tracking-[0.04em] text-text-primary"
+            style={{ fontFamily: "var(--font-heading)" }}
+          >
+            CinePick
+          </span>
+        )}
 
         {variant === "app" && (
-          <Tabs defaultValue="Aujourd'hui">
+          <Tabs
+            value={activeTab}
+            onValueChange={(val) => {
+              if (val === "Aujourd'hui") navigate("/home");
+            }}
+          >
             <TabsList variant="line">
               <TabsTrigger value="Aujourd'hui">Aujourd'hui</TabsTrigger>
-              <TabsTrigger value="watchlist">Watchlist</TabsTrigger>
+              {/* <TabsTrigger value="watchlist">Watchlist</TabsTrigger> */}
               <TabsTrigger value="historique">Historique</TabsTrigger>
             </TabsList>
           </Tabs>
@@ -61,8 +81,8 @@ export function Topbar({ variant = "landing" }: TopbarProps) {
           ))}
 
         {variant === "app" && user && (
-          <button
-            type="button"
+          <Link
+            to="/profile"
             className="flex items-center gap-2 hover:opacity-70 transition-opacity"
           >
             <span className="text-sm font-medium text-text-primary">
@@ -79,7 +99,7 @@ export function Topbar({ variant = "landing" }: TopbarProps) {
                   ?.toUpperCase()}
               </AvatarFallback>
             </Avatar>
-          </button>
+          </Link>
         )}
       </div>
     </header>
