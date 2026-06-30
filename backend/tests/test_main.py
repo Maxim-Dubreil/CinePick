@@ -67,8 +67,14 @@ def test_letterboxd_validate_requires_username():
     assert response.status_code == 422
 
 
+AUTH_HEADERS = {"Authorization": "Bearer test-token"}
+
+
 def test_watchlist_sync_nominal(monkeypatch):
-    response = client.post("/watchlist/sync", json={"username": "cinephile"})
+    _patch_validate(monkeypatch, returns=42)
+    response = client.post(
+        "/watchlist/sync", json={"username": "cinephile"}, headers=AUTH_HEADERS
+    )
     assert response.status_code == 200
     data = response.json()
     assert data["count"] == 42
@@ -76,10 +82,17 @@ def test_watchlist_sync_nominal(monkeypatch):
 
 
 def test_watchlist_sync_missing_username():
-    response = client.post("/watchlist/sync", json={})
+    response = client.post("/watchlist/sync", json={}, headers=AUTH_HEADERS)
     assert response.status_code == 422
 
 
 def test_watchlist_sync_empty_username():
-    response = client.post("/watchlist/sync", json={"username": ""})
+    response = client.post(
+        "/watchlist/sync", json={"username": ""}, headers=AUTH_HEADERS
+    )
     assert response.status_code == 422
+
+
+def test_watchlist_sync_requires_auth():
+    response = client.post("/watchlist/sync", json={"username": "cinephile"})
+    assert response.status_code == 401
