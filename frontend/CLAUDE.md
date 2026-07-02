@@ -4,7 +4,7 @@ Supplements the root [CLAUDE.md](../CLAUDE.md) with frontend-specific convention
 
 ## Tooling
 
-- **pnpm** only (Node 22, pnpm 9 — matches CI). Never npm/yarn.
+- **pnpm** only (Node 22, pnpm 11.9.0 — matches CI). Never npm/yarn.
 - `pnpm dev` (localhost:5173) · `pnpm build` · `pnpm lint` · `pnpm typecheck` · `pnpm test` /
   `pnpm test:watch`.
 
