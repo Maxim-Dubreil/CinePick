@@ -4,7 +4,7 @@
 
 ```mermaid
 erDiagram
-    profiles {
+    users {
         uuid id PK "FK → auth.users"
         text email
         text full_name
@@ -29,14 +29,14 @@ erDiagram
     }
 
     user_watchlist_items {
-        uuid user_id FK "→ profiles"
+        uuid user_id FK "→ users"
         uuid film_id FK "→ films"
         timestamptz added_at
     }
 
     watch_history {
         uuid id PK
-        uuid user_id FK "→ profiles"
+        uuid user_id FK "→ users"
         uuid film_id FK "→ films"
         text decision "accepted | skipped"
         jsonb questions_context
@@ -45,9 +45,9 @@ erDiagram
         timestamptz decided_at
     }
 
-    profiles ||--o{ user_watchlist_items : "a une watchlist"
+    users    ||--o{ user_watchlist_items : "a une watchlist"
     films    ||--o{ user_watchlist_items : "est dans des watchlists"
-    profiles ||--o{ watch_history       : "a un historique"
+    users    ||--o{ watch_history       : "a un historique"
     films    ||--o{ watch_history       : "apparaît dans l'historique"
 ```
 
@@ -112,7 +112,7 @@ sequenceDiagram
     LB-->>B: Tous les slugs + titres
     B->>DB: Upsert films (slugs nouveaux seulement)
     B->>DB: Remplace user_watchlist_items
-    B->>DB: Met à jour profiles.letterboxd_last_sync
+    B->>DB: Met à jour users.letterboxd_last_sync
     B-->>F: { count, synced_at }
     F-->>U: "✓ 760 films synchronisés"
 

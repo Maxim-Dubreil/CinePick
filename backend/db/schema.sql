@@ -1,5 +1,5 @@
--- Profiles
-create table profiles (
+-- Users
+create table users (
   id uuid references auth.users(id) on delete cascade primary key,
   email text not null,
   full_name text,
@@ -28,7 +28,7 @@ create table films (
 
 -- User watchlist items (junction: which films a user wants to watch)
 create table user_watchlist_items (
-  user_id uuid references profiles(id) on delete cascade not null,
+  user_id uuid references users(id) on delete cascade not null,
   film_id uuid references films(id) on delete cascade not null,
   added_at timestamptz default now(),
   primary key (user_id, film_id)
@@ -37,7 +37,7 @@ create table user_watchlist_items (
 -- Watch history (decisions made during recommendation sessions)
 create table watch_history (
   id uuid default gen_random_uuid() primary key,
-  user_id uuid references profiles(id) on delete cascade not null,
+  user_id uuid references users(id) on delete cascade not null,
   film_id uuid references films(id) on delete cascade not null,
   decision text check (decision in ('accepted', 'skipped')) not null,
   questions_context jsonb,
@@ -47,22 +47,22 @@ create table watch_history (
 );
 
 -- Activer RLS
-alter table profiles enable row level security;
+alter table users enable row level security;
 alter table films enable row level security;
 alter table user_watchlist_items enable row level security;
 alter table watch_history enable row level security;
 
--- Policies profiles
+-- Policies users
 create policy "Users can view own profile"
-  on profiles for select
+  on users for select
   using (auth.uid() = id);
 
 create policy "Users can update own profile"
-  on profiles for update
+  on users for update
   using (auth.uid() = id);
 
 create policy "Users can insert own profile"
-  on profiles for insert
+  on users for insert
   with check (auth.uid() = id);
 
 -- Policies films (catalogue global lisible par tous les utilisateurs authentifiés)

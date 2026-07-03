@@ -60,7 +60,7 @@ async def health():
 @app.get("/health/ready")
 async def health_ready():
     try:
-        supabase.table("profiles").select("id").limit(1).execute()
+        supabase.table("users").select("id").limit(1).execute()
         return {"status": "ready", "checks": {"database": "ok"}}
     except Exception as e:
         raise HTTPException(
@@ -100,7 +100,7 @@ async def watchlist_sync(
 ):
     """Stub — renvoie un résultat fictif pour débloquer CIN-69 frontend.
 
-    Sauvegarde le username et la date de sync dans profiles pour que
+    Sauvegarde le username et la date de sync dans users pour que
     GET /profile retourne des données cohérentes.
     Remplacé par l'implémentation complète dans CIN-46.
     """
@@ -113,7 +113,7 @@ async def watchlist_sync(
     ) as exc:
         raise HTTPException(status_code=502, detail="Could not reach Letterboxd") from exc
 
-    supabase.table("profiles").update({
+    supabase.table("users").update({
         "letterboxd_username": body.username,
         "letterboxd_last_sync": synced_at.isoformat(),
         "letterboxd_film_count": film_count,
@@ -136,7 +136,7 @@ class ProfileResponse(BaseModel):
 async def get_profile(user_id: str = Depends(get_current_user_id)) -> ProfileResponse:
     """Return the current user's profile and watchlist stats."""
     profile_res = (
-        supabase.table("profiles")
+        supabase.table("users")
         .select("letterboxd_username, letterboxd_last_sync, letterboxd_film_count")
         .eq("id", user_id)
         .single()
