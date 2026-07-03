@@ -73,6 +73,11 @@ docs/superpowers/
 .idea/
 
 # ===========================
+# Agent skills (fetched content, tracked via skills-lock.json)
+# ===========================
+.agents/
+
+# ===========================
 # Database
 # ===========================
 *.db
