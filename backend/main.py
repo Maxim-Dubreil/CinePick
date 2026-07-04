@@ -11,6 +11,10 @@ from supabase_client import supabase
 
 app = FastAPI(title="CinePick API", version="0.1.0")
 
+TAG_HEALTH = "health"
+TAG_LETTERBOXD = "letterboxd"
+TAG_PROFILE = "profile"
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173"],
@@ -47,17 +51,30 @@ async def get_current_user_id(
 # ---------------------------------------------------------------------------
 
 
-@app.get("/")
+class RootResponse(BaseModel):
+    message: str
+
+
+@app.get("/", response_model=RootResponse, tags=[TAG_HEALTH])
 async def root():
     return {"message": "CinePick API is running"}
 
 
-@app.get("/health")
+class HealthResponse(BaseModel):
+    status: str
+
+
+@app.get("/health", response_model=HealthResponse, tags=[TAG_HEALTH])
 async def health():
     return {"status": "ok"}
 
 
-@app.get("/health/ready")
+class ReadyResponse(BaseModel):
+    status: str
+    checks: dict[str, str]
+
+
+@app.get("/health/ready", response_model=ReadyResponse, tags=[TAG_HEALTH])
 async def health_ready():
     try:
         supabase.table("users").select("id").limit(1).execute()
@@ -69,7 +86,16 @@ async def health_ready():
         ) from e
 
 
-@app.get("/letterboxd/validate")
+class LetterboxdValidateResponse(BaseModel):
+    username: str
+    count: int
+
+
+@app.get(
+    "/letterboxd/validate",
+    response_model=LetterboxdValidateResponse,
+    tags=[TAG_LETTERBOXD],
+)
 async def letterboxd_validate(username: str = Query(min_length=1)):
     """Validate a Letterboxd username: exists + watchlist public. Returns film count."""
     try:
@@ -93,7 +119,12 @@ class SyncRequest(BaseModel):
     username: str = Field(min_length=1)
 
 
-@app.post("/watchlist/sync")
+class WatchlistSyncResponse(BaseModel):
+    count: int
+    synced_at: str
+
+
+@app.post("/watchlist/sync", response_model=WatchlistSyncResponse, tags=[TAG_LETTERBOXD])
 async def watchlist_sync(
     body: SyncRequest,
     user_id: str = Depends(get_current_user_id),
@@ -132,7 +163,7 @@ class ProfileResponse(BaseModel):
     film_count: int
 
 
-@app.get("/profile", response_model=ProfileResponse)
+@app.get("/profile", response_model=ProfileResponse, tags=[TAG_PROFILE])
 async def get_profile(user_id: str = Depends(get_current_user_id)) -> ProfileResponse:
     """Return the current user's profile and watchlist stats."""
     profile_res = (

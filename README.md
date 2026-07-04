@@ -50,6 +50,19 @@ docker compose up --build
 Frontend available at: `http://localhost:5173`
 Backend available at: `http://localhost:8000`
 
+### API reference (Swagger UI)
+
+FastAPI generates interactive API docs automatically — no setup needed. With the backend
+running, open:
+
+- `http://localhost:8000/docs` — Swagger UI (try requests directly in the browser)
+- `http://localhost:8000/redoc` — ReDoc (read-only, cleaner for reference)
+- `http://localhost:8000/openapi.json` — raw OpenAPI schema
+
+Routes are grouped by tag (`health`, `letterboxd`, `profile`). This is the source of truth for
+exact request/response shapes — [docs/specs/api.md](docs/specs/api.md) covers the _why_ (business
+rules, open questions), not the exact contract.
+
 ## Project structure
 
 ```sh
