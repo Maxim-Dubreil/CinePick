@@ -1,6 +1,6 @@
 import { Badge } from '@/components/ui'
 
-export function ProfileTaste(): JSX.Element {
+export function ProfileTaste() {
   // TODO: brancher analyse genres/décennies depuis l'API
   // Données attendues : { genres: { name: string, pct: number }[], decades: string[] }
   return (

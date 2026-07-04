@@ -1,6 +1,6 @@
 import { Badge } from '@/components/ui'
 
-export function ProfilePreferences(): JSX.Element {
+export function ProfilePreferences() {
   // TODO: brancher préférences soirée depuis l'API
   // Données attendues : { include_long: boolean, prefer_unseen: boolean, subtitles_vost: boolean, preferred_duration: '<90' | '90-120' | 'any' }
   return (
@@ -53,7 +53,7 @@ export function ProfilePreferences(): JSX.Element {
   )
 }
 
-function ToggleVisual({ on }: { on: boolean }): JSX.Element {
+function ToggleVisual({ on }: { on: boolean }) {
   return (
     <div
       className={`w-[38px] h-[22px] rounded-full relative border ${

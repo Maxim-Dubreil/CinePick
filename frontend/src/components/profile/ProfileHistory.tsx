@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui'
 
-export function ProfileHistory(): JSX.Element {
+export function ProfileHistory() {
   // TODO: brancher historique recommandations depuis l'API
   // Données attendues : { id: string, title: string, genre: string, mood: string, duration_min: number, status: 'validated' | 'skipped' }[]
   return (
