@@ -132,10 +132,10 @@ sequenceDiagram
 
 ## Ordre d'implémentation recommandé
 
-| Ticket | Dépendances | Description |
-|--------|-------------|-------------|
-| **CIN-47** (révisé) | — | Créer `films` + `user_watchlist_items` (schéma normalisé) |
-| **CIN-46** | CIN-47 | Implémenter POST /watchlist/sync réel (scraping toutes pages + DB) |
-| **CIN-71** | CIN-46 | Topbar indicator (date dernière sync) |
-| **CIN-72** | CIN-46 | Suppression cascade watchlist |
-| Flow /recommend | CIN-46 | Questions → Gemini → résultats |
+| Ticket              | Dépendances | Description                                                        |
+| ------------------- | ----------- | ------------------------------------------------------------------ |
+| **CIN-47** (révisé) | —           | Créer `films` + `user_watchlist_items` (schéma normalisé)          |
+| **CIN-46**          | CIN-47      | Implémenter POST /watchlist/sync réel (scraping toutes pages + DB) |
+| **CIN-71**          | CIN-46      | Topbar indicator (date dernière sync)                              |
+| **CIN-72**          | CIN-46      | Suppression cascade watchlist                                      |
+| Flow /recommend     | CIN-46      | Questions → Gemini → résultats                                     |
