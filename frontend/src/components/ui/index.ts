@@ -25,3 +25,4 @@ export {
 } from "./dialog";
 export { Input } from "./input";
 export { Badge, badgeVariants } from "./badge";
+export { Progress } from "./progress";

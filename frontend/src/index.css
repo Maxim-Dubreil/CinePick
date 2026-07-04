@@ -29,6 +29,30 @@
   }
 }
 
+@keyframes cp-dot {
+  0%,
+  80%,
+  100% {
+    opacity: 0.25;
+    transform: translateY(0);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+
+@keyframes cp-fadein {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 :root {
   /* ===========================
        Fonts, spacing, radius — PARTAGÉS (pas de changement)                                                             
@@ -373,6 +397,8 @@
   --color-warning: var(--warning);
   --color-danger: var(--danger);
   --animate-shimmer: shimmer 3s infinite;
+  --animate-cp-dot: cp-dot 1.2s ease infinite;
+  --animate-cp-fadein: cp-fadein 0.35s ease;
 }
 
 @layer base {
