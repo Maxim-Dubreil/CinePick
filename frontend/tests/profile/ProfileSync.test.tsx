@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import type { UserProfile } from '@/lib/backend/api'
+import type { UserProfile } from '@/hooks/useProfile'
 import { ProfileSync } from '@/components/profile/ProfileSync'
 
 const profileWithLB: UserProfile = {

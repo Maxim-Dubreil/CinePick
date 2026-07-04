@@ -70,7 +70,7 @@ describe("syncWatchlist", () => {
     expect(result).toEqual(payload);
   });
 
-  it("sends username in JSON body", async () => {
+  it("sends letterboxd_username in JSON body", async () => {
     vi.mocked(fetch).mockResolvedValue(
       new Response(JSON.stringify({ count: 1, synced_at: "2026-06-25T10:00:00.000Z" }), {
         status: 200,
@@ -80,7 +80,7 @@ describe("syncWatchlist", () => {
     await syncWatchlist("cinephile", null);
     const [, options] = vi.mocked(fetch).mock.calls[0];
     expect(JSON.parse((options as RequestInit).body as string)).toEqual({
-      username: "cinephile",
+      letterboxd_username: "cinephile",
     });
   });
 

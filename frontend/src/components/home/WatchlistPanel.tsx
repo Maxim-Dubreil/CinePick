@@ -1,6 +1,6 @@
 import { RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui";
-import type { UserProfile } from "@/lib/backend/api";
+import type { UserProfile } from "@/hooks/useProfile";
 
 interface WatchlistPanelProps {
   profile: UserProfile;

@@ -36,28 +36,16 @@ export async function validateLetterboxdAccount(
   );
 }
 
-export interface UserProfile {
-  letterboxd_username: string | null;
-  last_sync: string | null;
-  film_count: number;
-}
-
-export async function getProfile(token: string): Promise<UserProfile> {
-  return apiFetch("/profile", {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-}
-
 export async function syncWatchlist(
-  username: string,
+  letterboxdUsername: string,
   token: string | null,
 ): Promise<{ count: number; synced_at: string }> {
-  return apiFetch("/watchlist/sync", {
+  return apiFetch("/letterboxd/sync", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       ...(token !== null ? { Authorization: `Bearer ${token}` } : {}),
     },
-    body: JSON.stringify({ username }),
+    body: JSON.stringify({ letterboxd_username: letterboxdUsername }),
   });
 }

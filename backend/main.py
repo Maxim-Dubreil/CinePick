@@ -1,5 +1,4 @@
 from datetime import UTC, datetime
-from typing import Any, cast
 
 from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -13,7 +12,6 @@ app = FastAPI(title="CinePick API", version="0.1.0")
 
 TAG_HEALTH = "health"
 TAG_LETTERBOXD = "letterboxd"
-TAG_PROFILE = "profile"
 
 app.add_middleware(
     CORSMiddleware,
@@ -115,37 +113,36 @@ async def letterboxd_validate(username: str = Query(min_length=1)):
     return {"username": username, "count": count}
 
 
-class SyncRequest(BaseModel):
-    username: str = Field(min_length=1)
+class LetterboxdSyncRequest(BaseModel):
+    letterboxd_username: str = Field(min_length=1)
 
 
-class WatchlistSyncResponse(BaseModel):
+class LetterboxdSyncResponse(BaseModel):
     count: int
     synced_at: str
 
 
-@app.post("/watchlist/sync", response_model=WatchlistSyncResponse, tags=[TAG_LETTERBOXD])
-async def watchlist_sync(
-    body: SyncRequest,
+@app.post("/letterboxd/sync", response_model=LetterboxdSyncResponse, tags=[TAG_LETTERBOXD])
+async def letterboxd_sync(
+    body: LetterboxdSyncRequest,
     user_id: str = Depends(get_current_user_id),
 ):
     """Stub — renvoie un résultat fictif pour débloquer CIN-69 frontend.
 
-    Sauvegarde le username et la date de sync dans users pour que
-    GET /profile retourne des données cohérentes.
-    Remplacé par l'implémentation complète dans CIN-46.
+    Sauvegarde le username et la date de sync dans users, lu ensuite directement
+    par le front via Supabase (RLS). Remplacé par l'implémentation complète dans CIN-46.
     """
     synced_at = datetime.now(UTC)
 
     try:
-        film_count = await scraper.get_watchlist_count(body.username)
+        film_count = await scraper.get_watchlist_count(body.letterboxd_username)
     except (
         scraper.ProfileNotFoundError, scraper.WatchlistPrivateError, scraper.WatchlistScrapeError
     ) as exc:
         raise HTTPException(status_code=502, detail="Could not reach Letterboxd") from exc
 
     supabase.table("users").update({
-        "letterboxd_username": body.username,
+        "letterboxd_username": body.letterboxd_username,
         "letterboxd_last_sync": synced_at.isoformat(),
         "letterboxd_film_count": film_count,
         "updated_at": synced_at.isoformat(),
@@ -155,31 +152,3 @@ async def watchlist_sync(
         "count": film_count,
         "synced_at": synced_at.isoformat(),
     }
-
-
-class ProfileResponse(BaseModel):
-    letterboxd_username: str | None
-    last_sync: str | None
-    film_count: int
-
-
-@app.get("/profile", response_model=ProfileResponse, tags=[TAG_PROFILE])
-async def get_profile(user_id: str = Depends(get_current_user_id)) -> ProfileResponse:
-    """Return the current user's profile and watchlist stats."""
-    profile_res = (
-        supabase.table("users")
-        .select("letterboxd_username, letterboxd_last_sync, letterboxd_film_count")
-        .eq("id", user_id)
-        .single()
-        .execute()
-    )
-    if not profile_res.data:
-        raise HTTPException(status_code=404, detail="Profile not found")
-
-    profile_data = cast(dict[str, Any], profile_res.data)
-
-    return ProfileResponse(
-        letterboxd_username=profile_data.get("letterboxd_username"),
-        last_sync=profile_data.get("letterboxd_last_sync"),
-        film_count=profile_data.get("letterboxd_film_count") or 0,
-    )

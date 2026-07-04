@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { RefreshCw, Link } from 'lucide-react'
 import { Badge, Button } from '@/components/ui'
-import type { UserProfile } from '@/lib/backend/api'
+import type { UserProfile } from '@/hooks/useProfile'
 
 interface ProfileSyncProps {
   profile: UserProfile | null
