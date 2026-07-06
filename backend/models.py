@@ -33,3 +33,23 @@ class WatchlistPage(BaseModel):
 
     films: list[Film]
     total_count: int
+
+
+class FilmEnrichment(BaseModel):
+    """TMDB metadata for a single film — the "filtre" enrichment (CIN-46).
+
+    Best-effort: produced only when a TMDB search+details lookup succeeds.
+    Absence (`None` upstream) means the film stays unenriched, not that the
+    film doesn't exist.
+    """
+
+    tmdb_id: int
+    genres: list[int]
+    """TMDB genre ids — never localized names (see docs/db-schema.md)."""
+
+    runtime: int | None
+    year: int | None
+    """From TMDB `release_date`; may differ slightly from the Letterboxd year."""
+
+    origin_country: list[str]
+    """ISO 3166-1 country codes from `production_countries` — never `original_language`."""
