@@ -177,3 +177,25 @@ async def test_get_full_watchlist_aborts_on_page_failure():
     async with _client(handler) as client:
         with pytest.raises(WatchlistScrapeError):
             await get_full_watchlist("dave", client=client)
+
+
+async def test_get_full_watchlist_aborts_on_multiple_page_failures():
+    """Verify typed exception is raised when multiple pages fail simultaneously.
+
+    With _PAGE_CONCURRENCY=5, multiple concurrent pages can fail around the same
+    time (e.g., network drops mid-sync). The except* should handle ExceptionGroup
+    with 2+ typed exceptions and re-raise the first as a typed exception, not
+    the raw ExceptionGroup itself.
+    """
+    page1 = _page_html(["film-a", "film-b", "film-c"], total=10)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        url = str(request.url)
+        # Pages 2 and 3 both fail: simulates concurrent failures under semaphore
+        if "/page/2/" in url or "/page/3/" in url:
+            raise httpx.ConnectTimeout("network dropped")
+        return httpx.Response(200, text=page1)
+
+    async with _client(handler) as client:
+        with pytest.raises(WatchlistScrapeError):
+            await get_full_watchlist("dave", client=client)

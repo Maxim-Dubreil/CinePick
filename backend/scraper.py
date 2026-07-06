@@ -204,11 +204,9 @@ async def get_full_watchlist(
             async with asyncio.TaskGroup() as tg:
                 for page in range(2, total_pages + 1):
                     tg.create_task(_fetch_page(page))
-        except ExceptionGroup as eg:
-            # TaskGroup wraps multiple exceptions; unwrap if there's only one
-            if len(eg.exceptions) == 1:
-                raise eg.exceptions[0] from eg
-            raise
+        except* (ProfileNotFoundError, WatchlistPrivateError, WatchlistScrapeError) as eg:
+            # Unwrap first exception: except* catches by type regardless of count
+            raise eg.exceptions[0] from eg
 
         films = list(first_films)
         for page in range(2, total_pages + 1):
