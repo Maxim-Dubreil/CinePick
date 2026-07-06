@@ -1,6 +1,6 @@
 """Pydantic models for Letterboxd scraping."""
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class Film(BaseModel):
@@ -53,3 +53,22 @@ class FilmEnrichment(BaseModel):
 
     origin_country: list[str]
     """ISO 3166-1 country codes from `production_countries` — never `original_language`."""
+
+
+class EnrichedFilm(BaseModel):
+    """A scraped film merged with its (optional) TMDB enrichment.
+
+    Ready to upsert into `films` as-is via `.model_dump()`. `genres`/
+    `origin_country` stay empty and `runtime`/`tmdb_id` stay `None` when
+    enrichment failed or found no match — treated as "non filtrable" by the
+    duration filter downstream, never excluded outright.
+    """
+
+    letterboxd_slug: str
+    title: str
+    year: int | None
+    poster_url: str | None
+    tmdb_id: int | None = None
+    genres: list[str] = Field(default_factory=list)
+    runtime: int | None = None
+    origin_country: list[str] = Field(default_factory=list)
