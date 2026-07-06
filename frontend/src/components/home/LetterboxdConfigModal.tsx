@@ -46,8 +46,8 @@ export function LetterboxdConfigModal({
   const [filmCount, setFilmCount] = useState<number | null>(null);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>("idle");
   const [syncResult, setSyncResult] = useState<{
-    count: number;
-    synced_at: string;
+    film_count: number;
+    sync_duration_ms: number;
   } | null>(null);
 
   function handleOpenChange(value: boolean) {
@@ -244,12 +244,12 @@ export function LetterboxdConfigModal({
                 <div className="flex items-center gap-2 text-[var(--success)]">
                   <CheckCircle2 size={16} />
                   <span className="text-sm font-medium">
-                    {syncResult.count} films synchronisés
+                    {syncResult.film_count} films synchronisés
                   </span>
                 </div>
                 <p className="text-sm text-[var(--text-secondary)]">
                   Dernière synchronisation :{" "}
-                  {new Date(syncResult.synced_at).toLocaleDateString("fr-FR")}
+                  {new Date().toLocaleDateString("fr-FR")}
                 </p>
                 <Button
                   variant="glass-primary"

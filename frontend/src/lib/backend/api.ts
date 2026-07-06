@@ -39,7 +39,7 @@ export async function validateLetterboxdAccount(
 export async function syncWatchlist(
   letterboxdUsername: string,
   token: string | null,
-): Promise<{ count: number; synced_at: string }> {
+): Promise<{ film_count: number; sync_duration_ms: number }> {
   return apiFetch("/letterboxd/sync", {
     method: "POST",
     headers: {
