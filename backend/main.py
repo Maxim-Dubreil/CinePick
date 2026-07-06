@@ -1,3 +1,4 @@
+import time
 from datetime import UTC, datetime
 
 from fastapi import Depends, FastAPI, HTTPException, Query
@@ -6,6 +7,8 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, Field
 
 import scraper
+import tmdb
+from repositories import watchlist as watchlist_repo
 from supabase_client import supabase
 
 app = FastAPI(title="CinePick API", version="0.1.0")
@@ -118,8 +121,8 @@ class LetterboxdSyncRequest(BaseModel):
 
 
 class LetterboxdSyncResponse(BaseModel):
-    count: int
-    synced_at: str
+    film_count: int
+    sync_duration_ms: int
 
 
 @app.post("/letterboxd/sync", response_model=LetterboxdSyncResponse, tags=[TAG_LETTERBOXD])
@@ -127,28 +130,41 @@ async def letterboxd_sync(
     body: LetterboxdSyncRequest,
     user_id: str = Depends(get_current_user_id),
 ):
-    """Stub — renvoie un résultat fictif pour débloquer CIN-69 frontend.
-
-    Sauvegarde le username et la date de sync dans users, lu ensuite directement
-    par le front via Supabase (RLS). Remplacé par l'implémentation complète dans CIN-46.
-    """
-    synced_at = datetime.now(UTC)
+    """Scrape the full Letterboxd watchlist, enrich it via TMDB, and replace
+    the user's stored watchlist (CIN-46)."""
+    start = time.monotonic()
 
     try:
-        film_count = await scraper.get_watchlist_count(body.letterboxd_username)
-    except (
-        scraper.ProfileNotFoundError, scraper.WatchlistPrivateError, scraper.WatchlistScrapeError
-    ) as exc:
+        films = await scraper.get_full_watchlist(body.letterboxd_username)
+    except scraper.ProfileNotFoundError as exc:
+        raise HTTPException(
+            status_code=404, detail=f"Letterboxd profile '{body.letterboxd_username}' not found"
+        ) from exc
+    except scraper.WatchlistPrivateError as exc:
+        raise HTTPException(
+            status_code=403, detail=f"Watchlist of '{body.letterboxd_username}' is private"
+        ) from exc
+    except scraper.WatchlistScrapeError as exc:
         raise HTTPException(status_code=502, detail="Could not reach Letterboxd") from exc
 
-    supabase.table("users").update({
-        "letterboxd_username": body.letterboxd_username,
-        "letterboxd_last_sync": synced_at.isoformat(),
-        "letterboxd_film_count": film_count,
-        "updated_at": synced_at.isoformat(),
-    }).eq("id", user_id).execute()
+    enrichments = await tmdb.enrich_many(films)
+    enriched_films = [
+        watchlist_repo.merge_enrichment(film, enrichments.get(film.slug)) for film in films
+    ]
+    film_ids_by_slug = watchlist_repo.upsert_films(enriched_films)
+    watchlist_repo.sync_user_watchlist(user_id, set(film_ids_by_slug.values()))
+
+    synced_at = datetime.now(UTC)
+    supabase.table("users").update(
+        {
+            "letterboxd_username": body.letterboxd_username,
+            "letterboxd_last_sync": synced_at.isoformat(),
+            "letterboxd_film_count": len(films),
+            "updated_at": synced_at.isoformat(),
+        }
+    ).eq("id", user_id).execute()
 
     return {
-        "count": film_count,
-        "synced_at": synced_at.isoformat(),
+        "film_count": len(films),
+        "sync_duration_ms": int((time.monotonic() - start) * 1000),
     }
