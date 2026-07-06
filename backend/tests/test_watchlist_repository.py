@@ -1,9 +1,13 @@
 """Tests for the watchlist storage repository (CIN-47/CIN-46)."""
 
+import uuid
 from unittest.mock import MagicMock
+
+import pytest
 
 from models import EnrichedFilm, Film, FilmEnrichment
 from repositories import watchlist
+from supabase_client import supabase
 
 
 def _table_mock(supabase_mock, table_name: str) -> MagicMock:
@@ -117,6 +121,49 @@ def test_upsert_films_omits_enrichment_keys_when_unenriched(supabase_mock):
     assert enriched_record["genres"] == ["28"]
     assert enriched_record["runtime"] == 120
     assert enriched_record["origin_country"] == ["US"]
+
+
+@pytest.mark.integration
+def test_upsert_films_mixed_batch_against_real_db(require_integration):
+    """Regression test for a real bug the mocked tests above cannot catch:
+
+    PostgREST's bulk upsert treats a key missing from one row (but present on
+    another row in the same batch) as an explicit NULL for that row, not as
+    "use the column default". `films.origin_country` used to be NOT NULL, so
+    a batch mixing an enriched film (has `origin_country`) with an unenriched
+    one (omits it, per `upsert_films`'s cache-preservation logic) crashed with
+    a real `postgrest.exceptions.APIError` — invisible to the mocked tests
+    above since `MagicMock` doesn't enforce DB constraints. Fixed by making
+    `origin_country` nullable (see `films_origin_country_nullable` migration).
+    """
+    slug_prefix = f"__test-{uuid.uuid4().hex[:8]}__"
+    films = [
+        EnrichedFilm(
+            letterboxd_slug=f"{slug_prefix}-enriched",
+            title="Test Enriched",
+            year=2020,
+            poster_url=None,
+            tmdb_id=1,
+            genres=["28"],
+            runtime=100,
+            origin_country=["US"],
+        ),
+        EnrichedFilm(
+            letterboxd_slug=f"{slug_prefix}-unenriched",
+            title="Test Unenriched",
+            year=2021,
+            poster_url=None,
+        ),
+    ]
+
+    try:
+        result = watchlist.upsert_films(films)
+        assert set(result.keys()) == {
+            f"{slug_prefix}-enriched",
+            f"{slug_prefix}-unenriched",
+        }
+    finally:
+        supabase.table("films").delete().like("letterboxd_slug", f"{slug_prefix}%").execute()
 
 
 # --- sync_user_watchlist --------------------------------------------------
