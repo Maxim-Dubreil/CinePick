@@ -78,7 +78,7 @@ async def search_and_enrich(
             if tmdb_id is None:
                 return None
             return await _fetch_details(client, tmdb_id)
-        except httpx.HTTPError:
+        except Exception:
             return None
     finally:
         if owns_client:

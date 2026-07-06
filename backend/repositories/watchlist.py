@@ -56,12 +56,23 @@ def upsert_films(films: list[EnrichedFilm]) -> dict[str, str]:
     """Upsert films into the shared cache, keyed by `letterboxd_slug`.
 
     Returns a `{letterboxd_slug: film_id}` map for every film passed in.
-    Refreshes enrichment fields on every call — the "filtre" enrichment is
-    meant to be redone at each resync (docs/specs/questions.md).
+    Refreshes enrichment fields on every call when enrichment succeeded —
+    but when a film has no enrichment (`tmdb_id is None`), the TMDB-derived
+    columns are omitted from its record entirely, so a resync during a TMDB
+    outage never overwrites another sync's previously-good enrichment in this
+    shared cache.
     """
     if not films:
         return {}
-    records = [film.model_dump() for film in films]
+    records = []
+    for film in films:
+        record = film.model_dump(exclude={"tmdb_id", "genres", "runtime", "origin_country"})
+        if film.tmdb_id is not None:
+            record["tmdb_id"] = film.tmdb_id
+            record["genres"] = film.genres
+            record["runtime"] = film.runtime
+            record["origin_country"] = film.origin_country
+        records.append(record)
     response = (
         supabase.table(_FILMS_TABLE).upsert(records, on_conflict="letterboxd_slug").execute()
     )

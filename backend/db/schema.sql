@@ -22,6 +22,7 @@ create table films (
   poster_url text,
   genres text[],
   runtime integer,
+  origin_country text[] default '{}'::text[],
   overview text,
   created_at timestamptz default now()
 );
@@ -31,6 +32,7 @@ create table user_watchlist_items (
   user_id uuid references users(id) on delete cascade not null,
   film_id uuid references films(id) on delete cascade not null,
   added_at timestamptz default now(),
+  removed_at timestamptz,
   primary key (user_id, film_id)
 );
 
@@ -81,6 +83,10 @@ create policy "Users can insert own watchlist items"
 
 create policy "Users can delete own watchlist items"
   on user_watchlist_items for delete
+  using (auth.uid() = user_id);
+
+create policy "Users can update own watchlist items"
+  on user_watchlist_items for update
   using (auth.uid() = user_id);
 
 -- Policies watch_history

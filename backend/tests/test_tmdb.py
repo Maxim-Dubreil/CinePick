@@ -75,6 +75,38 @@ async def test_search_and_enrich_details_error_returns_none():
     assert result is None
 
 
+async def test_search_and_enrich_malformed_search_result_returns_none():
+    """A search result missing the `id` key must degrade to None, not raise
+    KeyError (any failure is best-effort, per this module's contract)."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if "/search/movie" in str(request.url):
+            return httpx.Response(200, json={"results": [{}]})
+        return httpx.Response(404)
+
+    async with _client(handler) as client:
+        result = await search_and_enrich("Some Film", 2021, client=client)
+
+    assert result is None
+
+
+async def test_search_and_enrich_malformed_details_returns_none():
+    """Details JSON with a genre missing `id` must degrade to None, not raise
+    KeyError."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if "/search/movie" in str(request.url):
+            return httpx.Response(200, json={"results": [{"id": 42}]})
+        if "/movie/42" in str(request.url):
+            return httpx.Response(200, json={"genres": [{"name": "Action"}]})
+        return httpx.Response(404)
+
+    async with _client(handler) as client:
+        result = await search_and_enrich("Some Film", 2021, client=client)
+
+    assert result is None
+
+
 async def test_enrich_many_maps_by_slug(monkeypatch):
     films = [
         Film(slug="film-a", title="Film A", year=2020, poster_url=None),

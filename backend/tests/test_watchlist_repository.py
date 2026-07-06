@@ -79,6 +79,46 @@ def test_upsert_films_empty_list_skips_call(supabase_mock):
     table.upsert.assert_not_called()
 
 
+def test_upsert_films_omits_enrichment_keys_when_unenriched(supabase_mock):
+    """A film with no TMDB enrichment must not overwrite the shared cache's
+    previously-good enrichment columns — those keys must be absent from the
+    upsert record entirely, not just null/empty."""
+    table = _table_mock(supabase_mock, "films")
+    table.upsert.return_value.execute.return_value = MagicMock(
+        data=[
+            {"letterboxd_slug": "film-a", "id": "uuid-a"},
+            {"letterboxd_slug": "film-b", "id": "uuid-b"},
+        ]
+    )
+    films = [
+        EnrichedFilm(letterboxd_slug="film-a", title="Film A", year=2020, poster_url=None),
+        EnrichedFilm(
+            letterboxd_slug="film-b",
+            title="Film B",
+            year=2021,
+            poster_url=None,
+            tmdb_id=42,
+            genres=["28"],
+            runtime=120,
+            origin_country=["US"],
+        ),
+    ]
+
+    watchlist.upsert_films(films)
+
+    records = table.upsert.call_args[0][0]
+    unenriched_record = next(r for r in records if r["letterboxd_slug"] == "film-a")
+    enriched_record = next(r for r in records if r["letterboxd_slug"] == "film-b")
+
+    for key in ("tmdb_id", "genres", "runtime", "origin_country"):
+        assert key not in unenriched_record
+
+    assert enriched_record["tmdb_id"] == 42
+    assert enriched_record["genres"] == ["28"]
+    assert enriched_record["runtime"] == 120
+    assert enriched_record["origin_country"] == ["US"]
+
+
 # --- sync_user_watchlist --------------------------------------------------
 
 
