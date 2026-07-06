@@ -46,7 +46,7 @@ erDiagram
         array genres "DOIT contenir les genre_id TMDB (entiers), jamais les noms localises - non garanti par le type Postgres, a valider cote code de sync (POST /sync)"
         int4 runtime "peut etre 0 ou null sur TMDB : traiter comme non-filtrable plutot qu'exclu du filtre duree"
         text overview
-        text_array origin_country "pays de production, PAS la langue - piege : un film UK a origin_country=GB mais original_language=en, filtrer sur la langue confond UK et US"
+        text_array origin_country "pays de production, PAS la langue - piege : un film UK a origin_country=GB mais original_language=en, filtrer sur la langue confond UK et US. NULLABLE (obligatoire malgre le default '{}') : un sync qui melange films enrichis et non-enrichis dans le meme upsert PostgREST envoie une valeur explicite NULL pour les lignes qui omettent la colonne des qu'une autre ligne du meme batch la fournit - une contrainte NOT NULL fait planter tout le sync (voir migration films_origin_country_nullable, backend/tests/test_watchlist_repository.py::test_upsert_films_mixed_batch_against_real_db)"
         timestamptz created_at
     }
     USER_WATCHLIST_ITEMS {
@@ -92,3 +92,5 @@ Si tu modifies ce schéma ou le code qui l'utilise, vérifie que :
 3. Aucun code ne réintroduit une colonne pour `providers`, `trailer_url` ou la note TMDB — ces trois données doivent rester en fetch live
 4. `watch_history.decision` n'accepte que `'accepted'`/`'skipped'` (contrainte `CHECK` existante) — pas `'declined'` ni d'autre variante
 5. Aucune table de session n'est ajoutée pour stocker l'état du flow Questions → Résultat — ça doit rester du state front
+6. `films.tmdb_id`, `genres`, `runtime`, `origin_country` restent tous les quatre NULLABLE — ne jamais remettre de contrainte `NOT NULL` dessus (voir le commentaire sur `origin_country` ci-dessus pour le pourquoi)
+7. `repositories/watchlist.py::upsert_films` n'écrit ces quatre colonnes que si le film a été enrichi (`tmdb_id is not None`) — un échec d'enrichissement TMDB ne doit jamais écraser une valeur déjà connue dans ce cache partagé entre tous les users

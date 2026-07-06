@@ -22,6 +22,12 @@ create table films (
   poster_url text,
   genres text[],
   runtime integer,
+  -- Must stay nullable despite the default: a sync batch mixing enriched and
+  -- unenriched films omits this key for unenriched rows, and PostgREST sends
+  -- an explicit NULL (not the column default) whenever another row in the
+  -- same upsert batch provides the key. A NOT NULL constraint here crashes
+  -- the whole sync (see backend/tests/test_watchlist_repository.py::
+  -- test_upsert_films_mixed_batch_against_real_db and docs/db-schema.md).
   origin_country text[] default '{}'::text[],
   overview text,
   created_at timestamptz default now()

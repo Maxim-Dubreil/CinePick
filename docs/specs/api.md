@@ -22,18 +22,28 @@ Appelé à la soumission du formulaire dans la modale Letterboxd (avant le bouto
 
 ### `POST /letterboxd/sync`
 
-Déclenché par le bouton "Synchroniser" (Profil / bannière Home). Scrape la watchlist Letterboxd, upsert les films dans `films` (dédupliqué par `letterboxd_slug`), applique l'enrichissement "filtre" léger (`genres`, `runtime`, `release_date`, `origin_country`), upsert `user_watchlist_items` (nouveaux films ajoutés, `removed_at` renseigné sur les films disparus — voir Specs DB).
+Déclenché par le bouton "Synchroniser" (Profil / bannière Home). Scrape la watchlist Letterboxd (toutes les pages), upsert les films dans `films` (dédupliqué par `letterboxd_slug`), applique l'enrichissement "filtre" léger (`genres`, `runtime`, `release_date`, `origin_country`) via TMDB, upsert `user_watchlist_items` (nouveaux films ajoutés, `removed_at` renseigné sur les films disparus — soft delete).
 
-> **Statut actuel (CIN-69)** : stub. Renvoie `{ count: number, synced_at: string }` et sauvegarde
-> uniquement les compteurs sur `users` — pas encore de scrape complet ni d'écriture dans
-> `user_watchlist_items`/`films`. Le comportement ci-dessous est la cible de CIN-46.
+> **Statut actuel (CIN-46)** : implémenté (2026-07-06). Détail d'implémentation :
+> [docs/superpowers/specs/2026-07-06-watchlist-sync-storage-design.md](../superpowers/specs/2026-07-06-watchlist-sync-storage-design.md).
+>
+> - **Enrichissement best-effort** : un échec TMDB sur un film (pas de match, timeout, réponse
+>   malformée) n'annule jamais tout le sync — le film reste juste non enrichi. Surtout, un échec
+>   n'écrase **jamais** une valeur déjà connue dans `films` (cache partagé entre tous les users) :
+>   `repositories/watchlist.py::upsert_films` n'écrit `tmdb_id`/`genres`/`runtime`/`origin_country`
+>   que si l'enrichissement a réussi pour ce film sur ce sync.
+> - **Piège PostgREST** : ces quatre colonnes doivent rester `NULLABLE` en base, sinon un batch qui
+>   mélange films enrichis et non-enrichis fait planter le sync entier (voir `docs/db-schema.md`).
+> - **Pas encore fait** : sauter l'enrichissement TMDB pour les films déjà connus (actuellement
+>   ré-enrichi à chaque resync, y compris quand rien n'a changé) — optimisation en cours de
+>   cadrage, doit aussi réduire le temps de sync perçu (barre de progression prévue).
 
-|                 |                                                                                                         |
-| --------------- | ------------------------------------------------------------------------------------------------------- |
-| Body            | `{ letterboxd_username: string }`                                                                       |
-| Réponse         | `{ film_count: number, sync_duration_ms: number }`                                                      |
-| Erreurs typées  | `profile_not_found` / `profile_private` / `network_error` (voir modale Letterboxd, Écrans & Navigation) |
-| Appels externes | Scraper Letterboxd + TMDB (enrichissement filtre, en masse)                                             |
+|                 |                                                                                           |
+| --------------- | ----------------------------------------------------------------------------------------- |
+| Body            | `{ letterboxd_username: string }`                                                          |
+| Réponse         | `{ film_count: number, sync_duration_ms: number }`                                         |
+| Erreurs typées  | `404` profil introuvable / `403` watchlist privée / `502` Letterboxd injoignable           |
+| Appels externes | Scraper Letterboxd (paginé, concurrence 5) + TMDB (enrichissement filtre, concurrence 5)   |
 
 ### `POST /recommend`
 
