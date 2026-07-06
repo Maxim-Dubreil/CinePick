@@ -113,16 +113,16 @@ def _extract_count(html: str) -> int | None:
 # --- fetching --------------------------------------------------------------
 
 
-async def _get(client: httpx.AsyncClient, url: str) -> httpx.Response:
+async def _get(client: httpx.AsyncClient, url: str, username: str) -> httpx.Response:
     """GET `url`, mapping transport/status errors to the typed exceptions above."""
     try:
         response = await client.get(url)
     except httpx.HTTPError as exc:
         raise WatchlistScrapeError(f"request to {url} failed: {exc}") from exc
     if response.status_code == 404:
-        raise ProfileNotFoundError(url)
+        raise ProfileNotFoundError(username)
     if response.status_code == 403:
-        raise WatchlistPrivateError(url)
+        raise WatchlistPrivateError(username)
     if response.status_code >= 400:
         raise WatchlistScrapeError(f"unexpected status {response.status_code} for {url}")
     return response
@@ -149,7 +149,7 @@ async def get_watchlist_count(username: str, *, client: httpx.AsyncClient | None
             timeout=_REQUEST_TIMEOUT,
         )
     try:
-        response = await _get(client, url)
+        response = await _get(client, url, username)
         count = _extract_count(response.text)
         if count is None:
             raise WatchlistPrivateError(username)
@@ -181,7 +181,7 @@ async def get_full_watchlist(
         )
     try:
         first_url = _WATCHLIST_URL.format(username=username)
-        first_response = await _get(client, first_url)
+        first_response = await _get(client, first_url, username)
         first_films = parse_watchlist_page(first_response.text)
         total = _extract_count(first_response.text)
         if total is None:
@@ -192,17 +192,27 @@ async def get_full_watchlist(
         page_size = len(first_films)
         total_pages = -(-total // page_size)  # ceil division
         semaphore = asyncio.Semaphore(_PAGE_CONCURRENCY)
+        films_by_page: dict[int, list[Film]] = {}
 
-        async def _fetch_page(page: int) -> list[Film]:
+        async def _fetch_page(page: int) -> None:
             async with semaphore:
                 url = _WATCHLIST_PAGE_URL.format(username=username, page=page)
-                response = await _get(client, url)
-                return parse_watchlist_page(response.text)
+                response = await _get(client, url, username)
+                films_by_page[page] = parse_watchlist_page(response.text)
 
-        pages = await asyncio.gather(*(_fetch_page(p) for p in range(2, total_pages + 1)))
+        try:
+            async with asyncio.TaskGroup() as tg:
+                for page in range(2, total_pages + 1):
+                    tg.create_task(_fetch_page(page))
+        except ExceptionGroup as eg:
+            # TaskGroup wraps multiple exceptions; unwrap if there's only one
+            if len(eg.exceptions) == 1:
+                raise eg.exceptions[0] from eg
+            raise
+
         films = list(first_films)
-        for page_films in pages:
-            films.extend(page_films)
+        for page in range(2, total_pages + 1):
+            films.extend(films_by_page[page])
         return films
     finally:
         if owns_client:
