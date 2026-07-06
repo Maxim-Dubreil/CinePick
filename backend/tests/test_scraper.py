@@ -14,6 +14,7 @@ from scraper import (
     ProfileNotFoundError,
     WatchlistPrivateError,
     WatchlistScrapeError,
+    get_full_watchlist,
     get_watchlist_count,
     parse_watchlist_page,
 )
@@ -94,3 +95,85 @@ async def test_count_network_error():
     async with _client(handler) as client:
         with pytest.raises(WatchlistScrapeError):
             await get_watchlist_count("dave", client=client)
+
+
+# --- get_full_watchlist -----------------------------------------------------
+
+
+def _page_html(slugs: list[str], total: int) -> str:
+    cells = "".join(
+        f'<div class="react-component" data-component-class="LazyPoster" '
+        f'data-item-slug="{slug}" data-item-name="{slug.title()} (2020)" '
+        f'data-poster-url="/film/{slug}/image-150/"></div>'
+        for slug in slugs
+    )
+    return f'<div class="js-watchlist-content" data-num-entries="{total}">{cells}</div>'
+
+
+async def test_get_full_watchlist_single_page_no_extra_fetch():
+    html = _page_html(["film-a", "film-b", "film-c"], total=3)
+    call_count = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal call_count
+        call_count += 1
+        return httpx.Response(200, text=html)
+
+    async with _client(handler) as client:
+        films = await get_full_watchlist("dave", client=client)
+
+    assert [f.slug for f in films] == ["film-a", "film-b", "film-c"]
+    assert call_count == 1
+
+
+async def test_get_full_watchlist_paginates_across_pages():
+    page1 = _page_html(["film-a", "film-b", "film-c"], total=7)
+    page2 = _page_html(["film-d", "film-e", "film-f"], total=7)
+    page3 = _page_html(["film-g"], total=7)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        url = str(request.url)
+        if "/page/2/" in url:
+            return httpx.Response(200, text=page2)
+        if "/page/3/" in url:
+            return httpx.Response(200, text=page3)
+        return httpx.Response(200, text=page1)
+
+    async with _client(handler) as client:
+        films = await get_full_watchlist("dave", client=client)
+
+    assert [f.slug for f in films] == [
+        "film-a",
+        "film-b",
+        "film-c",
+        "film-d",
+        "film-e",
+        "film-f",
+        "film-g",
+    ]
+
+
+async def test_get_full_watchlist_empty_watchlist():
+    html = _page_html([], total=0)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, text=html)
+
+    async with _client(handler) as client:
+        films = await get_full_watchlist("dave", client=client)
+
+    assert films == []
+
+
+async def test_get_full_watchlist_aborts_on_page_failure():
+    page1 = _page_html(["film-a", "film-b", "film-c"], total=7)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        url = str(request.url)
+        if "/page/2/" in url:
+            raise httpx.ConnectTimeout("timed out")
+        return httpx.Response(200, text=page1)
+
+    async with _client(handler) as client:
+        with pytest.raises(WatchlistScrapeError):
+            await get_full_watchlist("dave", client=client)
