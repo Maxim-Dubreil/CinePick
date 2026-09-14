@@ -68,6 +68,7 @@ export function Profile() {
 
       <LetterboxdConfigModal
         open={modalOpen}
+        mode={profile?.letterboxd_username ? "change" : "link"}
         onOpenChange={setModalOpen}
         onSuccess={() => void refetch()}
         onSyncingChange={setIsSyncing}

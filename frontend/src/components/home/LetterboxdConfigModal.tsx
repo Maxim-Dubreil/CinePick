@@ -17,16 +17,24 @@ interface LetterboxdConfigModalProps {
   onSuccess: (username: string) => void;
   onSyncingChange: (syncing: boolean) => void;
   token: string | null;
+  mode?: "link" | "change";
 }
 
 type VerifyStatus = "idle" | "loading" | "success" | "error";
 type SyncStatus = "idle" | "syncing" | "synced" | "sync_error";
 type ErrorType = "404" | "403" | "network";
+type SyncErrorType = "401" | "403" | "network";
 
 const ERROR_MESSAGES: Record<ErrorType, string> = {
   "404": "Pseudo introuvable, vérifie l'orthographe",
   "403": "Ta watchlist est privée — voir le tuto ci-dessus",
   network: "Letterboxd est momentanément inaccessible",
+};
+
+const SYNC_ERROR_MESSAGES: Record<SyncErrorType, string> = {
+  "401": "Ta session a expiré — reconnecte-toi puis réessaie",
+  "403": "Ta watchlist est privée — voir le tuto ci-dessus",
+  network: "La synchronisation a échoué. Réessayez",
 };
 
 function isValidUsername(value: string): boolean {
@@ -35,6 +43,7 @@ function isValidUsername(value: string): boolean {
 
 export function LetterboxdConfigModal({
   open,
+  mode = "link",
   onOpenChange,
   onSuccess,
   onSyncingChange,
@@ -45,6 +54,7 @@ export function LetterboxdConfigModal({
   const [errorType, setErrorType] = useState<ErrorType | null>(null);
   const [filmCount, setFilmCount] = useState<number | null>(null);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>("idle");
+  const [syncErrorType, setSyncErrorType] = useState<SyncErrorType>("network");
   const [syncResult, setSyncResult] = useState<{
     film_count: number;
     sync_duration_ms: number;
@@ -93,7 +103,15 @@ export function LetterboxdConfigModal({
       const result = await syncWatchlist(username.trim(), token);
       setSyncResult(result);
       setSyncStatus("synced");
-    } catch {
+    } catch (err) {
+      console.error("Letterboxd sync failed", err);
+      if (err instanceof ApiError && err.status === 401) {
+        setSyncErrorType("401");
+      } else if (err instanceof ApiError && err.status === 403) {
+        setSyncErrorType("403");
+      } else {
+        setSyncErrorType("network");
+      }
       setSyncStatus("sync_error");
     } finally {
       onSyncingChange(false);
@@ -107,11 +125,14 @@ export function LetterboxdConfigModal({
       <DialogContent className="sm:max-w-lg gap-5 p-6 rounded-[var(--radius-xl)] ring-1 ring-[var(--glass-border)] shadow-[var(--shadow-glass-primary)]">
         <DialogHeader>
           <DialogTitle className="text-2xl font-semibold">
-            Configurer votre Letterboxd
+            {mode === "change"
+              ? "Modifier la source Letterboxd"
+              : "Configurer votre Letterboxd"}
           </DialogTitle>
           <DialogDescription>
-            Connectez votre watchlist pour recevoir des recommandations
-            personnalisées.
+            {mode === "change"
+              ? "Remplace le compte Letterboxd relié à ton profil et resynchronise ta watchlist."
+              : "Connectez votre watchlist pour recevoir des recommandations personnalisées."}
           </DialogDescription>
         </DialogHeader>
 
@@ -193,7 +214,7 @@ export function LetterboxdConfigModal({
                     className="flex-1"
                     onClick={handleSync}
                   >
-                    Synchroniser
+                    {mode === "change" ? "Confirmer le changement" : "Synchroniser"}
                   </Button>
                   <Button
                     variant="outline"
@@ -218,7 +239,7 @@ export function LetterboxdConfigModal({
             {syncStatus === "sync_error" && (
               <>
                 <p className="text-sm text-[var(--danger)]">
-                  La synchronisation a échoué. Réessayez.
+                  {SYNC_ERROR_MESSAGES[syncErrorType]}
                 </p>
                 <div className="flex gap-3">
                   <Button
@@ -226,7 +247,7 @@ export function LetterboxdConfigModal({
                     className="flex-1"
                     onClick={handleSync}
                   >
-                    Synchroniser
+                    {mode === "change" ? "Confirmer le changement" : "Synchroniser"}
                   </Button>
                   <Button
                     variant="outline"

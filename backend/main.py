@@ -1,21 +1,53 @@
+import logging
 import time
 from datetime import UTC, datetime
 
-from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, Field
+from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
+from starlette.responses import Response
 
 import scraper
 import tmdb
 from repositories import watchlist as watchlist_repo
 from supabase_client import supabase
 
+logger = logging.getLogger(__name__)
+
 app = FastAPI(title="CinePick API", version="0.1.0")
 
 TAG_HEALTH = "health"
 TAG_LETTERBOXD = "letterboxd"
 
+
+class CatchAllMiddleware(BaseHTTPMiddleware):
+    """Turn any uncaught error into a normal JSON response.
+
+    A plain `@app.exception_handler(Exception)` is wired by FastAPI to
+    Starlette's outermost ServerErrorMiddleware, which sits *above*
+    CORSMiddleware — its response never gets CORS headers, so the browser
+    reports a misleading 'blocked by CORS policy' error that hides the real
+    500. Catching here instead (added below CORSMiddleware) keeps the error
+    response inside the CORS layer.
+    """
+
+    async def dispatch(
+        self, request: Request, call_next: RequestResponseEndpoint
+    ) -> Response:
+        try:
+            return await call_next(request)
+        except Exception:
+            logger.exception("Unhandled error on %s %s", request.method, request.url.path)
+            return JSONResponse(status_code=500, content={"detail": "Internal server error"})
+
+
+# Middleware order matters: the last one added wraps the others, so
+# CORSMiddleware (added last) must stay outermost to decorate every
+# response — including the 500s CatchAllMiddleware produces below it.
+app.add_middleware(CatchAllMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173"],

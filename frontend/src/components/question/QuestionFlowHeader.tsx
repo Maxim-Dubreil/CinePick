@@ -1,4 +1,5 @@
 import { ChevronLeft } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Button, Progress } from "@/components/ui";
 
 interface QuestionFlowHeaderProps {
@@ -28,11 +29,12 @@ export function QuestionFlowHeader({
             <ChevronLeft size={16} />
           </Button>
         )}
-        <span
-          className="font-heading text-base font-medium tracking-[0.04em] text-text-primary"
+        <Link
+          to="/home"
+          className="font-heading text-base font-medium tracking-[0.04em] text-text-primary hover:opacity-80 transition-opacity"
         >
           CinePick
-        </span>
+        </Link>
       </div>
 
       <div className="flex w-80 max-w-[44vw] flex-col items-center gap-2">

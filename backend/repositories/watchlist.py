@@ -21,12 +21,6 @@ class FilmRow(TypedDict):
     id: str
 
 
-class WatchlistRow(TypedDict):
-    """Response row from user_watchlist_items table select."""
-
-    film_id: str
-    removed_at: str | None
-
 _FILMS_TABLE = "films"
 _WATCHLIST_TABLE = "user_watchlist_items"
 
@@ -83,33 +77,23 @@ def upsert_films(films: list[EnrichedFilm]) -> dict[str, str]:
 def sync_user_watchlist(user_id: str, active_film_ids: set[str]) -> None:
     """Reconcile a user's watchlist with the freshly scraped set of film ids.
 
-    Films newly present are inserted; films no longer present are soft-deleted
-    (`removed_at` set); films that reappear have `removed_at` cleared. Rows
-    unchanged between syncs are left untouched.
+    Deactivates everything currently active for the user with a single
+    user-scoped filter (no film id list involved, so no size limit regardless
+    of watchlist size), then reactivates/inserts the new active set through
+    one upsert whose film ids travel in the request body rather than the URL
+    — the same mechanism already used safely for hundreds of films in
+    `upsert_films`. `added_at` is deliberately left out of the upsert payload
+    so PostgREST's merge-on-conflict leaves it untouched on existing rows and
+    falls back to its column default (`now()`) only for genuinely new ones.
     """
     now = datetime.now(UTC).isoformat()
 
-    existing = supabase.table(_WATCHLIST_TABLE).select("film_id, removed_at").eq(
+    supabase.table(_WATCHLIST_TABLE).update({"removed_at": now}).eq(
         "user_id", user_id
-    ).execute()
-    existing_data: list[WatchlistRow] = existing.data  # type: ignore[assignment]
-    existing_active = {row["film_id"] for row in existing_data if row["removed_at"] is None}
-    existing_removed = {row["film_id"] for row in existing_data if row["removed_at"] is not None}
+    ).is_("removed_at", "null").execute()
 
-    new_film_ids = active_film_ids - existing_active - existing_removed
-    if new_film_ids:
-        supabase.table(_WATCHLIST_TABLE).insert(
-            [{"user_id": user_id, "film_id": fid, "added_at": now} for fid in new_film_ids]
+    if active_film_ids:
+        supabase.table(_WATCHLIST_TABLE).upsert(
+            [{"user_id": user_id, "film_id": fid, "removed_at": None} for fid in active_film_ids],
+            on_conflict="user_id,film_id",
         ).execute()
-
-    removed_film_ids = existing_active - active_film_ids
-    if removed_film_ids:
-        supabase.table(_WATCHLIST_TABLE).update({"removed_at": now}).eq(
-            "user_id", user_id
-        ).in_("film_id", list(removed_film_ids)).execute()
-
-    reappeared_film_ids = existing_removed & active_film_ids
-    if reappeared_film_ids:
-        supabase.table(_WATCHLIST_TABLE).update({"removed_at": None}).eq(
-            "user_id", user_id
-        ).in_("film_id", list(reappeared_film_ids)).execute()

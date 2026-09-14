@@ -164,8 +164,8 @@ describe("LetterboxdConfigModal", () => {
       count: 760,
     });
     vi.mocked(syncWatchlist).mockResolvedValue({
-      count: 760,
-      synced_at: "2026-06-25T10:00:00.000Z",
+      film_count: 760,
+      sync_duration_ms: 1234,
     });
     render(<LetterboxdConfigModal {...defaultProps} onSuccess={onSuccess} />);
     await userEvent.type(
@@ -267,8 +267,8 @@ describe("LetterboxdConfigModal", () => {
 
     it("shows synced state with count and date on success", async () => {
       vi.mocked(syncWatchlist).mockResolvedValue({
-        count: 760,
-        synced_at: "2026-06-25T10:00:00.000Z",
+        film_count: 760,
+        sync_duration_ms: 1234,
       });
       await verifyUsername();
       await userEvent.click(screen.getByRole("button", { name: /Synchroniser/i }));
@@ -276,14 +276,17 @@ describe("LetterboxdConfigModal", () => {
         expect(screen.getByText(/760 films synchronisés/i)).toBeInTheDocument(),
       );
       expect(screen.getByRole("button", { name: /Commencer/i })).toBeInTheDocument();
-      expect(screen.getByText(/25\/06\/2026/)).toBeInTheDocument();
+      // Rendered as new Date().toLocaleDateString(), not derived from the API
+      // response — assert against today's date rather than a fixed one.
+      const today = new Date().toLocaleDateString("fr-FR");
+      expect(screen.getByText(new RegExp(today))).toBeInTheDocument();
     });
 
     it("calls onSyncingChange(false) on sync success", async () => {
       const onSyncingChange = vi.fn();
       vi.mocked(syncWatchlist).mockResolvedValue({
-        count: 760,
-        synced_at: "2026-06-25T10:00:00.000Z",
+        film_count: 760,
+        sync_duration_ms: 1234,
       });
       render(
         <LetterboxdConfigModal {...defaultProps} onSyncingChange={onSyncingChange} />,
@@ -337,8 +340,8 @@ describe("LetterboxdConfigModal", () => {
     it("Commencer closes modal after successful sync", async () => {
       const onOpenChange = vi.fn();
       vi.mocked(syncWatchlist).mockResolvedValue({
-        count: 760,
-        synced_at: "2026-06-25T10:00:00.000Z",
+        film_count: 760,
+        sync_duration_ms: 1234,
       });
       render(
         <LetterboxdConfigModal {...defaultProps} onOpenChange={onOpenChange} />,

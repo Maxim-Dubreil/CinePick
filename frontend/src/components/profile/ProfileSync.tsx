@@ -86,6 +86,9 @@ export function ProfileSync({ profile, isSyncing, onResync, onOpenModal }: Profi
             <RefreshCw size={15} className={isSyncing ? 'animate-spin' : ''} />
             Resynchroniser maintenant
           </Button>
+          <Button variant="ghost" size="sm" className="w-full" onClick={onOpenModal}>
+            Changer de compte
+          </Button>
         </>
       )}
     </div>

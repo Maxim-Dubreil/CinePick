@@ -169,48 +169,46 @@ def test_upsert_films_mixed_batch_against_real_db(require_integration):
 # --- sync_user_watchlist --------------------------------------------------
 
 
-def test_sync_user_watchlist_inserts_new_films(supabase_mock):
+def test_sync_user_watchlist_deactivates_all_then_reactivates_current_set(supabase_mock):
+    """Reconciliation never lists ids in a filter: it blanket-deactivates
+    everything for the user (a plain `user_id` + `removed_at IS NULL` filter,
+    safe at any watchlist size), then reactivates/inserts the current set via
+    a single upsert whose rows travel in the request body."""
     table = _table_mock(supabase_mock, "user_watchlist_items")
-    table.select.return_value.eq.return_value.execute.return_value = MagicMock(data=[])
 
     watchlist.sync_user_watchlist("user-1", {"film-a", "film-b"})
 
-    table.insert.assert_called_once()
-    inserted = table.insert.call_args[0][0]
-    assert {row["film_id"] for row in inserted} == {"film-a", "film-b"}
-    assert all(row["user_id"] == "user-1" for row in inserted)
-    table.update.assert_not_called()
-
-
-def test_sync_user_watchlist_soft_deletes_missing_films(supabase_mock):
-    table = _table_mock(supabase_mock, "user_watchlist_items")
-    table.select.return_value.eq.return_value.execute.return_value = MagicMock(
-        data=[
-            {"film_id": "film-a", "removed_at": None},
-            {"film_id": "film-b", "removed_at": None},
-        ]
-    )
-
-    watchlist.sync_user_watchlist("user-1", {"film-a"})
-
-    update_args = table.update.call_args[0][0]
-    assert update_args["removed_at"] is not None
     eq_args = table.update.return_value.eq.call_args[0]
     assert eq_args == ("user_id", "user-1")
-    in_args = table.update.return_value.eq.return_value.in_.call_args[0]
-    assert in_args == ("film_id", ["film-b"])
-    table.insert.assert_not_called()
+    is_args = table.update.return_value.eq.return_value.is_.call_args[0]
+    assert is_args == ("removed_at", "null")
+
+    table.upsert.assert_called_once()
+    upserted_rows, upsert_kwargs = table.upsert.call_args[0], table.upsert.call_args[1]
+    assert {row["film_id"] for row in upserted_rows[0]} == {"film-a", "film-b"}
+    assert all(row["user_id"] == "user-1" and row["removed_at"] is None for row in upserted_rows[0])
+    assert upsert_kwargs["on_conflict"] == "user_id,film_id"
 
 
-def test_sync_user_watchlist_clears_removed_at_on_reappearance(supabase_mock):
+def test_sync_user_watchlist_skips_upsert_for_empty_watchlist(supabase_mock):
+    """An emptied watchlist still deactivates existing rows, but must not send
+    an empty upsert payload."""
     table = _table_mock(supabase_mock, "user_watchlist_items")
-    table.select.return_value.eq.return_value.execute.return_value = MagicMock(
-        data=[{"film_id": "film-a", "removed_at": "2026-01-01T00:00:00+00:00"}]
-    )
+
+    watchlist.sync_user_watchlist("user-1", set())
+
+    table.update.assert_called_once()
+    table.upsert.assert_not_called()
+
+
+def test_sync_user_watchlist_upsert_omits_added_at(supabase_mock):
+    """`added_at` must never be in the upsert payload: PostgREST's
+    merge-on-conflict only touches columns it's given, so omitting it keeps
+    the original add date on existing rows and falls back to the column
+    default (`now()`) only for genuinely new ones."""
+    table = _table_mock(supabase_mock, "user_watchlist_items")
 
     watchlist.sync_user_watchlist("user-1", {"film-a"})
 
-    update_args = table.update.call_args[0][0]
-    assert update_args == {"removed_at": None}
-    in_args = table.update.return_value.eq.return_value.in_.call_args[0]
-    assert in_args == ("film_id", ["film-a"])
+    upserted_rows = table.upsert.call_args[0][0]
+    assert all("added_at" not in row for row in upserted_rows)
