@@ -1,10 +1,7 @@
 import { Topbar } from "@/components/layout/Topbar";
 import { LandingBackground } from "@/components/layout/LandingBackground";
-import {
-  GoogleAuthButton,
-  StepsSection,
-  LandingFooter,
-} from "@/components/landing";
+import { GoogleAuthButton, StepsSection } from "@/components/landing";
+import { Footer } from "@/components/layout";
 
 interface LandingProps {
   onLoaded?: () => void;
@@ -42,7 +39,7 @@ export function Landing({ onLoaded }: LandingProps) {
       </main>
 
       {/* Footer - fixed at bottom */}
-      <LandingFooter />
+      <Footer variant="landing" />
     </div>
   );
 }

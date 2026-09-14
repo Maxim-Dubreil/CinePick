@@ -62,10 +62,20 @@ supabase/.branches
 supabase/.temp
 
 # ===========================
+# Superpowers (design docs & plans — local only)
+# ===========================
+docs/superpowers/
+
+# ===========================
 # IDE
 # ===========================
 .vscode/
 .idea/
+
+# ===========================
+# Agent skills (fetched content, tracked via skills-lock.json)
+# ===========================
+.agents/
 
 # ===========================
 # Database

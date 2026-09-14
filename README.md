@@ -15,8 +15,8 @@ A web app that analyzes a Letterboxd watchlist to recommend a movie through a qu
 
 ### Prerequisites
 
-- Node.js 18+
-- Python 3.11+
+- Node.js 22
+- Python 3.12
 - Docker / Docker Desktop
 
 ### Environment variables
@@ -50,6 +50,19 @@ docker compose up --build
 Frontend available at: `http://localhost:5173`
 Backend available at: `http://localhost:8000`
 
+### API reference (Swagger UI)
+
+FastAPI generates interactive API docs automatically — no setup needed. With the backend
+running, open:
+
+- `http://localhost:8000/docs` — Swagger UI (try requests directly in the browser)
+- `http://localhost:8000/redoc` — ReDoc (read-only, cleaner for reference)
+- `http://localhost:8000/openapi.json` — raw OpenAPI schema
+
+Routes are grouped by tag (`health`, `letterboxd`, `profile`). This is the source of truth for
+exact request/response shapes — [docs/specs/api.md](docs/specs/api.md) covers the _why_ (business
+rules, open questions), not the exact contract.
+
 ## Project structure
 
 ```sh
@@ -64,16 +77,13 @@ CinePick/
 
 ### Branches
 
-main : Production - PR merges only - _protected_
-develop : Ongoing work - Completed features - _default_
-feat/CIN-XX-name : New feature
-fix/CIN-XX-name : Bug fix
-chore/CIN-XX-name : Config, setup, refactor
+Solo developer: commit directly to `develop` (default branch). `main` is the protected
+production branch (merges only).
 
 ### Commits
 
 ```sh
-type(scope): [CIN-XX] short description
+type: [CIN-XX] description
 ```
 
 | Type    | Usage                        |

@@ -1,0 +1,365 @@
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { vi } from "vitest";
+import { LetterboxdConfigModal } from "@/components/home/LetterboxdConfigModal";
+import { ApiError } from "@/lib/backend/api";
+
+// Garde ApiError réel pour instanceof, mock uniquement validateLetterboxdAccount et syncWatchlist
+vi.mock("@/lib/backend/api", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/backend/api")>();
+  return {
+    ...actual,
+    validateLetterboxdAccount: vi.fn(),
+    syncWatchlist: vi.fn(),
+  };
+});
+
+import { validateLetterboxdAccount, syncWatchlist } from "@/lib/backend/api";
+
+const defaultProps = {
+  open: true,
+  onOpenChange: vi.fn(),
+  onSuccess: vi.fn(),
+  onSyncingChange: vi.fn(),
+  token: null,
+};
+
+describe("LetterboxdConfigModal", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("renders nothing when open=false", () => {
+    render(<LetterboxdConfigModal {...defaultProps} open={false} />);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("renders tutorial and input when open=true", () => {
+    render(<LetterboxdConfigModal {...defaultProps} />);
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(
+      screen.getByText(/Comment rendre votre watchlist publique/i),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText(/Pseudo Letterboxd/i)).toBeInTheDocument();
+  });
+
+  it("disables Vérifier when input is empty", () => {
+    render(<LetterboxdConfigModal {...defaultProps} />);
+    expect(screen.getByRole("button", { name: /Vérifier/i })).toBeDisabled();
+  });
+
+  it("disables Vérifier when input contains spaces", async () => {
+    render(<LetterboxdConfigModal {...defaultProps} />);
+    await userEvent.type(
+      screen.getByLabelText(/Pseudo Letterboxd/i),
+      "john doe",
+    );
+    expect(screen.getByRole("button", { name: /Vérifier/i })).toBeDisabled();
+  });
+
+  it("enables Vérifier with a valid username", async () => {
+    render(<LetterboxdConfigModal {...defaultProps} />);
+    await userEvent.type(
+      screen.getByLabelText(/Pseudo Letterboxd/i),
+      "your-pseudo",
+    );
+    expect(screen.getByRole("button", { name: /Vérifier/i })).toBeEnabled();
+  });
+
+  it("shows loading state during API call", async () => {
+    vi.mocked(validateLetterboxdAccount).mockImplementation(
+      () => new Promise(() => {}), // ne se résout jamais
+    );
+    render(<LetterboxdConfigModal {...defaultProps} />);
+    await userEvent.type(
+      screen.getByLabelText(/Pseudo Letterboxd/i),
+      "cinephile",
+    );
+    await userEvent.click(screen.getByRole("button", { name: /Vérifier/i }));
+    expect(screen.getByText(/Vérification/i)).toBeInTheDocument();
+  });
+
+  it("shows 404 error inline", async () => {
+    vi.mocked(validateLetterboxdAccount).mockRejectedValue(
+      new ApiError(404, "Not found"),
+    );
+    render(<LetterboxdConfigModal {...defaultProps} />);
+    await userEvent.type(
+      screen.getByLabelText(/Pseudo Letterboxd/i),
+      "cinephile",
+    );
+    await userEvent.click(screen.getByRole("button", { name: /Vérifier/i }));
+    await waitFor(() =>
+      expect(screen.getByText(/Pseudo introuvable/i)).toBeInTheDocument(),
+    );
+  });
+
+  it("shows 403 error inline", async () => {
+    vi.mocked(validateLetterboxdAccount).mockRejectedValue(
+      new ApiError(403, "Forbidden"),
+    );
+    render(<LetterboxdConfigModal {...defaultProps} />);
+    await userEvent.type(
+      screen.getByLabelText(/Pseudo Letterboxd/i),
+      "cinephile",
+    );
+    await userEvent.click(screen.getByRole("button", { name: /Vérifier/i }));
+    await waitFor(() =>
+      expect(screen.getByText(/watchlist est privée/i)).toBeInTheDocument(),
+    );
+  });
+
+  it("shows network error inline", async () => {
+    vi.mocked(validateLetterboxdAccount).mockRejectedValue(new Error("Network"));
+    render(<LetterboxdConfigModal {...defaultProps} />);
+    await userEvent.type(
+      screen.getByLabelText(/Pseudo Letterboxd/i),
+      "cinephile",
+    );
+    await userEvent.click(screen.getByRole("button", { name: /Vérifier/i }));
+    await waitFor(() =>
+      expect(
+        screen.getByText(/momentanément inaccessible/i),
+      ).toBeInTheDocument(),
+    );
+  });
+
+  it("shows success state with film count", async () => {
+    vi.mocked(validateLetterboxdAccount).mockResolvedValue({
+      username: "cinephile",
+      count: 760,
+    });
+    render(<LetterboxdConfigModal {...defaultProps} />);
+    await userEvent.type(
+      screen.getByLabelText(/Pseudo Letterboxd/i),
+      "cinephile",
+    );
+    await userEvent.click(screen.getByRole("button", { name: /Vérifier/i }));
+    await waitFor(() =>
+      expect(screen.getByText(/760 films trouvés/i)).toBeInTheDocument(),
+    );
+  });
+
+  it("Synchroniser button is enabled in success state", async () => {
+    vi.mocked(validateLetterboxdAccount).mockResolvedValue({
+      username: "cinephile",
+      count: 760,
+    });
+    vi.mocked(syncWatchlist).mockImplementation(() => new Promise(() => {}));
+    render(<LetterboxdConfigModal {...defaultProps} />);
+    await userEvent.type(
+      screen.getByLabelText(/Pseudo Letterboxd/i),
+      "cinephile",
+    );
+    await userEvent.click(screen.getByRole("button", { name: /Vérifier/i }));
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /Synchroniser/i })).toBeEnabled(),
+    );
+  });
+
+  it("calls onSuccess with trimmed username after sync + Commencer", async () => {
+    const onSuccess = vi.fn();
+    vi.mocked(validateLetterboxdAccount).mockResolvedValue({
+      username: "cinephile",
+      count: 760,
+    });
+    vi.mocked(syncWatchlist).mockResolvedValue({
+      film_count: 760,
+      sync_duration_ms: 1234,
+    });
+    render(<LetterboxdConfigModal {...defaultProps} onSuccess={onSuccess} />);
+    await userEvent.type(
+      screen.getByLabelText(/Pseudo Letterboxd/i),
+      "cinephile",
+    );
+    await userEvent.click(screen.getByRole("button", { name: /Vérifier/i }));
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /Synchroniser/i })).toBeEnabled(),
+    );
+    await userEvent.click(screen.getByRole("button", { name: /Synchroniser/i }));
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /Commencer/i })).toBeInTheDocument(),
+    );
+    await userEvent.click(screen.getByRole("button", { name: /Commencer/i }));
+    expect(onSuccess).toHaveBeenCalledWith("cinephile");
+  });
+
+  it("re-enables Vérifier after editing input post-success", async () => {
+    vi.mocked(validateLetterboxdAccount).mockResolvedValue({
+      username: "cinephile",
+      count: 760,
+    });
+    render(<LetterboxdConfigModal {...defaultProps} />);
+    const input = screen.getByLabelText(/Pseudo Letterboxd/i);
+    await userEvent.type(input, "cinephile");
+    await userEvent.click(screen.getByRole("button", { name: /Vérifier/i }));
+    await waitFor(() =>
+      expect(screen.getByText(/760 films trouvés/i)).toBeInTheDocument(),
+    );
+    // Editing input clears success state and re-enables Vérifier
+    await userEvent.clear(input);
+    await userEvent.type(input, "autre");
+    expect(screen.queryByText(/760 films trouvés/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Vérifier/i })).toBeEnabled();
+  });
+
+  it("Plus tard button closes the modal", async () => {
+    const onOpenChange = vi.fn();
+    vi.mocked(validateLetterboxdAccount).mockResolvedValue({
+      username: "cinephile",
+      count: 42,
+    });
+    render(
+      <LetterboxdConfigModal {...defaultProps} onOpenChange={onOpenChange} />,
+    );
+    await userEvent.type(
+      screen.getByLabelText(/Pseudo Letterboxd/i),
+      "cinephile",
+    );
+    await userEvent.click(screen.getByRole("button", { name: /Vérifier/i }));
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: /Plus tard/i }),
+      ).toBeInTheDocument(),
+    );
+    await userEvent.click(screen.getByRole("button", { name: /Plus tard/i }));
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  describe("sync flow", () => {
+    beforeEach(async () => {
+      vi.mocked(validateLetterboxdAccount).mockResolvedValue({
+        username: "cinephile",
+        count: 760,
+      });
+    });
+
+    async function verifyUsername() {
+      render(<LetterboxdConfigModal {...defaultProps} />);
+      await userEvent.type(
+        screen.getByLabelText(/Pseudo Letterboxd/i),
+        "cinephile",
+      );
+      await userEvent.click(screen.getByRole("button", { name: /Vérifier/i }));
+      await waitFor(() =>
+        expect(screen.getByRole("button", { name: /Synchroniser/i })).toBeEnabled(),
+      );
+    }
+
+    it("shows syncing state and calls onSyncingChange(true) when sync starts", async () => {
+      const onSyncingChange = vi.fn();
+      vi.mocked(syncWatchlist).mockImplementation(() => new Promise(() => {}));
+      render(
+        <LetterboxdConfigModal {...defaultProps} onSyncingChange={onSyncingChange} />,
+      );
+      await userEvent.type(
+        screen.getByLabelText(/Pseudo Letterboxd/i),
+        "cinephile",
+      );
+      await userEvent.click(screen.getByRole("button", { name: /Vérifier/i }));
+      await waitFor(() =>
+        expect(screen.getByRole("button", { name: /Synchroniser/i })).toBeEnabled(),
+      );
+      await userEvent.click(screen.getByRole("button", { name: /Synchroniser/i }));
+      expect(onSyncingChange).toHaveBeenCalledWith(true);
+      expect(screen.getByRole("button", { name: /Synchronisation/i })).toBeDisabled();
+    });
+
+    it("shows synced state with count and date on success", async () => {
+      vi.mocked(syncWatchlist).mockResolvedValue({
+        film_count: 760,
+        sync_duration_ms: 1234,
+      });
+      await verifyUsername();
+      await userEvent.click(screen.getByRole("button", { name: /Synchroniser/i }));
+      await waitFor(() =>
+        expect(screen.getByText(/760 films synchronisés/i)).toBeInTheDocument(),
+      );
+      expect(screen.getByRole("button", { name: /Commencer/i })).toBeInTheDocument();
+      // Rendered as new Date().toLocaleDateString(), not derived from the API
+      // response — assert against today's date rather than a fixed one.
+      const today = new Date().toLocaleDateString("fr-FR");
+      expect(screen.getByText(new RegExp(today))).toBeInTheDocument();
+    });
+
+    it("calls onSyncingChange(false) on sync success", async () => {
+      const onSyncingChange = vi.fn();
+      vi.mocked(syncWatchlist).mockResolvedValue({
+        film_count: 760,
+        sync_duration_ms: 1234,
+      });
+      render(
+        <LetterboxdConfigModal {...defaultProps} onSyncingChange={onSyncingChange} />,
+      );
+      await userEvent.type(
+        screen.getByLabelText(/Pseudo Letterboxd/i),
+        "cinephile",
+      );
+      await userEvent.click(screen.getByRole("button", { name: /Vérifier/i }));
+      await waitFor(() =>
+        expect(screen.getByRole("button", { name: /Synchroniser/i })).toBeEnabled(),
+      );
+      await userEvent.click(screen.getByRole("button", { name: /Synchroniser/i }));
+      await waitFor(() =>
+        expect(onSyncingChange).toHaveBeenLastCalledWith(false),
+      );
+    });
+
+    it("shows sync error message and retry button on failure", async () => {
+      vi.mocked(syncWatchlist).mockRejectedValue(new Error("Network error"));
+      await verifyUsername();
+      await userEvent.click(screen.getByRole("button", { name: /Synchroniser/i }));
+      await waitFor(() =>
+        expect(
+          screen.getByText(/La synchronisation a échoué/i),
+        ).toBeInTheDocument(),
+      );
+      expect(screen.getByRole("button", { name: /Synchroniser/i })).toBeEnabled();
+    });
+
+    it("calls onSyncingChange(false) on sync error", async () => {
+      const onSyncingChange = vi.fn();
+      vi.mocked(syncWatchlist).mockRejectedValue(new Error("fail"));
+      render(
+        <LetterboxdConfigModal {...defaultProps} onSyncingChange={onSyncingChange} />,
+      );
+      await userEvent.type(
+        screen.getByLabelText(/Pseudo Letterboxd/i),
+        "cinephile",
+      );
+      await userEvent.click(screen.getByRole("button", { name: /Vérifier/i }));
+      await waitFor(() =>
+        expect(screen.getByRole("button", { name: /Synchroniser/i })).toBeEnabled(),
+      );
+      await userEvent.click(screen.getByRole("button", { name: /Synchroniser/i }));
+      await waitFor(() =>
+        expect(onSyncingChange).toHaveBeenLastCalledWith(false),
+      );
+    });
+
+    it("Commencer closes modal after successful sync", async () => {
+      const onOpenChange = vi.fn();
+      vi.mocked(syncWatchlist).mockResolvedValue({
+        film_count: 760,
+        sync_duration_ms: 1234,
+      });
+      render(
+        <LetterboxdConfigModal {...defaultProps} onOpenChange={onOpenChange} />,
+      );
+      await userEvent.type(
+        screen.getByLabelText(/Pseudo Letterboxd/i),
+        "cinephile",
+      );
+      await userEvent.click(screen.getByRole("button", { name: /Vérifier/i }));
+      await waitFor(() =>
+        expect(screen.getByRole("button", { name: /Synchroniser/i })).toBeEnabled(),
+      );
+      await userEvent.click(screen.getByRole("button", { name: /Synchroniser/i }));
+      await waitFor(() =>
+        expect(screen.getByRole("button", { name: /Commencer/i })).toBeInTheDocument(),
+      );
+      await userEvent.click(screen.getByRole("button", { name: /Commencer/i }));
+      expect(onOpenChange).toHaveBeenCalledWith(false);
+    });
+  });
+});

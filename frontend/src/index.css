@@ -29,6 +29,30 @@
   }
 }
 
+@keyframes cp-dot {
+  0%,
+  80%,
+  100% {
+    opacity: 0.25;
+    transform: translateY(0);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+
+@keyframes cp-fadein {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 :root {
   /* ===========================
        Fonts, spacing, radius — PARTAGÉS (pas de changement)                                                             
@@ -105,6 +129,8 @@
 
   --success: #4ec9a0;
   --warning: #d4983a;
+  --warning-subtle: rgba(212, 152, 58, 0.12);
+  --warning-border: rgba(212, 152, 58, 0.35);
   --danger: #e07070;
 
   --glass-bg: rgba(255, 255, 255, 0.07);
@@ -121,6 +147,14 @@
     inset 0 -1px 0 rgba(0, 0, 0, 0.2);
   --shadow-glass-accent:
     0 4px 20px rgba(109, 40, 217, 0.2), inset 0 1.5px 0 rgba(196, 181, 253, 0.2);
+
+  --glass-primary-bg: rgba(124, 58, 237, 0.3);
+  --glass-primary-border: rgba(196, 181, 253, 0.6);
+  --glass-primary-hover: rgba(124, 58, 237, 0.45);
+  --glass-primary-text: #ffffff;
+  --shadow-glass-primary:
+    0 0 8px rgba(196, 181, 253, 0.5), 0 0 24px rgba(124, 58, 237, 0.4),
+    0 4px 20px rgba(109, 40, 217, 0.3), inset 0 1.5px 0 rgba(255, 255, 255, 0.2);
   --shadow-topbar: 0 1px 3px rgba(0, 0, 0, 0.1);
   --hover-glass-bg: rgba(255, 255, 255, 0.1);
   --topbar-gradient: linear-gradient(
@@ -145,9 +179,36 @@
   );
   --footer-border: rgba(255, 255, 255, 0.08);
 
-  --app-orb-1: radial-gradient(ellipse, #1e0a3c 0%, transparent 70%);
-  --app-orb-2: radial-gradient(ellipse, #0a1a2e 0%, transparent 70%);
-  --app-orb-3: radial-gradient(ellipse, #1a0a0a 0%, transparent 70%);
+  --app-orb-1: radial-gradient(
+    ellipse,
+    rgba(91, 33, 182, 0.55) 0%,
+    transparent 70%
+  );
+  --app-orb-2: radial-gradient(
+    ellipse,
+    rgba(124, 58, 237, 0.4) 0%,
+    transparent 70%
+  );
+  --app-orb-3: radial-gradient(
+    ellipse,
+    rgba(76, 29, 149, 0.45) 0%,
+    transparent 70%
+  );
+  --app-orb-4: radial-gradient(
+    ellipse,
+    rgba(109, 40, 217, 0.35) 0%,
+    transparent 70%
+  );
+  --app-orb-5: radial-gradient(
+    ellipse,
+    rgba(139, 92, 246, 0.3) 0%,
+    transparent 70%
+  );
+  --app-orb-6: radial-gradient(
+    ellipse,
+    rgba(67, 20, 140, 0.4) 0%,
+    transparent 70%
+  );
 
   --logo-shimmer: linear-gradient(
     90deg,
@@ -206,6 +267,8 @@
 
   --success: #0f8a5f;
   --warning: #b46f1c;
+  --warning-subtle: rgba(180, 111, 28, 0.1);
+  --warning-border: rgba(180, 111, 28, 0.3);
   --danger: #c84545;
 
   --glass-bg: rgba(255, 255, 255, 0.62);
@@ -225,7 +288,16 @@
     0 2px 8px rgba(26, 24, 37, 0.08), 0 8px 32px rgba(76, 29, 149, 0.12),
     inset 0 1px 0 rgba(255, 255, 255, 0.95);
   --shadow-glass-accent:
-    0 4px 24px rgba(124, 58, 237, 0.20),
+    0 4px 24px rgba(124, 58, 237, 0.2),
+    inset 0 1.5px 0 rgba(255, 255, 255, 0.85);
+
+  --glass-primary-bg: rgba(109, 40, 217, 0.1);
+  --glass-primary-border: rgba(109, 40, 217, 0.5);
+  --glass-primary-hover: rgba(109, 40, 217, 0.18);
+  --glass-primary-text: #6d28d9;
+  --shadow-glass-primary:
+    0 0 8px rgba(109, 40, 217, 0.3), 0 0 20px rgba(109, 40, 217, 0.2),
+    0 4px 16px rgba(109, 40, 217, 0.15),
     inset 0 1.5px 0 rgba(255, 255, 255, 0.85);
   --shadow-topbar: 0 1px 2px rgba(26, 24, 37, 0.04);
   --hover-glass-bg: rgba(26, 24, 37, 0.06);
@@ -237,11 +309,11 @@
   --topbar-border: rgba(26, 24, 37, 0.1);
 
   --orb-1: #c4b5fd;
-  --orb-1-a: 0.90;
+  --orb-1-a: 0.9;
   --orb-2: #fbcfe8;
-  --orb-2-a: 0.80;
+  --orb-2-a: 0.8;
   --orb-3: #ddd6fe;
-  --orb-3-a: 0.90;
+  --orb-3-a: 0.9;
   --bg-overlay: rgba(250, 249, 251, 0.74);
 
   --footer-gradient: linear-gradient(
@@ -254,6 +326,9 @@
   --app-orb-1: radial-gradient(ellipse, #e9e5ff 0%, transparent 70%);
   --app-orb-2: radial-gradient(ellipse, #f3e8ff 0%, transparent 70%);
   --app-orb-3: radial-gradient(ellipse, #faf5ff 0%, transparent 70%);
+  --app-orb-4: radial-gradient(ellipse, #ede9fe 0%, transparent 70%);
+  --app-orb-5: radial-gradient(ellipse, #f5f3ff 0%, transparent 70%);
+  --app-orb-6: radial-gradient(ellipse, #e8e4ff 0%, transparent 70%);
 
   --logo-shimmer: linear-gradient(
     90deg,
@@ -322,6 +397,8 @@
   --color-warning: var(--warning);
   --color-danger: var(--danger);
   --animate-shimmer: shimmer 3s infinite;
+  --animate-cp-dot: cp-dot 1.2s ease infinite;
+  --animate-cp-fadein: cp-fadein 0.35s ease;
 }
 
 @layer base {
@@ -335,5 +412,9 @@
   }
   html {
     @apply font-sans;
+  }
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
   }
 }
