@@ -10,8 +10,12 @@ from pydantic import BaseModel, Field
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.responses import Response
 
+import filtering
+import reco_ai
 import scraper
 import tmdb
+from models import RecommendRequest
+from repositories import watch_history as watch_history_repo
 from repositories import watchlist as watchlist_repo
 from supabase_client import supabase
 
@@ -21,6 +25,7 @@ app = FastAPI(title="CinePick API", version="0.1.0")
 
 TAG_HEALTH = "health"
 TAG_LETTERBOXD = "letterboxd"
+TAG_RECOMMEND = "recommend"
 
 
 class CatchAllMiddleware(BaseHTTPMiddleware):
@@ -199,4 +204,64 @@ async def letterboxd_sync(
     return {
         "film_count": len(films),
         "sync_duration_ms": int((time.monotonic() - start) * 1000),
+    }
+
+
+class RecommendedFilm(BaseModel):
+    title: str
+    poster_url: str | None
+    year: int | None
+    runtime: int | None
+    overview: str | None
+    genres: list[str]
+    origin_country: list[str]
+
+
+class RecommendResponse(BaseModel):
+    film: RecommendedFilm
+
+
+@app.post("/recommend", response_model=RecommendResponse, tags=[TAG_RECOMMEND])
+async def recommend(
+    body: RecommendRequest,
+    user_id: str = Depends(get_current_user_id),
+):
+    """Pre-filter the user's watchlist against the questionnaire answers,
+    then proxy an AI call to pick one film among the candidates (CIN-49)."""
+    active_watchlist = watchlist_repo.get_active_watchlist(user_id)
+    excluded_ids = (
+        set() if body.seen == "any" else watch_history_repo.get_excluded_film_ids(user_id)
+    )
+
+    try:
+        candidates = filtering.filter_candidates(active_watchlist, body, excluded_ids)
+    except filtering.EmptyWatchlistError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail={"type": "empty_watchlist", "message": "Your watchlist has no active films"},
+        ) from exc
+    except filtering.NoCandidatesError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail={"type": "no_candidates", "message": "No film matches the selected filters"},
+        ) from exc
+
+    try:
+        chosen = await reco_ai.pick_film(candidates, body)
+    except reco_ai.AIProviderError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail={"type": "ai_error", "message": "The AI recommendation call failed"},
+        ) from exc
+
+    return {
+        "film": {
+            "title": chosen.title,
+            "poster_url": chosen.poster_url,
+            "year": chosen.year,
+            "runtime": chosen.runtime,
+            "overview": chosen.overview,
+            "genres": chosen.genres,
+            "origin_country": chosen.origin_country,
+        }
     }

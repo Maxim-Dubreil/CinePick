@@ -1,10 +1,12 @@
 import pytest
 from fastapi.testclient import TestClient
 
+import reco_ai
 import scraper
 import tmdb
 from main import app
-from models import Film
+from models import Film, WatchlistFilm
+from repositories import watch_history as watch_history_repo
 from repositories import watchlist as watchlist_repo
 
 client = TestClient(app)
@@ -151,4 +153,84 @@ def test_letterboxd_sync_empty_username():
 
 def test_letterboxd_sync_requires_auth():
     response = client.post("/letterboxd/sync", json={"letterboxd_username": "cinephile"})
+    assert response.status_code == 401
+
+
+TAG_RECOMMEND = "recommend"  # not asserted on; just documents the route's tag
+
+
+def _film(id: str, **overrides) -> WatchlistFilm:
+    defaults = dict(
+        letterboxd_slug=id, title=f"Film {id}", year=2020, poster_url="http://x/p.jpg",
+        genres=["35"], runtime=100, origin_country=["US"], overview="A synopsis.",
+    )
+    return WatchlistFilm(id=id, **{**defaults, **overrides})
+
+
+RECOMMEND_BODY = {
+    "genre": ["none"], "emotion": ["Zen"], "ambiance": ["none"], "withWho": "any",
+    "duration": "any", "era": "any", "region": ["none"], "subtitles": "any", "seen": "any",
+}
+
+
+def _patch_recommend(monkeypatch, *, films=None, excluded=None, chosen=None, ai_raises=None):
+    monkeypatch.setattr(watchlist_repo, "get_active_watchlist", lambda user_id: films or [])
+    monkeypatch.setattr(
+        watch_history_repo, "get_excluded_film_ids", lambda user_id: excluded or set()
+    )
+
+    async def fake_pick_film(candidates, answers):
+        if ai_raises is not None:
+            raise ai_raises
+        return chosen or candidates[0]
+
+    monkeypatch.setattr(reco_ai, "pick_film", fake_pick_film)
+
+
+def test_recommend_nominal(monkeypatch):
+    film = _film("a")
+    _patch_recommend(monkeypatch, films=[film], chosen=film)
+
+    response = client.post("/recommend", json=RECOMMEND_BODY, headers=AUTH_HEADERS)
+
+    assert response.status_code == 200
+    data = response.json()["film"]
+    assert data["title"] == "Film a"
+    assert data["overview"] == "A synopsis."
+    assert data["genres"] == ["35"]
+
+
+def test_recommend_empty_watchlist(monkeypatch):
+    _patch_recommend(monkeypatch, films=[])
+
+    response = client.post("/recommend", json=RECOMMEND_BODY, headers=AUTH_HEADERS)
+
+    assert response.status_code == 422
+    assert response.json()["detail"]["type"] == "empty_watchlist"
+
+
+def test_recommend_no_candidates(monkeypatch):
+    film = _film("a", genres=["27"])
+    _patch_recommend(monkeypatch, films=[film])
+
+    body = {**RECOMMEND_BODY, "genre": ["35"]}
+    response = client.post("/recommend", json=body, headers=AUTH_HEADERS)
+
+    assert response.status_code == 422
+    assert response.json()["detail"]["type"] == "no_candidates"
+
+
+def test_recommend_ai_error(monkeypatch):
+    film = _film("a")
+    _patch_recommend(monkeypatch, films=[film], ai_raises=reco_ai.AIProviderError("boom"))
+
+    response = client.post("/recommend", json=RECOMMEND_BODY, headers=AUTH_HEADERS)
+
+    assert response.status_code == 502
+    assert response.json()["detail"]["type"] == "ai_error"
+
+
+def test_recommend_requires_auth(monkeypatch):
+    _patch_recommend(monkeypatch, films=[_film("a")])
+    response = client.post("/recommend", json=RECOMMEND_BODY)
     assert response.status_code == 401
