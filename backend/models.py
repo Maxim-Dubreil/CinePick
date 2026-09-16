@@ -75,3 +75,4 @@ class EnrichedFilm(BaseModel):
     genres: list[str] = Field(default_factory=list)
     runtime: int | None = None
     origin_country: list[str] = Field(default_factory=list)
+    overview: str | None = None

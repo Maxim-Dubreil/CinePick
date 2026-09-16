@@ -25,7 +25,8 @@ def _table_mock(supabase_mock, table_name: str) -> MagicMock:
 def test_merge_enrichment_with_data():
     film = Film(slug="film-a", title="Film A", year=2020, poster_url="http://x/p.jpg")
     enrichment = FilmEnrichment(
-        tmdb_id=42, genres=[28, 12], runtime=120, year=2021, origin_country=["US"]
+        tmdb_id=42, genres=[28, 12], runtime=120, year=2021, origin_country=["US"],
+        overview="A test synopsis.",
     )
 
     merged = watchlist.merge_enrichment(film, enrichment)
@@ -36,6 +37,7 @@ def test_merge_enrichment_with_data():
     assert merged.runtime == 120
     assert merged.year == 2021  # TMDB year wins over the scraped year
     assert merged.origin_country == ["US"]
+    assert merged.overview == "A test synopsis."
 
 
 def test_merge_enrichment_without_data_keeps_scraped_fields():
@@ -105,6 +107,7 @@ def test_upsert_films_omits_enrichment_keys_when_unenriched(supabase_mock):
             genres=["28"],
             runtime=120,
             origin_country=["US"],
+            overview="A test synopsis.",
         ),
     ]
 
@@ -117,10 +120,12 @@ def test_upsert_films_omits_enrichment_keys_when_unenriched(supabase_mock):
     for key in ("tmdb_id", "genres", "runtime", "origin_country"):
         assert key not in unenriched_record
 
+    assert "overview" not in unenriched_record
     assert enriched_record["tmdb_id"] == 42
     assert enriched_record["genres"] == ["28"]
     assert enriched_record["runtime"] == 120
     assert enriched_record["origin_country"] == ["US"]
+    assert enriched_record["overview"] == "A test synopsis."
 
 
 @pytest.mark.integration
