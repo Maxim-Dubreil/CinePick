@@ -23,7 +23,7 @@ from models import RecommendRequest, WatchlistFilm
 
 logger = logging.getLogger(__name__)
 
-_MODEL = "gemini-2.5-flash"
+_MODEL = "gemini-3.6-flash"
 _REQUEST_TIMEOUT = 10.0
 _OVERVIEW_MAX_CHARS = 200
 _RESPONSE_SCHEMA = {
