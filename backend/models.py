@@ -54,6 +54,9 @@ class FilmEnrichment(BaseModel):
     origin_country: list[str]
     """ISO 3166-1 country codes from `production_countries` — never `original_language`."""
 
+    overview: str | None = None
+    """TMDB synopsis — `None` when TMDB doesn't provide one for this film."""
+
 
 class EnrichedFilm(BaseModel):
     """A scraped film merged with its (optional) TMDB enrichment.

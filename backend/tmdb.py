@@ -57,6 +57,7 @@ async def _fetch_details(client: httpx.AsyncClient, tmdb_id: int) -> FilmEnrichm
         runtime=data.get("runtime"),
         year=_parse_year(data.get("release_date")),
         origin_country=[c["iso_3166_1"] for c in data.get("production_countries", [])],
+        overview=data.get("overview") or None,
     )
 
 
