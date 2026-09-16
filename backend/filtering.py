@@ -48,6 +48,7 @@ class NoCandidatesError(Exception):
 
 
 def _matches(film: WatchlistFilm, answers: RecommendRequest, excluded_ids: set[str]) -> bool:
+    """Apply the 5 hard filters to a single film."""
     if "none" not in answers.genre and not (set(answers.genre) & set(film.genres)):
         return False
     if answers.duration != "any":

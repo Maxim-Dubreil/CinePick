@@ -258,6 +258,36 @@ def test_get_active_watchlist_maps_joined_rows(supabase_mock):
     assert is_args == ("removed_at", "null")
 
 
+def test_get_active_watchlist_normalizes_null_arrays(supabase_mock):
+    """Unenriched films store an explicit SQL NULL for `genres`/`origin_country`
+    (see backend/db/schema.sql), which `films(*)` returns as-is — must not
+    raise a ValidationError, must normalize to an empty list instead."""
+    table = _table_mock(supabase_mock, "user_watchlist_items")
+    table.select.return_value.eq.return_value.is_.return_value.execute.return_value = MagicMock(
+        data=[
+            {
+                "films": {
+                    "id": "film-uuid-2",
+                    "letterboxd_slug": "film-b",
+                    "title": "Film B",
+                    "year": 2021,
+                    "poster_url": None,
+                    "genres": None,
+                    "runtime": None,
+                    "origin_country": None,
+                    "overview": None,
+                }
+            }
+        ]
+    )
+
+    result = watchlist.get_active_watchlist("user-1")
+
+    assert len(result) == 1
+    assert result[0].genres == []
+    assert result[0].origin_country == []
+
+
 def test_get_active_watchlist_empty(supabase_mock):
     table = _table_mock(supabase_mock, "user_watchlist_items")
     table.select.return_value.eq.return_value.is_.return_value.execute.return_value = MagicMock(

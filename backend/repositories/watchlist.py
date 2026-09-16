@@ -61,7 +61,9 @@ def upsert_films(films: list[EnrichedFilm]) -> dict[str, str]:
         return {}
     records = []
     for film in films:
-        record = film.model_dump(exclude={"tmdb_id", "genres", "runtime", "origin_country", "overview"})
+        record = film.model_dump(
+            exclude={"tmdb_id", "genres", "runtime", "origin_country", "overview"}
+        )
         if film.tmdb_id is not None:
             record["tmdb_id"] = film.tmdb_id
             record["genres"] = film.genres

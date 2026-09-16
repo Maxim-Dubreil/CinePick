@@ -14,11 +14,15 @@ _WATCH_HISTORY_TABLE = "watch_history"
 
 
 class WatchHistoryRow(TypedDict):
+    """Response row from a `watch_history` select."""
+
     film_id: str
 
 
 def get_excluded_film_ids(user_id: str) -> set[str]:
     """Every film id already decided on (accepted or skipped) by this user."""
-    response = supabase.table(_WATCH_HISTORY_TABLE).select("film_id").eq("user_id", user_id).execute()
+    response = (
+        supabase.table(_WATCH_HISTORY_TABLE).select("film_id").eq("user_id", user_id).execute()
+    )
     rows: list[WatchHistoryRow] = response.data  # type: ignore[assignment]
     return {row["film_id"] for row in rows}

@@ -1,8 +1,9 @@
-"""Pydantic models for Letterboxd scraping."""
+"""Pydantic models: Letterboxd scraping, watchlist storage, and the
+/recommend questionnaire/response contract."""
 
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class Film(BaseModel):
@@ -97,6 +98,14 @@ class WatchlistFilm(BaseModel):
     runtime: int | None = None
     origin_country: list[str] = Field(default_factory=list)
     overview: str | None = None
+
+    @field_validator("genres", "origin_country", mode="before")
+    @classmethod
+    def _null_array_to_empty(cls, value: object) -> object:
+        """`films.genres`/`origin_country` are nullable: PostgREST writes an
+        explicit NULL for unenriched films in a mixed upsert batch (see
+        backend/db/schema.sql and test_upsert_films_mixed_batch_against_real_db)."""
+        return [] if value is None else value
 
 
 class RecommendRequest(BaseModel):
