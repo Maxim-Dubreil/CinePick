@@ -217,3 +217,51 @@ def test_sync_user_watchlist_upsert_omits_added_at(supabase_mock):
 
     upserted_rows = table.upsert.call_args[0][0]
     assert all("added_at" not in row for row in upserted_rows)
+
+
+# --- get_active_watchlist --------------------------------------------------
+
+
+def test_get_active_watchlist_maps_joined_rows(supabase_mock):
+    table = _table_mock(supabase_mock, "user_watchlist_items")
+    table.select.return_value.eq.return_value.is_.return_value.execute.return_value = MagicMock(
+        data=[
+            {
+                "films": {
+                    "id": "film-uuid-1",
+                    "letterboxd_slug": "film-a",
+                    "title": "Film A",
+                    "year": 2020,
+                    "poster_url": "http://x/a.jpg",
+                    "genres": ["35"],
+                    "runtime": 100,
+                    "origin_country": ["US"],
+                    "overview": "A synopsis.",
+                }
+            }
+        ]
+    )
+
+    result = watchlist.get_active_watchlist("user-1")
+
+    assert len(result) == 1
+    film = result[0]
+    assert film.id == "film-uuid-1"
+    assert film.letterboxd_slug == "film-a"
+    assert film.genres == ["35"]
+    assert film.overview == "A synopsis."
+
+    table.select.assert_called_once_with("films(*)")
+    eq_args = table.select.return_value.eq.call_args[0]
+    assert eq_args == ("user_id", "user-1")
+    is_args = table.select.return_value.eq.return_value.is_.call_args[0]
+    assert is_args == ("removed_at", "null")
+
+
+def test_get_active_watchlist_empty(supabase_mock):
+    table = _table_mock(supabase_mock, "user_watchlist_items")
+    table.select.return_value.eq.return_value.is_.return_value.execute.return_value = MagicMock(
+        data=[]
+    )
+
+    assert watchlist.get_active_watchlist("user-1") == []

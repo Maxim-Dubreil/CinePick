@@ -10,7 +10,7 @@ resync.
 from datetime import UTC, datetime
 from typing import TypedDict
 
-from models import EnrichedFilm, Film, FilmEnrichment
+from models import EnrichedFilm, Film, FilmEnrichment, WatchlistFilm
 from supabase_client import supabase
 
 
@@ -99,3 +99,22 @@ def sync_user_watchlist(user_id: str, active_film_ids: set[str]) -> None:
             [{"user_id": user_id, "film_id": fid, "removed_at": None} for fid in active_film_ids],
             on_conflict="user_id,film_id",
         ).execute()
+
+
+class WatchlistItemRow(TypedDict):
+    """One row of a `user_watchlist_items` select joined against `films`."""
+
+    films: dict
+
+
+def get_active_watchlist(user_id: str) -> list[WatchlistFilm]:
+    """Read a user's currently active watchlist (soft-deleted rows excluded)."""
+    response = (
+        supabase.table(_WATCHLIST_TABLE)
+        .select("films(*)")
+        .eq("user_id", user_id)
+        .is_("removed_at", "null")
+        .execute()
+    )
+    rows: list[WatchlistItemRow] = response.data  # type: ignore[assignment]
+    return [WatchlistFilm(**row["films"]) for row in rows]

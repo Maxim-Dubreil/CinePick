@@ -76,3 +76,22 @@ class EnrichedFilm(BaseModel):
     runtime: int | None = None
     origin_country: list[str] = Field(default_factory=list)
     overview: str | None = None
+
+
+class WatchlistFilm(BaseModel):
+    """A film read back from a user's active watchlist, ready for filtering.
+
+    Distinct from `EnrichedFilm` (write-side, keyed by `letterboxd_slug`):
+    this carries the DB `id`, needed to compare against `watch_history` and
+    against whatever id the AI proxy returns.
+    """
+
+    id: str
+    letterboxd_slug: str
+    title: str
+    year: int | None
+    poster_url: str | None
+    genres: list[str] = Field(default_factory=list)
+    runtime: int | None = None
+    origin_country: list[str] = Field(default_factory=list)
+    overview: str | None = None
