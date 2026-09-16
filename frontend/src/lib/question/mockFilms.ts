@@ -25,7 +25,7 @@ export function generateMockFilms(count: number): MockFilm[] {
     const genreCount = Math.random() < 0.6 ? 1 : 2;
     const genres: string[] = [];
     while (genres.length < genreCount) {
-      const genre = pick(GENRES);
+      const genre = pick(GENRES).label;
       if (!genres.includes(genre)) genres.push(genre);
     }
     const country =
