@@ -1,5 +1,7 @@
 """Pydantic models for Letterboxd scraping."""
 
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 
@@ -95,3 +97,30 @@ class WatchlistFilm(BaseModel):
     runtime: int | None = None
     origin_country: list[str] = Field(default_factory=list)
     overview: str | None = None
+
+
+class RecommendRequest(BaseModel):
+    """Answers to the 9-question flow, sent as-is from the frontend.
+
+    Field names match `QuestionId` in `frontend/src/lib/question/types.ts`
+    exactly — no renaming layer. `genre`/`region` carry `["none"]` for "no
+    preference" (multi-select questions); the single-select fields carry
+    `"any"` for the same meaning, matching `questionnaire.ts`.
+    """
+
+    genre: list[str]
+    """TMDB genre ids as strings (e.g. `["35"]`), or `["none"]`."""
+    emotion: list[str]
+    """Not filtered — forwarded to the AI proxy as-is."""
+    ambiance: list[str]
+    """Not filtered — forwarded to the AI proxy as-is."""
+    withWho: Literal["seul", "amis", "couple", "famille", "any"]
+    """Not filtered — forwarded to the AI proxy as-is."""
+    duration: Literal["lt90", "90-120", "120-150", "150plus", "any"]
+    era: Literal["silent", "golden", "newwave", "blockbuster", "2000s", "recent", "any"]
+    region: list[str]
+    """ISO 3166-1 country codes, `["none"]`, or a user-typed custom region."""
+    subtitles: Literal["with", "without", "any"]
+    """Not filtered — forwarded to the AI proxy as-is."""
+    seen: Literal["nouveau", "any"]
+    """`"any"` disables the default watch_history exclusion (see filtering.py)."""
