@@ -124,6 +124,8 @@ async def pick_candidates(
         parsed = json.loads(raw)["candidates"]
         if not parsed:
             raise ValueError("AI returned zero candidates")
+        if len(parsed) > _MAX_CANDIDATES or len({c["film_id"] for c in parsed}) != len(parsed):
+            raise ValueError("AI returned more than the max candidates, or duplicate film ids")
         results = [
             RankedCandidate(
                 film=by_id[c["film_id"]],

@@ -72,6 +72,23 @@ async def test_pick_candidates_rejects_any_id_outside_candidates(monkeypatch):
         await reco_ai.pick_candidates(candidates, _answers())
 
 
+async def test_pick_candidates_rejects_duplicate_film_ids(monkeypatch):
+    candidates = [_film("a"), _film("b")]
+
+    async def fake_call(prompt: str) -> str:
+        return _gemini_response(
+            [
+                {"film_id": "a", "rank": 1, "match_score": 90, "critique": "Great fit."},
+                {"film_id": "a", "rank": 2, "match_score": 80, "critique": "Also great."},
+            ]
+        )
+
+    monkeypatch.setattr(reco_ai, "_call_gemini", fake_call)
+
+    with pytest.raises(reco_ai.AIProviderError):
+        await reco_ai.pick_candidates(candidates, _answers())
+
+
 async def test_pick_candidates_rejects_empty_candidate_list(monkeypatch):
     candidates = [_film("a")]
 
