@@ -47,7 +47,11 @@ create table watch_history (
   id uuid default gen_random_uuid() primary key,
   user_id uuid references users(id) on delete cascade not null,
   film_id uuid references films(id) on delete cascade not null,
-  decision text check (decision in ('accepted', 'skipped')) not null,
+  -- 'proposed' is written by /recommend for every candidate shown, before
+  -- the user swipes; /recommend/decision updates that row to 'accepted' or
+  -- 'skipped'. A decision with no matching 'proposed' row is rejected —
+  -- that's how we verify a film was actually shown, not just claimed.
+  decision text check (decision in ('proposed', 'accepted', 'skipped')) not null,
   questions_context jsonb,
   ai_critique text,
   match_score integer,
@@ -103,3 +107,7 @@ create policy "Users can view own history"
 create policy "Users can insert own history"
   on watch_history for insert
   with check (auth.uid() = user_id);
+
+create policy "Users can update own history"
+  on watch_history for update
+  using (auth.uid() = user_id);
