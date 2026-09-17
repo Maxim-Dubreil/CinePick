@@ -27,11 +27,17 @@ class DecisionHistoryRow(TypedDict):
 
 def get_decision_history(user_id: str) -> dict[str, datetime]:
     """Every film this user has ever been shown, mapped to when it was last
-    touched (proposed or decided) — regardless of what the decision is."""
+    touched (proposed or decided) — regardless of what the decision is.
+
+    A film can have multiple rows over time (no uniqueness constraint on
+    `(user_id, film_id)`), so results are ordered oldest-first: the dict
+    comprehension below then lets the last-iterated (= most recent) row for
+    each `film_id` win."""
     response = (
         supabase.table(_WATCH_HISTORY_TABLE)
         .select("film_id, decided_at")
         .eq("user_id", user_id)
+        .order("decided_at", desc=False)
         .execute()
     )
     rows: list[DecisionHistoryRow] = response.data  # type: ignore[assignment]

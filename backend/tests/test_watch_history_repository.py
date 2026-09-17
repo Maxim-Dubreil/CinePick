@@ -16,11 +16,13 @@ def _table_mock(supabase_mock, table_name: str) -> MagicMock:
 
 def test_get_decision_history_maps_film_id_to_decided_at(supabase_mock):
     table = _table_mock(supabase_mock, "watch_history")
-    table.select.return_value.eq.return_value.execute.return_value = MagicMock(
-        data=[
-            {"film_id": "film-1", "decided_at": "2026-01-15T10:00:00+00:00"},
-            {"film_id": "film-2", "decided_at": "2026-01-16T10:00:00+00:00"},
-        ]
+    table.select.return_value.eq.return_value.order.return_value.execute.return_value = (
+        MagicMock(
+            data=[
+                {"film_id": "film-1", "decided_at": "2026-01-15T10:00:00+00:00"},
+                {"film_id": "film-2", "decided_at": "2026-01-16T10:00:00+00:00"},
+            ]
+        )
     )
 
     result = watch_history.get_decision_history("user-1")
@@ -30,13 +32,35 @@ def test_get_decision_history_maps_film_id_to_decided_at(supabase_mock):
     table.select.assert_called_once_with("film_id, decided_at")
     eq_args = table.select.return_value.eq.call_args[0]
     assert eq_args == ("user_id", "user-1")
+    order_args, order_kwargs = table.select.return_value.eq.return_value.order.call_args
+    assert order_args == ("decided_at",)
+    assert order_kwargs == {"desc": False}
 
 
 def test_get_decision_history_empty(supabase_mock):
     table = _table_mock(supabase_mock, "watch_history")
-    table.select.return_value.eq.return_value.execute.return_value = MagicMock(data=[])
+    table.select.return_value.eq.return_value.order.return_value.execute.return_value = (
+        MagicMock(data=[])
+    )
 
     assert watch_history.get_decision_history("user-1") == {}
+
+
+def test_get_decision_history_uses_most_recent_when_film_has_multiple_rows(supabase_mock):
+    table = _table_mock(supabase_mock, "watch_history")
+    # Ascending order (oldest first), as the real `.order("decided_at", desc=False)` returns.
+    table.select.return_value.eq.return_value.order.return_value.execute.return_value = (
+        MagicMock(
+            data=[
+                {"film_id": "film-1", "decided_at": "2026-01-01T10:00:00+00:00"},
+                {"film_id": "film-1", "decided_at": "2026-01-20T10:00:00+00:00"},
+            ]
+        )
+    )
+
+    result = watch_history.get_decision_history("user-1")
+
+    assert result["film-1"] == datetime(2026, 1, 20, 10, 0, 0, tzinfo=UTC)
 
 
 def test_record_proposals_inserts_one_row_per_film(supabase_mock):
@@ -62,9 +86,8 @@ def test_record_proposals_empty_list_skips_call(supabase_mock):
 
 def test_record_decision_updates_matching_proposed_row(supabase_mock):
     table = _table_mock(supabase_mock, "watch_history")
-    table.update.return_value.eq.return_value.eq.return_value.eq.return_value.execute.return_value = MagicMock(
-        data=[{"id": "row-1"}]
-    )
+    chain = table.update.return_value.eq.return_value.eq.return_value.eq.return_value
+    chain.execute.return_value = MagicMock(data=[{"id": "row-1"}])
 
     result = watch_history.record_decision("user-1", "film-1", "accepted", 87, "Great pick.")
 
@@ -85,9 +108,8 @@ def test_record_decision_updates_matching_proposed_row(supabase_mock):
 
 def test_record_decision_no_matching_proposal_returns_false(supabase_mock):
     table = _table_mock(supabase_mock, "watch_history")
-    table.update.return_value.eq.return_value.eq.return_value.eq.return_value.execute.return_value = MagicMock(
-        data=[]
-    )
+    chain = table.update.return_value.eq.return_value.eq.return_value.eq.return_value
+    chain.execute.return_value = MagicMock(data=[])
 
     result = watch_history.record_decision("user-1", "film-1", "skipped", None, None)
 
