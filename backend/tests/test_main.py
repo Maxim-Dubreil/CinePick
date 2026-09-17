@@ -212,6 +212,7 @@ def test_recommend_short_circuits_with_three_or_fewer_candidates(monkeypatch):
     assert all(c["match_score"] is None and c["critique"] is None for c in data["candidates"])
     assert data["meta"]["candidates_considered"] == 2
     assert recorded[0][1] == ["b", "a"]  # proposals recorded in the order returned
+    assert [c["film_id"] for c in data["candidates"]] == recorded[0][1]
 
 
 def test_recommend_calls_ai_with_more_than_three_candidates(monkeypatch):

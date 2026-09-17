@@ -208,6 +208,7 @@ async def letterboxd_sync(
 
 
 class RecommendedFilm(BaseModel):
+    film_id: str
     title: str
     poster_url: str | None
     year: int | None
@@ -232,6 +233,7 @@ class RecommendResponse(BaseModel):
 def _to_recommended_film(ranked: RankedCandidate) -> dict:
     film = ranked.film
     return {
+        "film_id": film.id,
         "title": film.title,
         "poster_url": film.poster_url,
         "year": film.year,
