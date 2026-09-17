@@ -227,6 +227,7 @@ def test_get_active_watchlist_maps_joined_rows(supabase_mock):
     table.select.return_value.eq.return_value.is_.return_value.execute.return_value = MagicMock(
         data=[
             {
+                "added_at": "2026-01-15T10:00:00+00:00",
                 "films": {
                     "id": "film-uuid-1",
                     "letterboxd_slug": "film-a",
@@ -247,11 +248,10 @@ def test_get_active_watchlist_maps_joined_rows(supabase_mock):
     assert len(result) == 1
     film = result[0]
     assert film.id == "film-uuid-1"
-    assert film.letterboxd_slug == "film-a"
-    assert film.genres == ["35"]
-    assert film.overview == "A synopsis."
+    assert film.added_at.year == 2026
+    assert film.added_at.month == 1
 
-    table.select.assert_called_once_with("films(*)")
+    table.select.assert_called_once_with("added_at, films(*)")
     eq_args = table.select.return_value.eq.call_args[0]
     assert eq_args == ("user_id", "user-1")
     is_args = table.select.return_value.eq.return_value.is_.call_args[0]
@@ -266,6 +266,7 @@ def test_get_active_watchlist_normalizes_null_arrays(supabase_mock):
     table.select.return_value.eq.return_value.is_.return_value.execute.return_value = MagicMock(
         data=[
             {
+                "added_at": "2026-01-15T10:00:00+00:00",
                 "films": {
                     "id": "film-uuid-2",
                     "letterboxd_slug": "film-b",

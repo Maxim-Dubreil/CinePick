@@ -1,6 +1,7 @@
 """Pydantic models: Letterboxd scraping, watchlist storage, and the
 /recommend questionnaire/response contract."""
 
+from datetime import datetime
 from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
@@ -98,6 +99,9 @@ class WatchlistFilm(BaseModel):
     runtime: int | None = None
     origin_country: list[str] = Field(default_factory=list)
     overview: str | None = None
+    added_at: datetime
+    """When this film was added to the user's watchlist — used to sort the
+    no-AI short-circuit path deterministically (oldest first)."""
 
     @field_validator("genres", "origin_country", mode="before")
     @classmethod

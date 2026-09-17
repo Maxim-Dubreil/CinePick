@@ -106,6 +106,7 @@ def sync_user_watchlist(user_id: str, active_film_ids: set[str]) -> None:
 class WatchlistItemRow(TypedDict):
     """One row of a `user_watchlist_items` select joined against `films`."""
 
+    added_at: str
     films: dict
 
 
@@ -113,10 +114,10 @@ def get_active_watchlist(user_id: str) -> list[WatchlistFilm]:
     """Read a user's currently active watchlist (soft-deleted rows excluded)."""
     response = (
         supabase.table(_WATCHLIST_TABLE)
-        .select("films(*)")
+        .select("added_at, films(*)")
         .eq("user_id", user_id)
         .is_("removed_at", "null")
         .execute()
     )
     rows: list[WatchlistItemRow] = response.data  # type: ignore[assignment]
-    return [WatchlistFilm(**row["films"]) for row in rows]
+    return [WatchlistFilm(**row["films"], added_at=row["added_at"]) for row in rows]
