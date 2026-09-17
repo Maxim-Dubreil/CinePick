@@ -14,7 +14,7 @@ import filtering
 import reco_ai
 import scraper
 import tmdb
-from models import RecommendRequest
+from models import RankedCandidate, RecommendRequest
 from repositories import watch_history as watch_history_repo
 from repositories import watchlist as watchlist_repo
 from supabase_client import supabase
@@ -215,10 +215,34 @@ class RecommendedFilm(BaseModel):
     overview: str | None
     genres: list[str]
     origin_country: list[str]
+    rank: int
+    match_score: int | None
+    critique: str | None
+
+
+class RecommendMeta(BaseModel):
+    candidates_considered: int
 
 
 class RecommendResponse(BaseModel):
-    film: RecommendedFilm
+    candidates: list[RecommendedFilm]
+    meta: RecommendMeta
+
+
+def _to_recommended_film(ranked: RankedCandidate) -> dict:
+    film = ranked.film
+    return {
+        "title": film.title,
+        "poster_url": film.poster_url,
+        "year": film.year,
+        "runtime": film.runtime,
+        "overview": film.overview,
+        "genres": film.genres,
+        "origin_country": film.origin_country,
+        "rank": ranked.rank,
+        "match_score": ranked.match_score,
+        "critique": ranked.critique,
+    }
 
 
 @app.post("/recommend", response_model=RecommendResponse, tags=[TAG_RECOMMEND])
@@ -226,15 +250,15 @@ async def recommend(
     body: RecommendRequest,
     user_id: str = Depends(get_current_user_id),
 ):
-    """Pre-filter the user's watchlist against the questionnaire answers,
-    then proxy an AI call to pick one film among the candidates (CIN-49)."""
+    """Pre-filter the user's watchlist, then either short-circuit (≤3
+    candidates, no AI) or proxy an AI call to rank up to 3 (CIN-49/CIN-78).
+    Records a "proposed" row per candidate before responding, so a later
+    /recommend/decision call has something to verify against."""
     active_watchlist = watchlist_repo.get_active_watchlist(user_id)
-    excluded_ids = (
-        set() if body.seen == "any" else watch_history_repo.get_excluded_film_ids(user_id)
-    )
+    decision_history = watch_history_repo.get_decision_history(user_id)
 
     try:
-        candidates = filtering.filter_candidates(active_watchlist, body, excluded_ids)
+        candidates = filtering.filter_candidates(active_watchlist, body, decision_history)
     except filtering.EmptyWatchlistError as exc:
         raise HTTPException(
             status_code=422,
@@ -246,22 +270,26 @@ async def recommend(
             detail={"type": "no_candidates", "message": "No film matches the selected filters"},
         ) from exc
 
-    try:
-        chosen = await reco_ai.pick_film(candidates, body)
-    except reco_ai.AIProviderError as exc:
-        raise HTTPException(
-            status_code=502,
-            detail={"type": "ai_error", "message": "The AI recommendation call failed"},
-        ) from exc
+    if len(candidates) <= 3:
+        sorted_films = sorted(candidates, key=lambda f: f.added_at)
+        ranked = [
+            RankedCandidate(film=film, rank=i + 1, match_score=None, critique=None)
+            for i, film in enumerate(sorted_films)
+        ]
+    else:
+        try:
+            ranked = await reco_ai.pick_candidates(candidates, body)
+        except reco_ai.AIProviderError as exc:
+            raise HTTPException(
+                status_code=502,
+                detail={"type": "ai_error", "message": "The AI recommendation call failed"},
+            ) from exc
+
+    watch_history_repo.record_proposals(
+        user_id, [r.film.id for r in ranked], body.model_dump()
+    )
 
     return {
-        "film": {
-            "title": chosen.title,
-            "poster_url": chosen.poster_url,
-            "year": chosen.year,
-            "runtime": chosen.runtime,
-            "overview": chosen.overview,
-            "genres": chosen.genres,
-            "origin_country": chosen.origin_country,
-        }
+        "candidates": [_to_recommended_film(r) for r in ranked],
+        "meta": {"candidates_considered": len(candidates)},
     }

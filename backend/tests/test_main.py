@@ -1,3 +1,5 @@
+from datetime import UTC, datetime
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -5,7 +7,7 @@ import reco_ai
 import scraper
 import tmdb
 from main import app
-from models import Film, WatchlistFilm
+from models import Film, RankedCandidate, WatchlistFilm
 from repositories import watch_history as watch_history_repo
 from repositories import watchlist as watchlist_repo
 
@@ -163,6 +165,7 @@ def _film(id: str, **overrides) -> WatchlistFilm:
     defaults = dict(
         letterboxd_slug=id, title=f"Film {id}", year=2020, poster_url="http://x/p.jpg",
         genres=["35"], runtime=100, origin_country=["US"], overview="A synopsis.",
+        added_at=datetime(2026, 1, 1, tzinfo=UTC),
     )
     return WatchlistFilm(id=id, **{**defaults, **overrides})
 
@@ -173,31 +176,56 @@ RECOMMEND_BODY = {
 }
 
 
-def _patch_recommend(monkeypatch, *, films=None, excluded=None, chosen=None, ai_raises=None):
+def _patch_recommend(monkeypatch, *, films=None, history=None, ranked=None, ai_raises=None):
     monkeypatch.setattr(watchlist_repo, "get_active_watchlist", lambda user_id: films or [])
+    monkeypatch.setattr(watch_history_repo, "get_decision_history", lambda user_id: history or {})
+    recorded = []
     monkeypatch.setattr(
-        watch_history_repo, "get_excluded_film_ids", lambda user_id: excluded or set()
+        watch_history_repo,
+        "record_proposals",
+        lambda user_id, film_ids, ctx: recorded.append((user_id, film_ids, ctx)),
     )
 
-    async def fake_pick_film(candidates, answers):
+    async def fake_pick_candidates(candidates, answers):
         if ai_raises is not None:
             raise ai_raises
-        return chosen or candidates[0]
+        return ranked or [
+            RankedCandidate(film=candidates[0], rank=1, match_score=80, critique="Nice.")
+        ]
 
-    monkeypatch.setattr(reco_ai, "pick_film", fake_pick_film)
+    monkeypatch.setattr(reco_ai, "pick_candidates", fake_pick_candidates)
+    return recorded
 
 
-def test_recommend_nominal(monkeypatch):
-    film = _film("a")
-    _patch_recommend(monkeypatch, films=[film], chosen=film)
+def test_recommend_short_circuits_with_three_or_fewer_candidates(monkeypatch):
+    films = [
+        _film("a", added_at=datetime(2026, 1, 2, tzinfo=UTC)),
+        _film("b", added_at=datetime(2026, 1, 1, tzinfo=UTC)),
+    ]
+    recorded = _patch_recommend(monkeypatch, films=films)
 
     response = client.post("/recommend", json=RECOMMEND_BODY, headers=AUTH_HEADERS)
 
     assert response.status_code == 200
-    data = response.json()["film"]
-    assert data["title"] == "Film a"
-    assert data["overview"] == "A synopsis."
-    assert data["genres"] == ["35"]
+    data = response.json()
+    assert [c["title"] for c in data["candidates"]] == ["Film b", "Film a"]  # oldest first
+    assert all(c["match_score"] is None and c["critique"] is None for c in data["candidates"])
+    assert data["meta"]["candidates_considered"] == 2
+    assert recorded[0][1] == ["b", "a"]  # proposals recorded in the order returned
+
+
+def test_recommend_calls_ai_with_more_than_three_candidates(monkeypatch):
+    films = [_film(str(i)) for i in range(4)]
+    chosen = RankedCandidate(film=films[2], rank=1, match_score=95, critique="Top pick.")
+    _patch_recommend(monkeypatch, films=films, ranked=[chosen])
+
+    response = client.post("/recommend", json=RECOMMEND_BODY, headers=AUTH_HEADERS)
+
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data["candidates"]) == 1
+    assert data["candidates"][0]["match_score"] == 95
+    assert data["candidates"][0]["critique"] == "Top pick."
 
 
 def test_recommend_empty_watchlist(monkeypatch):
@@ -221,8 +249,8 @@ def test_recommend_no_candidates(monkeypatch):
 
 
 def test_recommend_ai_error(monkeypatch):
-    film = _film("a")
-    _patch_recommend(monkeypatch, films=[film], ai_raises=reco_ai.AIProviderError("boom"))
+    films = [_film(str(i)) for i in range(4)]
+    _patch_recommend(monkeypatch, films=films, ai_raises=reco_ai.AIProviderError("boom"))
 
     response = client.post("/recommend", json=RECOMMEND_BODY, headers=AUTH_HEADERS)
 
