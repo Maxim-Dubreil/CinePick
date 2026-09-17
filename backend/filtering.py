@@ -6,7 +6,20 @@ pre-assigned bucket); the boundaries below are derived from the question
 option labels in `questionnaire.ts` (e.g. "1h30-2h" -> [90, 120)).
 """
 
+from datetime import UTC, datetime, timedelta
+
 from models import RecommendRequest, WatchlistFilm
+
+_SESSION_WINDOW = timedelta(minutes=15)
+"""How long a just-touched film is excluded unconditionally, regardless of
+the "déjà vu" answer — a starting threshold, not a fixed contract (see
+design doc's Points ouverts)."""
+
+
+def _now() -> datetime:
+    """Isolated for monkeypatching in tests — the only place `filtering.py`
+    reads wall-clock time."""
+    return datetime.now(UTC)
 
 
 def duration_bucket(runtime: int | None) -> str | None:
@@ -47,8 +60,10 @@ class NoCandidatesError(Exception):
     """Raised when at least one film exists but none survive the hard filters."""
 
 
-def _matches(film: WatchlistFilm, answers: RecommendRequest, excluded_ids: set[str]) -> bool:
-    """Apply the 5 hard filters to a single film."""
+def _matches(
+    film: WatchlistFilm, answers: RecommendRequest, decision_history: dict[str, datetime]
+) -> bool:
+    """Apply the 5 hard filters plus the two-layer history exclusion."""
     if "none" not in answers.genre and not (set(answers.genre) & set(film.genres)):
         return False
     if answers.duration != "any":
@@ -61,19 +76,26 @@ def _matches(film: WatchlistFilm, answers: RecommendRequest, excluded_ids: set[s
             return False
     if "none" not in answers.region and not (set(answers.region) & set(film.origin_country)):
         return False
-    if answers.seen != "any" and film.id in excluded_ids:
-        return False
+
+    touched_at = decision_history.get(film.id)
+    if touched_at is not None:
+        if _now() - touched_at < _SESSION_WINDOW:
+            return False
+        if answers.seen != "any":
+            return False
     return True
 
 
 def filter_candidates(
-    films: list[WatchlistFilm], answers: RecommendRequest, excluded_ids: set[str]
+    films: list[WatchlistFilm],
+    answers: RecommendRequest,
+    decision_history: dict[str, datetime],
 ) -> list[WatchlistFilm]:
     """Apply the 5 hard filters. Raises rather than returning an empty list —
     both empty cases are domain errors for `/recommend`, not valid results."""
     if not films:
         raise EmptyWatchlistError("watchlist has no active films")
-    candidates = [f for f in films if _matches(f, answers, excluded_ids)]
+    candidates = [f for f in films if _matches(f, answers, decision_history)]
     if not candidates:
         raise NoCandidatesError("no film matches the selected filters")
     return candidates
