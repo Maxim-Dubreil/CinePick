@@ -74,6 +74,13 @@ def test_record_decision_updates_matching_proposed_row(supabase_mock):
     assert update_payload["match_score"] == 87
     assert update_payload["ai_critique"] == "Great pick."
     assert "decided_at" in update_payload
+    # Verify the three .eq() filters in correct order
+    assert table.update.return_value.eq.call_args[0] == ("user_id", "user-1")
+    assert table.update.return_value.eq.return_value.eq.call_args[0] == ("film_id", "film-1")
+    assert table.update.return_value.eq.return_value.eq.return_value.eq.call_args[0] == (
+        "decision",
+        "proposed",
+    )
 
 
 def test_record_decision_no_matching_proposal_returns_false(supabase_mock):
@@ -85,3 +92,10 @@ def test_record_decision_no_matching_proposal_returns_false(supabase_mock):
     result = watch_history.record_decision("user-1", "film-1", "skipped", None, None)
 
     assert result is False
+    # Verify the three .eq() filters in correct order
+    assert table.update.return_value.eq.call_args[0] == ("user_id", "user-1")
+    assert table.update.return_value.eq.return_value.eq.call_args[0] == ("film_id", "film-1")
+    assert table.update.return_value.eq.return_value.eq.return_value.eq.call_args[0] == (
+        "decision",
+        "proposed",
+    )
