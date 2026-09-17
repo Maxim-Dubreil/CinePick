@@ -59,7 +59,7 @@ erDiagram
         uuid id PK
         uuid user_id FK
         uuid film_id FK
-        text decision "accepted ou skipped (CHECK constraint) - jamais 'declined', valeur alignee sur le vocabulaire deja utilise dans l'UI (bouton Skip)"
+        text decision "'proposed'/'accepted'/'skipped' (CHECK constraint) - jamais 'declined', valeur alignee sur le vocabulaire deja utilise dans l'UI (bouton Skip)"
         jsonb questions_context "snapshot des 9 reponses au moment de la decision - seule trace DB de la session, le reste (compteurs, conversation Gemini) reste volatile cote front"
         text ai_critique "vient de Gemini, NULL si court-circuit sans IA (sous-ensemble filtre <= 3 films, voir Specs AI)"
         int4 match_score "score de confiance donne par l'IA elle-meme (declaratif, pas calcule) - NULL si court-circuit sans IA"
@@ -90,7 +90,8 @@ Si tu modifies ce schéma ou le code qui l'utilise, vérifie que :
 1. Tout insert dans `films.genres` écrit des `genre_id` TMDB (entiers), jamais des noms de genre
 2. Tout insert dans `films.origin_country` utilise `origin_country`/`production_countries` de TMDB, jamais `original_language`
 3. Aucun code ne réintroduit une colonne pour `providers`, `trailer_url` ou la note TMDB — ces trois données doivent rester en fetch live
-4. `watch_history.decision` n'accepte que `'accepted'`/`'skipped'` (contrainte `CHECK` existante) — pas `'declined'` ni d'autre variante
+4. `watch_history.decision` n'accepte que `'proposed'`/`'accepted'`/`'skipped'` (contrainte `CHECK` existante) — pas `'declined'` ni d'autre variante. `/recommend` insère les lignes en `'proposed'` ; `/recommend/decision` les fait passer à `'accepted'`/`'skipped'`, ce qui vérifie que le film a réellement été proposé avant d'accepter une décision dessus
 5. Aucune table de session n'est ajoutée pour stocker l'état du flow Questions → Résultat — ça doit rester du state front
+6. La table `watch_history` a désormais une policy RLS `UPDATE` (en plus d'insert/select), nécessaire pour que `/recommend/decision` puisse faire transitionner une ligne `'proposed'`
 6. `films.tmdb_id`, `genres`, `runtime`, `origin_country` restent tous les quatre NULLABLE — ne jamais remettre de contrainte `NOT NULL` dessus (voir le commentaire sur `origin_country` ci-dessus pour le pourquoi)
 7. `repositories/watchlist.py::upsert_films` n'écrit ces quatre colonnes que si le film a été enrichi (`tmdb_id is not None`) — un échec d'enrichissement TMDB ne doit jamais écraser une valeur déjà connue dans ce cache partagé entre tous les users
