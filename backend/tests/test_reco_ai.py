@@ -1,9 +1,10 @@
-"""Tests for the AI recommendation proxy (CIN-49).
+"""Tests for the AI recommendation proxy (CIN-49/CIN-78).
 
 `_call_gemini` is the only function that touches the real SDK — every test
-here monkeypatches it, mirroring how `tmdb.py` isolates its network calls
-behind small functions for testability.
+here monkeypatches it.
 """
+
+import json
 
 import pytest
 
@@ -12,9 +13,12 @@ from models import RecommendRequest, WatchlistFilm
 
 
 def _film(id: str, **overrides) -> WatchlistFilm:
+    from datetime import UTC, datetime
+
     defaults = dict(
         letterboxd_slug=id, title=f"Film {id}", year=2020, poster_url=None,
         genres=["35"], runtime=100, origin_country=["US"], overview=None,
+        added_at=datetime(2026, 1, 1, tzinfo=UTC),
     )
     return WatchlistFilm(id=id, **{**defaults, **overrides})
 
@@ -26,32 +30,61 @@ def _answers() -> RecommendRequest:
     )
 
 
-async def test_pick_film_returns_matching_candidate(monkeypatch):
-    candidates = [_film("a"), _film("b")]
+def _gemini_response(candidates: list[dict]) -> str:
+    return json.dumps({"candidates": candidates})
+
+
+async def test_pick_candidates_returns_ranked_matching_candidates(monkeypatch):
+    candidates = [_film("a"), _film("b"), _film("c")]
 
     async def fake_call(prompt: str) -> str:
-        return '{"film_id": "b"}'
+        return _gemini_response(
+            [
+                {"film_id": "b", "rank": 1, "match_score": 90, "critique": "Great fit."},
+                {"film_id": "a", "rank": 2, "match_score": 70, "critique": "Also good."},
+            ]
+        )
 
     monkeypatch.setattr(reco_ai, "_call_gemini", fake_call)
 
-    result = await reco_ai.pick_film(candidates, _answers())
+    result = await reco_ai.pick_candidates(candidates, _answers())
 
-    assert result.id == "b"
+    assert [r.film.id for r in result] == ["b", "a"]
+    assert result[0].rank == 1
+    assert result[0].match_score == 90
+    assert result[0].critique == "Great fit."
 
 
-async def test_pick_film_rejects_id_outside_candidates(monkeypatch):
+async def test_pick_candidates_rejects_any_id_outside_candidates(monkeypatch):
     candidates = [_film("a")]
 
     async def fake_call(prompt: str) -> str:
-        return '{"film_id": "not-a-candidate"}'
+        return _gemini_response(
+            [
+                {"film_id": "a", "rank": 1, "match_score": 90, "critique": "Great fit."},
+                {"film_id": "not-a-candidate", "rank": 2, "match_score": 50, "critique": "..."},
+            ]
+        )
 
     monkeypatch.setattr(reco_ai, "_call_gemini", fake_call)
 
     with pytest.raises(reco_ai.AIProviderError):
-        await reco_ai.pick_film(candidates, _answers())
+        await reco_ai.pick_candidates(candidates, _answers())
 
 
-async def test_pick_film_rejects_malformed_response(monkeypatch):
+async def test_pick_candidates_rejects_empty_candidate_list(monkeypatch):
+    candidates = [_film("a")]
+
+    async def fake_call(prompt: str) -> str:
+        return _gemini_response([])
+
+    monkeypatch.setattr(reco_ai, "_call_gemini", fake_call)
+
+    with pytest.raises(reco_ai.AIProviderError):
+        await reco_ai.pick_candidates(candidates, _answers())
+
+
+async def test_pick_candidates_rejects_malformed_response(monkeypatch):
     candidates = [_film("a")]
 
     async def fake_call(prompt: str) -> str:
@@ -60,10 +93,10 @@ async def test_pick_film_rejects_malformed_response(monkeypatch):
     monkeypatch.setattr(reco_ai, "_call_gemini", fake_call)
 
     with pytest.raises(reco_ai.AIProviderError):
-        await reco_ai.pick_film(candidates, _answers())
+        await reco_ai.pick_candidates(candidates, _answers())
 
 
-async def test_pick_film_propagates_call_failure_as_ai_error(monkeypatch):
+async def test_pick_candidates_propagates_call_failure_as_ai_error(monkeypatch):
     candidates = [_film("a")]
 
     async def fake_call(prompt: str) -> str:
@@ -72,4 +105,4 @@ async def test_pick_film_propagates_call_failure_as_ai_error(monkeypatch):
     monkeypatch.setattr(reco_ai, "_call_gemini", fake_call)
 
     with pytest.raises(reco_ai.AIProviderError):
-        await reco_ai.pick_film(candidates, _answers())
+        await reco_ai.pick_candidates(candidates, _answers())

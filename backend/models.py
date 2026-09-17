@@ -112,6 +112,15 @@ class WatchlistFilm(BaseModel):
         return [] if value is None else value
 
 
+class RankedCandidate(BaseModel):
+    """One AI-ranked (or short-circuit) recommendation candidate."""
+
+    film: WatchlistFilm
+    rank: int
+    match_score: int | None
+    critique: str | None
+
+
 class RecommendRequest(BaseModel):
     """Answers to the 9-question flow, sent as-is from the frontend.
 

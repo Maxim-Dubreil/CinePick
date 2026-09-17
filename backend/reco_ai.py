@@ -19,17 +19,34 @@ import os
 from google import genai
 from google.genai import types
 
-from models import RecommendRequest, WatchlistFilm
+from models import RankedCandidate, RecommendRequest, WatchlistFilm
 
 logger = logging.getLogger(__name__)
 
 _MODEL = "gemini-3.6-flash"
 _REQUEST_TIMEOUT = 10.0
 _OVERVIEW_MAX_CHARS = 200
+_MAX_CANDIDATES = 3
 _RESPONSE_SCHEMA = {
     "type": "object",
-    "properties": {"film_id": {"type": "string"}},
-    "required": ["film_id"],
+    "properties": {
+        "candidates": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": _MAX_CANDIDATES,
+            "items": {
+                "type": "object",
+                "properties": {
+                    "film_id": {"type": "string"},
+                    "rank": {"type": "integer"},
+                    "match_score": {"type": "integer"},
+                    "critique": {"type": "string"},
+                },
+                "required": ["film_id", "rank", "match_score", "critique"],
+            },
+        }
+    },
+    "required": ["candidates"],
 }
 _NO_PREFERENCE = ("none", "any")
 
@@ -65,9 +82,12 @@ def _build_prompt(candidates: list[WatchlistFilm], answers: RecommendRequest) ->
         for f in candidates
     )
     return (
-        f"Pick exactly one film from this list for someone who {_soft_signals(answers)}. "
-        'Reply with ONLY a JSON object like {"film_id": "<id>"}, using one of the ids '
-        f"below, nothing else.\n\n{films_block}"
+        f"Pick up to {_MAX_CANDIDATES} films from this list, ranked best first, "
+        f"for someone who {_soft_signals(answers)}. For each, give a match_score "
+        "(0-100) and a 1-2 sentence critique referencing at least one of their "
+        'preferences. Reply with ONLY a JSON object like {"candidates": '
+        '[{"film_id": "<id>", "rank": 1, "match_score": 90, "critique": "..."}]}, '
+        f"using only ids from the list below, nothing else.\n\n{films_block}"
     )
 
 
@@ -90,18 +110,30 @@ async def _call_gemini(prompt: str) -> str:
     return response.text
 
 
-async def pick_film(candidates: list[WatchlistFilm], answers: RecommendRequest) -> WatchlistFilm:
-    """Ask Gemini to pick exactly one film id among `candidates`, returning
-    the matching `WatchlistFilm`."""
+async def pick_candidates(
+    candidates: list[WatchlistFilm], answers: RecommendRequest
+) -> list[RankedCandidate]:
+    """Ask Gemini to rank up to 3 films among `candidates`. Every returned id
+    must belong to `candidates` — if even one doesn't, or the response is
+    malformed or empty, raises `AIProviderError` (never retries, never
+    falls back to a partial or default pick)."""
     prompt = _build_prompt(candidates, answers)
+    by_id = {film.id: film for film in candidates}
     try:
         raw = await _call_gemini(prompt)
-        chosen_id = json.loads(raw)["film_id"]
+        parsed = json.loads(raw)["candidates"]
+        if not parsed:
+            raise ValueError("AI returned zero candidates")
+        results = [
+            RankedCandidate(
+                film=by_id[c["film_id"]],
+                rank=c["rank"],
+                match_score=c["match_score"],
+                critique=c["critique"],
+            )
+            for c in parsed
+        ]
     except Exception as exc:
         logger.exception("Gemini call failed or returned an unparseable response")
         raise AIProviderError("AI call failed or returned an unparseable response") from exc
-
-    for film in candidates:
-        if film.id == chosen_id:
-            return film
-    raise AIProviderError(f"AI picked film id {chosen_id!r}, outside the candidate set")
+    return results
