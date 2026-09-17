@@ -1,6 +1,11 @@
 import { useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuestionFlow } from "@/hooks/useQuestionFlow";
+import type {
+  AnswerValue,
+  QuestionId,
+} from "@/lib/question/types";
+import type { RecommendRequest } from "@/lib/backend/api";
 import {
   QuestionFlowHeader,
   FilmCountChip,
@@ -15,8 +20,10 @@ export function Question() {
   const navigate = useNavigate();
 
   const onComplete = useCallback(
-    (filmCount: number) => {
-      navigate("/home/result", { state: { filmCount } });
+    (filmCount: number, answers: Record<QuestionId, AnswerValue>) => {
+      navigate("/home/result", {
+        state: { filmCount, answers: answers as unknown as RecommendRequest },
+      });
     },
     [navigate],
   );

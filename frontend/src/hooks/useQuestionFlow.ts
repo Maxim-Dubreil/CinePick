@@ -183,7 +183,10 @@ function createFlowReducer(films: MockFilm[]) {
 }
 
 export interface UseQuestionFlowOptions {
-  onComplete: (filmCount: number) => void;
+  onComplete: (
+    filmCount: number,
+    answers: Record<QuestionId, AnswerValue>,
+  ) => void;
 }
 
 export interface UseQuestionFlowResult {
@@ -220,13 +223,16 @@ export function useQuestionFlow({
     const isLastQuestion = state.step === QUESTIONS.length - 1;
     const timeoutId = window.setTimeout(() => {
       if (isLastQuestion) {
-        onComplete(state.filmCount);
+        // `state.answers` is `Record<string, AnswerValue>` internally (it starts
+        // empty and fills in over the flow); by the time the last question is
+        // answered every QuestionId key is present, so this cast is safe.
+        onComplete(state.filmCount, state.answers as Record<QuestionId, AnswerValue>);
       } else {
         dispatch({ type: "FINISH_LOADING" });
       }
     }, LOADING_DELAY_MS);
     return () => window.clearTimeout(timeoutId);
-  }, [state.loading, state.step, state.filmCount, onComplete]);
+  }, [state.loading, state.step, state.filmCount, state.answers, onComplete]);
 
   const question = QUESTIONS[state.step];
   const currentQuestion: Question =
