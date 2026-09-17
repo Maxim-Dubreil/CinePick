@@ -146,3 +146,12 @@ class RecommendRequest(BaseModel):
     """Not filtered — forwarded to the AI proxy as-is."""
     seen: Literal["nouveau", "any"]
     """`"any"` disables the default watch_history exclusion (see filtering.py)."""
+
+
+class RecommendDecisionRequest(BaseModel):
+    """Body of POST /recommend/decision — records a swipe outcome."""
+
+    film_id: str
+    decision: Literal["accepted", "skipped"]
+    match_score: int | None
+    critique: str | None

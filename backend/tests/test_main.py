@@ -263,3 +263,45 @@ def test_recommend_requires_auth(monkeypatch):
     _patch_recommend(monkeypatch, films=[_film("a")])
     response = client.post("/recommend", json=RECOMMEND_BODY)
     assert response.status_code == 401
+
+
+DECISION_BODY = {
+    "film_id": "film-a",
+    "decision": "accepted",
+    "match_score": 80,
+    "critique": "Nice.",
+}
+
+
+def test_recommend_decision_records_when_proposal_exists(monkeypatch):
+    monkeypatch.setattr(watch_history_repo, "record_decision", lambda *a, **k: True)
+
+    response = client.post("/recommend/decision", json=DECISION_BODY, headers=AUTH_HEADERS)
+
+    assert response.status_code == 200
+
+
+def test_recommend_decision_404_when_no_matching_proposal(monkeypatch):
+    monkeypatch.setattr(watch_history_repo, "record_decision", lambda *a, **k: False)
+
+    response = client.post("/recommend/decision", json=DECISION_BODY, headers=AUTH_HEADERS)
+
+    assert response.status_code == 404
+    assert response.json()["detail"]["type"] == "unknown_candidate"
+
+
+def test_recommend_decision_requires_auth(monkeypatch):
+    monkeypatch.setattr(watch_history_repo, "record_decision", lambda *a, **k: True)
+    response = client.post("/recommend/decision", json=DECISION_BODY)
+    assert response.status_code == 401
+
+
+def test_recommend_decision_null_score_and_critique_allowed(monkeypatch):
+    """Short-circuit candidates have no score/critique — decision must
+    still be recordable."""
+    monkeypatch.setattr(watch_history_repo, "record_decision", lambda *a, **k: True)
+    body = {"film_id": "film-a", "decision": "skipped", "match_score": None, "critique": None}
+
+    response = client.post("/recommend/decision", json=body, headers=AUTH_HEADERS)
+
+    assert response.status_code == 200

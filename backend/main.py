@@ -14,7 +14,7 @@ import filtering
 import reco_ai
 import scraper
 import tmdb
-from models import RankedCandidate, RecommendRequest
+from models import RankedCandidate, RecommendDecisionRequest, RecommendRequest
 from repositories import watch_history as watch_history_repo
 from repositories import watchlist as watchlist_repo
 from supabase_client import supabase
@@ -293,3 +293,30 @@ async def recommend(
         "candidates": [_to_recommended_film(r) for r in ranked],
         "meta": {"candidates_considered": len(candidates)},
     }
+
+
+class RecommendDecisionResponse(BaseModel):
+    status: str
+
+
+@app.post(
+    "/recommend/decision", response_model=RecommendDecisionResponse, tags=[TAG_RECOMMEND]
+)
+async def recommend_decision(
+    body: RecommendDecisionRequest,
+    user_id: str = Depends(get_current_user_id),
+):
+    """Record a swipe outcome. Only succeeds if a matching "proposed" row
+    exists — that's what verifies the film was actually shown (CIN-78)."""
+    found = watch_history_repo.record_decision(
+        user_id, body.film_id, body.decision, body.match_score, body.critique
+    )
+    if not found:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "type": "unknown_candidate",
+                "message": "No pending proposal for this film — nothing to record",
+            },
+        )
+    return {"status": "ok"}
