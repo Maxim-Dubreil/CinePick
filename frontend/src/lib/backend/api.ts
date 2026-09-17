@@ -49,3 +49,78 @@ export async function syncWatchlist(
     body: JSON.stringify({ letterboxd_username: letterboxdUsername }),
   });
 }
+
+export interface RecommendRequest {
+  genre: string[];
+  emotion: string[];
+  ambiance: string[];
+  withWho: "seul" | "amis" | "couple" | "famille" | "any";
+  duration: "lt90" | "90-120" | "120-150" | "150plus" | "any";
+  era:
+    | "silent"
+    | "golden"
+    | "newwave"
+    | "blockbuster"
+    | "2000s"
+    | "recent"
+    | "any";
+  region: string[];
+  subtitles: "with" | "without" | "any";
+  seen: "nouveau" | "any";
+}
+
+export interface RecommendedFilm {
+  film_id: string;
+  title: string;
+  poster_url: string | null;
+  year: number | null;
+  runtime: number | null;
+  overview: string | null;
+  genres: string[];
+  origin_country: string[];
+  rank: number;
+  match_score: number | null;
+  critique: string | null;
+}
+
+export interface RecommendResponse {
+  candidates: RecommendedFilm[];
+  meta: { candidates_considered: number };
+}
+
+export type RecommendDecision = "accepted" | "skipped";
+
+export interface RecommendDecisionRequest {
+  film_id: string;
+  decision: RecommendDecision;
+  match_score: number | null;
+  critique: string | null;
+}
+
+export async function getRecommendation(
+  answers: RecommendRequest,
+  token: string | null,
+): Promise<RecommendResponse> {
+  return apiFetch("/recommend", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token !== null ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(answers),
+  });
+}
+
+export async function recordDecision(
+  body: RecommendDecisionRequest,
+  token: string | null,
+): Promise<void> {
+  await apiFetch("/recommend/decision", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token !== null ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(body),
+  });
+}
