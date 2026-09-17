@@ -58,6 +58,12 @@ create table watch_history (
   decided_at timestamptz default now()
 );
 
+-- get_decision_history reads this on every /recommend call (not just when
+-- seen != "any" as before), and record_proposals writes ~1-3 rows per call
+-- instead of 1 per decision — this table grows and is read faster than
+-- before this migration.
+create index watch_history_user_id_idx on watch_history (user_id);
+
 -- Activer RLS
 alter table users enable row level security;
 alter table films enable row level security;
