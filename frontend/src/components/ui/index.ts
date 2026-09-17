@@ -26,3 +26,4 @@ export {
 export { Input } from "./input";
 export { Badge, badgeVariants } from "./badge";
 export { Progress } from "./progress";
+export { Toast, TOAST_DURATION_MS } from "./toast";
