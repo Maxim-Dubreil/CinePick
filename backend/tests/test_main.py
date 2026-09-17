@@ -217,7 +217,7 @@ def test_recommend_short_circuits_with_three_or_fewer_candidates(monkeypatch):
 def test_recommend_calls_ai_with_more_than_three_candidates(monkeypatch):
     films = [_film(str(i)) for i in range(4)]
     chosen = RankedCandidate(film=films[2], rank=1, match_score=95, critique="Top pick.")
-    _patch_recommend(monkeypatch, films=films, ranked=[chosen])
+    recorded = _patch_recommend(monkeypatch, films=films, ranked=[chosen])
 
     response = client.post("/recommend", json=RECOMMEND_BODY, headers=AUTH_HEADERS)
 
@@ -226,6 +226,7 @@ def test_recommend_calls_ai_with_more_than_three_candidates(monkeypatch):
     assert len(data["candidates"]) == 1
     assert data["candidates"][0]["match_score"] == 95
     assert data["candidates"][0]["critique"] == "Top pick."
+    assert recorded[0][1] == ["2"]  # the AI-chosen film's id, matching what was returned
 
 
 def test_recommend_empty_watchlist(monkeypatch):
