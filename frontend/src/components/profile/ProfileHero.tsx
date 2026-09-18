@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage, Badge, Button } from '@/components
 interface ProfileHeroProps {
   user: User
   letterboxdUsername: string | null
+  onUnlink: () => void
 }
 
 function formatMemberSince(isoDate: string): string {
@@ -25,7 +26,7 @@ function getInitials(fullName: string): string {
     .toUpperCase()
 }
 
-export function ProfileHero({ user, letterboxdUsername }: ProfileHeroProps) {
+export function ProfileHero({ user, letterboxdUsername, onUnlink }: ProfileHeroProps) {
   const navigate = useNavigate()
   const fullName = (user.user_metadata?.full_name as string | undefined) ?? user.email ?? 'Utilisateur'
   const initials = getInitials(fullName)
@@ -55,10 +56,20 @@ export function ProfileHero({ user, letterboxdUsername }: ProfileHeroProps) {
 
         <div className="flex items-center gap-3 mt-3 flex-wrap">
           {letterboxdUsername && (
-            <Badge variant="letterboxd">
-              <LetterboxdDots />
-              Letterboxd connecté
-            </Badge>
+            <div className="flex items-center gap-2">
+              <Badge variant="letterboxd">
+                <LetterboxdDots />
+                Letterboxd connecté
+              </Badge>
+              <Button
+                variant="destructive"
+                size="xs"
+                className="h-5 rounded-4xl border-destructive/30"
+                onClick={onUnlink}
+              >
+                Délier
+              </Button>
+            </div>
           )}
           <span className="flex items-center gap-1.5 text-sm text-[var(--text-secondary)]">
             <Calendar size={14} className="text-[var(--text-tertiary)] shrink-0" />

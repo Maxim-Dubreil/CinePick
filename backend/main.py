@@ -207,6 +207,24 @@ async def letterboxd_sync(
     }
 
 
+class LetterboxdUnlinkResponse(BaseModel):
+    unlinked: bool
+
+
+@app.delete("/letterboxd/unlink", response_model=LetterboxdUnlinkResponse, tags=[TAG_LETTERBOXD])
+async def letterboxd_unlink(user_id: str = Depends(get_current_user_id)):
+    """Unlink the user's Letterboxd account. Leaves the watchlist untouched (CIN-72)."""
+    supabase.table("users").update(
+        {
+            "letterboxd_username": None,
+            "letterboxd_last_sync": None,
+            "letterboxd_film_count": 0,
+            "updated_at": datetime.now(UTC).isoformat(),
+        }
+    ).eq("id", user_id).execute()
+    return {"unlinked": True}
+
+
 class RecommendedFilm(BaseModel):
     film_id: str
     title: str

@@ -50,6 +50,17 @@ export async function syncWatchlist(
   });
 }
 
+export async function unlinkLetterboxdAccount(
+  token: string | null,
+): Promise<{ unlinked: boolean }> {
+  return apiFetch("/letterboxd/unlink", {
+    method: "DELETE",
+    headers: {
+      ...(token !== null ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+}
+
 export interface RecommendRequest {
   genre: string[];
   emotion: string[];

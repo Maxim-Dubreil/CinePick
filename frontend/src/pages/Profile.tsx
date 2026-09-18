@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
-import { syncWatchlist } from "@/lib/backend/api";
+import { syncWatchlist, unlinkLetterboxdAccount } from "@/lib/backend/api";
 import { signOut } from "@/lib/auth";
 import { LetterboxdConfigModal } from "@/components/home";
 import {
@@ -11,6 +11,7 @@ import {
   ProfileTaste,
   ProfileHistory,
   ProfilePreferences,
+  UnlinkLetterboxdModal,
 } from "@/components/profile";
 
 export function Profile() {
@@ -18,6 +19,8 @@ export function Profile() {
   const { profile, refetch } = useProfile();
   const [modalOpen, setModalOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [unlinkModalOpen, setUnlinkModalOpen] = useState(false);
+  const [isUnlinking, setIsUnlinking] = useState(false);
 
   const handleResync = async () => {
     if (!profile?.letterboxd_username || !session?.access_token) return;
@@ -30,6 +33,18 @@ export function Profile() {
     }
   };
 
+  const handleUnlink = async () => {
+    if (!session?.access_token) return;
+    setIsUnlinking(true);
+    try {
+      await unlinkLetterboxdAccount(session.access_token);
+      refetch();
+      setUnlinkModalOpen(false);
+    } finally {
+      setIsUnlinking(false);
+    }
+  };
+
   if (!user) return null;
 
   return (
@@ -37,6 +52,7 @@ export function Profile() {
       <ProfileHero
         user={user}
         letterboxdUsername={profile?.letterboxd_username ?? null}
+        onUnlink={() => setUnlinkModalOpen(true)}
       />
 
       <ProfileStats filmCount={profile?.film_count ?? 0} />
@@ -73,6 +89,13 @@ export function Profile() {
         onSuccess={() => void refetch()}
         onSyncingChange={setIsSyncing}
         token={session?.access_token ?? null}
+      />
+
+      <UnlinkLetterboxdModal
+        open={unlinkModalOpen}
+        onOpenChange={setUnlinkModalOpen}
+        onConfirm={() => void handleUnlink()}
+        isUnlinking={isUnlinking}
       />
     </div>
   );

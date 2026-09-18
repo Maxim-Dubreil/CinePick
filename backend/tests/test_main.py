@@ -158,6 +158,17 @@ def test_letterboxd_sync_requires_auth():
     assert response.status_code == 401
 
 
+def test_letterboxd_unlink_nominal():
+    response = client.delete("/letterboxd/unlink", headers=AUTH_HEADERS)
+    assert response.status_code == 200
+    assert response.json() == {"unlinked": True}
+
+
+def test_letterboxd_unlink_requires_auth():
+    response = client.delete("/letterboxd/unlink")
+    assert response.status_code == 401
+
+
 TAG_RECOMMEND = "recommend"  # not asserted on; just documents the route's tag
 
 
