@@ -112,6 +112,27 @@ class WatchlistFilm(BaseModel):
         return [] if value is None else value
 
 
+class WatchlistFilterFilm(BaseModel):
+    """A single watchlist film, pre-bucketed for the questionnaire's live
+    filter count. Mirrors `filtering.py`'s hard-filter fields exactly (via
+    `duration_bucket`/`era_bucket`), so the frontend can replicate the same
+    rules without duplicating the bucket boundaries."""
+
+    id: str
+    genres: list[str]
+    duration: Literal["lt90", "90-120", "120-150", "150plus"] | None
+    era: Literal["silent", "golden", "newwave", "blockbuster", "2000s", "recent"] | None
+    origin_country: list[str]
+    last_proposed_at: datetime | None
+    """When this film was last proposed to or decided on by the user (from
+    `watch_history`), or `None` if never — mirrors `filtering.py`'s
+    `decision_history` lookup."""
+
+
+class WatchlistFilterResponse(BaseModel):
+    films: list[WatchlistFilterFilm]
+
+
 class RankedCandidate(BaseModel):
     """One AI-ranked (or short-circuit) recommendation candidate."""
 

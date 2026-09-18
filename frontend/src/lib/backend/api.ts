@@ -108,6 +108,36 @@ export interface RecommendDecisionRequest {
   critique: string | null;
 }
 
+export interface WatchlistFilterFilm {
+  id: string;
+  genres: string[];
+  duration: "lt90" | "90-120" | "120-150" | "150plus" | null;
+  era:
+    | "silent"
+    | "golden"
+    | "newwave"
+    | "blockbuster"
+    | "2000s"
+    | "recent"
+    | null;
+  origin_country: string[];
+  last_proposed_at: string | null;
+}
+
+export interface WatchlistFilterResponse {
+  films: WatchlistFilterFilm[];
+}
+
+export async function getWatchlistForFilter(
+  token: string | null,
+): Promise<WatchlistFilterResponse> {
+  return apiFetch("/watchlist", {
+    headers: {
+      ...(token !== null ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+}
+
 export async function getRecommendation(
   answers: RecommendRequest,
   token: string | null,

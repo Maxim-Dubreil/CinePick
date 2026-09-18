@@ -14,7 +14,12 @@ import filtering
 import reco_ai
 import scraper
 import tmdb
-from models import RankedCandidate, RecommendDecisionRequest, RecommendRequest
+from models import (
+    RankedCandidate,
+    RecommendDecisionRequest,
+    RecommendRequest,
+    WatchlistFilterResponse,
+)
 from repositories import watch_history as watch_history_repo
 from repositories import watchlist as watchlist_repo
 from supabase_client import supabase
@@ -262,6 +267,29 @@ def _to_recommended_film(ranked: RankedCandidate) -> dict:
         "rank": ranked.rank,
         "match_score": ranked.match_score,
         "critique": ranked.critique,
+    }
+
+
+@app.get("/watchlist", response_model=WatchlistFilterResponse, tags=[TAG_RECOMMEND])
+async def watchlist(user_id: str = Depends(get_current_user_id)):
+    """Lean, pre-bucketed film list powering the questionnaire's live
+    filter count — reuses `filtering.py`'s bucket functions so the frontend
+    never duplicates the boundaries, and `decision_history` so the "jamais
+    vu" question's count matches what `/recommend` will actually exclude."""
+    active_watchlist = watchlist_repo.get_active_watchlist(user_id)
+    decision_history = watch_history_repo.get_decision_history(user_id)
+    return {
+        "films": [
+            {
+                "id": film.id,
+                "genres": film.genres,
+                "duration": filtering.duration_bucket(film.runtime),
+                "era": filtering.era_bucket(film.year),
+                "origin_country": film.origin_country,
+                "last_proposed_at": decision_history.get(film.id),
+            }
+            for film in active_watchlist
+        ]
     }
 
 

@@ -64,7 +64,7 @@ def _matches(
     film: WatchlistFilm, answers: RecommendRequest, decision_history: dict[str, datetime]
 ) -> bool:
     """Apply the 5 hard filters plus the two-layer history exclusion."""
-    if "none" not in answers.genre and not (set(answers.genre) & set(film.genres)):
+    if "none" not in answers.genre and not set(answers.genre).issubset(film.genres):
         return False
     if answers.duration != "any":
         bucket = duration_bucket(film.runtime)

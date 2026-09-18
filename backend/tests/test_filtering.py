@@ -36,6 +36,16 @@ def test_filter_candidates_genre_match():
     assert [f.id for f in result] == ["a"]
 
 
+def test_filter_candidates_genre_multi_requires_all():
+    films = [
+        _film(id="a", genres=["35", "80"]),
+        _film(id="b", genres=["35"]),
+        _film(id="c", genres=["80"]),
+    ]
+    result = filtering.filter_candidates(films, _answers(genre=["35", "80"]), {})
+    assert [f.id for f in result] == ["a"]
+
+
 def test_filter_candidates_genre_none_bypasses():
     films = [_film(id="a", genres=["35"]), _film(id="b", genres=["27"])]
     result = filtering.filter_candidates(films, _answers(genre=["none"]), {})

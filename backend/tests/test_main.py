@@ -172,6 +172,42 @@ def test_letterboxd_unlink_requires_auth():
 TAG_RECOMMEND = "recommend"  # not asserted on; just documents the route's tag
 
 
+def test_watchlist_returns_bucketed_films(monkeypatch):
+    films = [
+        _film("a", genres=["35"], runtime=80, year=1925, origin_country=["FR"]),
+        _film("b", genres=["27"], runtime=None, year=None, origin_country=[]),
+    ]
+    monkeypatch.setattr(watchlist_repo, "get_active_watchlist", lambda user_id: films)
+    monkeypatch.setattr(
+        watch_history_repo,
+        "get_decision_history",
+        lambda user_id: {"a": datetime(2026, 1, 1, tzinfo=UTC)},
+    )
+
+    response = client.get("/watchlist", headers=AUTH_HEADERS)
+
+    assert response.status_code == 200
+    data = response.json()["films"]
+    assert data[0] == {
+        "id": "a",
+        "genres": ["35"],
+        "duration": "lt90",
+        "era": "silent",
+        "origin_country": ["FR"],
+        "last_proposed_at": "2026-01-01T00:00:00Z",
+    }
+    assert data[1]["duration"] is None
+    assert data[1]["era"] is None
+    assert data[1]["last_proposed_at"] is None
+
+
+def test_watchlist_requires_auth(monkeypatch):
+    monkeypatch.setattr(watchlist_repo, "get_active_watchlist", lambda user_id: [])
+    monkeypatch.setattr(watch_history_repo, "get_decision_history", lambda user_id: {})
+    response = client.get("/watchlist")
+    assert response.status_code == 401
+
+
 def _film(id: str, **overrides) -> WatchlistFilm:
     defaults = dict(
         letterboxd_slug=id, title=f"Film {id}", year=2020, poster_url="http://x/p.jpg",
