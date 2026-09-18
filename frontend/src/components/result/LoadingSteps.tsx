@@ -9,7 +9,7 @@ export const STEP_DURATION_MS = 400;
 const STEPS = [
   "Filtrage de ta watchlist",
   "Sélection des meilleurs films",
-  "Prêt",
+  "Finalisation…",
 ];
 
 export function LoadingSteps() {

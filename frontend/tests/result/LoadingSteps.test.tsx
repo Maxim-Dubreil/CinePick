@@ -24,11 +24,11 @@ describe("LoadingSteps", () => {
     act(() => {
       vi.advanceTimersByTime(STEP_DURATION_MS);
     });
-    expect(screen.getByText("Prêt")).toBeInTheDocument();
+    expect(screen.getByText("Finalisation…")).toBeInTheDocument();
 
     act(() => {
       vi.advanceTimersByTime(STEP_DURATION_MS * 5);
     });
-    expect(screen.getByText("Prêt")).toBeInTheDocument();
+    expect(screen.getByText("Finalisation…")).toBeInTheDocument();
   });
 });
