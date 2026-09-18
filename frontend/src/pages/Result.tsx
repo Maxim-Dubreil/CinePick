@@ -46,7 +46,10 @@ function ResultFlowScreen({ answers }: ResultFlowScreenProps) {
   const flow = useResultFlow(answers, session?.access_token ?? null, !authLoading);
 
   return (
-    <div className="relative flex h-full flex-col items-center justify-center gap-6 px-6">
+    <div
+      className="relative flex h-full flex-col items-center justify-center gap-6 px-6"
+      aria-live="polite"
+    >
       {flow.phase === "loading" && <LoadingSteps />}
 
       {flow.phase === "card" && flow.currentFilm && (
@@ -70,7 +73,7 @@ function ResultFlowScreen({ answers }: ResultFlowScreenProps) {
         />
       )}
 
-      <Toast message={flow.toastMessage} onDismiss={flow.dismissToast} />
+      <Toast key={flow.toastId} message={flow.toastMessage} onDismiss={flow.dismissToast} />
     </div>
   );
 }

@@ -34,6 +34,7 @@ interface ResultFlowState {
   attempt: number;
   deadEndReason: DeadEndReason | null;
   toastMessage: string | null;
+  toastId: number;
   acceptedFilm: RecommendedFilm | null;
 }
 
@@ -42,6 +43,7 @@ export interface UseResultFlowResult {
   currentFilm: RecommendedFilm | null;
   deadEndReason: DeadEndReason | null;
   toastMessage: string | null;
+  toastId: number;
   acceptedFilm: RecommendedFilm | null;
   onAccept: () => void;
   onSkip: () => void;
@@ -60,6 +62,7 @@ export function useResultFlow(
     attempt: 1,
     deadEndReason: null,
     toastMessage: null,
+    toastId: 0,
     acceptedFilm: null,
   });
 
@@ -118,7 +121,7 @@ export function useResultFlow(
         error instanceof ApiError && error.status === 404
           ? TOAST_UNKNOWN_CANDIDATE
           : TOAST_NETWORK;
-      setState((s) => ({ ...s, toastMessage: message }));
+      setState((s) => ({ ...s, toastMessage: message, toastId: s.toastId + 1 }));
     });
   }
 
@@ -155,6 +158,7 @@ export function useResultFlow(
     currentFilm: state.candidates[state.currentIndex] ?? null,
     deadEndReason: state.deadEndReason,
     toastMessage: state.toastMessage,
+    toastId: state.toastId,
     acceptedFilm: state.acceptedFilm,
     onAccept,
     onSkip,
