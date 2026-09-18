@@ -51,6 +51,7 @@ export interface UseResultFlowResult {
 export function useResultFlow(
   answers: RecommendRequest,
   token: string | null,
+  ready: boolean,
 ): UseResultFlowResult {
   const [state, setState] = useState<ResultFlowState>({
     phase: "loading",
@@ -70,6 +71,10 @@ export function useResultFlow(
           getRecommendation(answers, token),
           wait(MIN_LOADING_MS),
         ]);
+        if (response.candidates.length === 0) {
+          setState((s) => ({ ...s, phase: "dead-end", deadEndReason: "no_match" }));
+          return;
+        }
         setState((s) => ({
           ...s,
           phase: "card",
@@ -91,10 +96,10 @@ export function useResultFlow(
   // dev — without this guard, that would fire two /recommend calls on load.
   const hasStarted = useRef(false);
   useEffect(() => {
-    if (hasStarted.current) return;
+    if (hasStarted.current || !ready) return;
     hasStarted.current = true;
     void requestFilm(1);
-  }, [requestFilm]);
+  }, [requestFilm, ready]);
 
   function recordDecisionSafely(
     filmToRecord: RecommendedFilm,
@@ -141,9 +146,9 @@ export function useResultFlow(
     setState((s) => ({ ...s, phase: "dead-end", deadEndReason: "no_match" }));
   }
 
-  function dismissToast() {
+  const dismissToast = useCallback(() => {
     setState((s) => ({ ...s, toastMessage: null }));
-  }
+  }, []);
 
   return {
     phase: state.phase,

@@ -67,7 +67,7 @@ describe("useResultFlow", () => {
       candidates: [film({ film_id: "f1" }), film({ film_id: "f2", rank: 2 })],
       meta: { candidates_considered: 2 },
     });
-    const { result } = renderHook(() => useResultFlow(ANSWERS, "token"));
+    const { result } = renderHook(() => useResultFlow(ANSWERS, "token", true));
     expect(result.current.phase).toBe("loading");
 
     await act(async () => {
@@ -78,9 +78,49 @@ describe("useResultFlow", () => {
     expect(result.current.currentFilm?.film_id).toBe("f1");
   });
 
+  it("does not call getRecommendation while ready is false, then fires once when ready flips true", async () => {
+    getRecommendationMock.mockResolvedValue({
+      candidates: [film({ film_id: "f1" })],
+      meta: { candidates_considered: 1 },
+    });
+    const { result, rerender } = renderHook(
+      ({ token, ready }: { token: string | null; ready: boolean }) =>
+        useResultFlow(ANSWERS, token, ready),
+      { initialProps: { token: null, ready: false } },
+    );
+
+    expect(result.current.phase).toBe("loading");
+    expect(getRecommendationMock).not.toHaveBeenCalled();
+
+    rerender({ token: "real-token", ready: true });
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(MIN_LOADING_MS);
+    });
+
+    expect(getRecommendationMock).toHaveBeenCalledTimes(1);
+    expect(getRecommendationMock).toHaveBeenCalledWith(ANSWERS, "real-token");
+    expect(result.current.phase).toBe("card");
+  });
+
+  it("transitions to the no_match dead-end when the response has zero candidates", async () => {
+    getRecommendationMock.mockResolvedValue({
+      candidates: [],
+      meta: { candidates_considered: 0 },
+    });
+    const { result } = renderHook(() => useResultFlow(ANSWERS, "token", true));
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(MIN_LOADING_MS);
+    });
+
+    expect(result.current.phase).toBe("dead-end");
+    expect(result.current.deadEndReason).toBe("no_match");
+  });
+
   it("maps a 422 failure to the no_match dead-end", async () => {
     getRecommendationMock.mockRejectedValue(new ApiError(422, "no_candidates"));
-    const { result } = renderHook(() => useResultFlow(ANSWERS, "token"));
+    const { result } = renderHook(() => useResultFlow(ANSWERS, "token", true));
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(MIN_LOADING_MS);
@@ -92,7 +132,7 @@ describe("useResultFlow", () => {
 
   it("maps a 502/network failure to the technical dead-end", async () => {
     getRecommendationMock.mockRejectedValue(new ApiError(502, "ai_error"));
-    const { result } = renderHook(() => useResultFlow(ANSWERS, "token"));
+    const { result } = renderHook(() => useResultFlow(ANSWERS, "token", true));
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(MIN_LOADING_MS);
@@ -107,7 +147,7 @@ describe("useResultFlow", () => {
       candidates: [film({ film_id: "f1" })],
       meta: { candidates_considered: 1 },
     });
-    const { result } = renderHook(() => useResultFlow(ANSWERS, "token"));
+    const { result } = renderHook(() => useResultFlow(ANSWERS, "token", true));
     await act(async () => {
       await vi.advanceTimersByTimeAsync(MIN_LOADING_MS);
     });
@@ -130,7 +170,7 @@ describe("useResultFlow", () => {
       candidates: [film({ film_id: "f1" }), film({ film_id: "f2", rank: 2 })],
       meta: { candidates_considered: 2 },
     });
-    const { result } = renderHook(() => useResultFlow(ANSWERS, "token"));
+    const { result } = renderHook(() => useResultFlow(ANSWERS, "token", true));
     await act(async () => {
       await vi.advanceTimersByTimeAsync(MIN_LOADING_MS);
     });
@@ -149,7 +189,7 @@ describe("useResultFlow", () => {
       candidates: [film({ film_id: "f1" })],
       meta: { candidates_considered: 1 },
     });
-    const { result } = renderHook(() => useResultFlow(ANSWERS, "token"));
+    const { result } = renderHook(() => useResultFlow(ANSWERS, "token", true));
     await act(async () => {
       await vi.advanceTimersByTimeAsync(MIN_LOADING_MS);
     });
@@ -178,7 +218,7 @@ describe("useResultFlow", () => {
       candidates: [film({ film_id: "f1" })],
       meta: { candidates_considered: 1 },
     });
-    const { result } = renderHook(() => useResultFlow(ANSWERS, "token"));
+    const { result } = renderHook(() => useResultFlow(ANSWERS, "token", true));
     await act(async () => {
       await vi.advanceTimersByTimeAsync(MIN_LOADING_MS);
     });
@@ -209,7 +249,7 @@ describe("useResultFlow", () => {
       meta: { candidates_considered: 2 },
     });
     recordDecisionMock.mockRejectedValue(new ApiError(0, "Network error"));
-    const { result } = renderHook(() => useResultFlow(ANSWERS, "token"));
+    const { result } = renderHook(() => useResultFlow(ANSWERS, "token", true));
     await act(async () => {
       await vi.advanceTimersByTimeAsync(MIN_LOADING_MS);
     });
@@ -233,7 +273,7 @@ describe("useResultFlow", () => {
       meta: { candidates_considered: 1 },
     });
     recordDecisionMock.mockRejectedValue(new ApiError(404, "unknown_candidate"));
-    const { result } = renderHook(() => useResultFlow(ANSWERS, "token"));
+    const { result } = renderHook(() => useResultFlow(ANSWERS, "token", true));
     await act(async () => {
       await vi.advanceTimersByTimeAsync(MIN_LOADING_MS);
     });
@@ -255,7 +295,7 @@ describe("useResultFlow", () => {
       meta: { candidates_considered: 1 },
     });
     recordDecisionMock.mockRejectedValue(new ApiError(0, "Network error"));
-    const { result } = renderHook(() => useResultFlow(ANSWERS, "token"));
+    const { result } = renderHook(() => useResultFlow(ANSWERS, "token", true));
     await act(async () => {
       await vi.advanceTimersByTimeAsync(MIN_LOADING_MS);
     });

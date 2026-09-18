@@ -42,8 +42,8 @@ interface ResultFlowScreenProps {
 
 function ResultFlowScreen({ answers }: ResultFlowScreenProps) {
   const navigate = useNavigate();
-  const { session } = useAuth();
-  const flow = useResultFlow(answers, session?.access_token ?? null);
+  const { session, loading: authLoading } = useAuth();
+  const flow = useResultFlow(answers, session?.access_token ?? null, !authLoading);
 
   return (
     <div className="relative flex h-full flex-col items-center justify-center gap-6 px-6">
