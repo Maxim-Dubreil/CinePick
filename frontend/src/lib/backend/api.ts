@@ -89,6 +89,7 @@ export interface RecommendedFilm {
   overview: string | null;
   genres: string[];
   origin_country: string[];
+  director: string | null;
   rank: number;
   match_score: number | null;
   critique: string | null;

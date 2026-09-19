@@ -47,8 +47,19 @@ async def _search_movie_id(
     return results[0]["id"]
 
 
+def _parse_director(data: dict) -> str | None:
+    crew = data.get("credits", {}).get("crew", [])
+    for member in crew:
+        if member.get("job") == "Director":
+            return member.get("name")
+    return None
+
+
 async def _fetch_details(client: httpx.AsyncClient, tmdb_id: int) -> FilmEnrichment | None:
-    response = await client.get(f"{_BASE_URL}/movie/{tmdb_id}", params={"api_key": _api_key()})
+    response = await client.get(
+        f"{_BASE_URL}/movie/{tmdb_id}",
+        params={"api_key": _api_key(), "append_to_response": "credits"},
+    )
     if response.status_code != 200:
         return None
     data = response.json()
@@ -61,6 +72,7 @@ async def _fetch_details(client: httpx.AsyncClient, tmdb_id: int) -> FilmEnrichm
         origin_country=[c["iso_3166_1"] for c in data.get("production_countries", [])],
         overview=data.get("overview") or None,
         poster_url=_IMAGE_BASE_URL + poster_path if poster_path else None,
+        director=_parse_director(data),
     )
 
 

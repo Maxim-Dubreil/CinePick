@@ -14,11 +14,15 @@ import { Question } from "./Question";
 import { Result } from "./Result";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
+import { useLastAcceptedFilm } from "@/hooks/useLastAcceptedFilm";
 import { syncWatchlist } from "@/lib/backend/api";
 
 export function Home() {
-  const { session } = useAuth();
+  const { session, user } = useAuth();
   const { profile, loading: profileLoading, refetch } = useProfile();
+  const { film: lastAcceptedFilm, loading: lastAcceptedFilmLoading } = useLastAcceptedFilm(
+    user?.id ?? null,
+  );
   const [modalOpen, setModalOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
 
@@ -56,7 +60,10 @@ export function Home() {
                 <div className="flex justify-center px-6 pb-10 pt-[200px]">
                   <div className="flex gap-4 w-full max-w-3xl">
                     <div className="flex-1">
-                      <LastFilmPanel />
+                      <LastFilmPanel
+                        film={lastAcceptedFilm}
+                        loading={lastAcceptedFilmLoading}
+                      />
                     </div>
                     <div className="w-72 shrink-0">
                       <WatchlistPanel

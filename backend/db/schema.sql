@@ -12,7 +12,7 @@ create table users (
 );
 
 -- Global film catalog (shared across all users, populated by sync)
--- TMDB fields (genres, runtime, overview) are filled lazily at recommendation time.
+-- TMDB fields (genres, runtime, overview, director) are filled lazily at recommendation time.
 create table films (
   id uuid default gen_random_uuid() primary key,
   letterboxd_slug text not null unique,
@@ -30,6 +30,7 @@ create table films (
   -- test_upsert_films_mixed_batch_against_real_db and docs/db-schema.md).
   origin_country text[] default '{}'::text[],
   overview text,
+  director text,
   created_at timestamptz default now()
 );
 

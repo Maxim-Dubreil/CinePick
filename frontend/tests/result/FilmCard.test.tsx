@@ -12,6 +12,7 @@ const baseFilm: RecommendedFilm = {
   overview: "Un chasseur de primes...",
   genres: ["878"],
   origin_country: ["US"],
+  director: "Ridley Scott",
   rank: 1,
   match_score: null,
   critique: null,

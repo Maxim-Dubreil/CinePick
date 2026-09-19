@@ -239,6 +239,7 @@ class RecommendedFilm(BaseModel):
     overview: str | None
     genres: list[str]
     origin_country: list[str]
+    director: str | None
     rank: int
     match_score: int | None
     critique: str | None
@@ -264,6 +265,7 @@ def _to_recommended_film(ranked: RankedCandidate) -> dict:
         "overview": film.overview,
         "genres": film.genres,
         "origin_country": film.origin_country,
+        "director": film.director,
         "rank": ranked.rank,
         "match_score": ranked.match_score,
         "critique": ranked.critique,

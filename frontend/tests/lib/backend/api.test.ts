@@ -163,6 +163,7 @@ describe("getRecommendation", () => {
           overview: null,
           genres: ["35"],
           origin_country: ["FR"],
+          director: null,
           rank: 1,
           match_score: 87,
           critique: "Bon choix",

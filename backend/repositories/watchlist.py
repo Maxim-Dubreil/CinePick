@@ -49,6 +49,7 @@ def merge_enrichment(film: Film, enrichment: FilmEnrichment | None) -> EnrichedF
         runtime=enrichment.runtime,
         origin_country=enrichment.origin_country,
         overview=enrichment.overview,
+        director=enrichment.director,
     )
 
 
@@ -67,7 +68,7 @@ def upsert_films(films: list[EnrichedFilm]) -> dict[str, str]:
     records = []
     for film in films:
         record = film.model_dump(
-            exclude={"tmdb_id", "genres", "runtime", "origin_country", "overview"}
+            exclude={"tmdb_id", "genres", "runtime", "origin_country", "overview", "director"}
         )
         if film.tmdb_id is not None:
             record["tmdb_id"] = film.tmdb_id
@@ -75,6 +76,7 @@ def upsert_films(films: list[EnrichedFilm]) -> dict[str, str]:
             record["runtime"] = film.runtime
             record["origin_country"] = film.origin_country
             record["overview"] = film.overview
+            record["director"] = film.director
         records.append(record)
     response = (
         supabase.table(_FILMS_TABLE).upsert(records, on_conflict="letterboxd_slug").execute()

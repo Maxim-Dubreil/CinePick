@@ -66,6 +66,10 @@ class FilmEnrichment(BaseModel):
     scraped `Film.poster_url` (a Letterboxd resolver endpoint, not an image),
     this one is directly usable as an `<img>` src."""
 
+    director: str | None = None
+    """Name of the film's director, from `credits.crew` — `None` when TMDB
+    has no crew entry with `job == "Director"`."""
+
 
 class EnrichedFilm(BaseModel):
     """A scraped film merged with its (optional) TMDB enrichment.
@@ -85,6 +89,7 @@ class EnrichedFilm(BaseModel):
     runtime: int | None = None
     origin_country: list[str] = Field(default_factory=list)
     overview: str | None = None
+    director: str | None = None
 
 
 class WatchlistFilm(BaseModel):
@@ -104,6 +109,7 @@ class WatchlistFilm(BaseModel):
     runtime: int | None = None
     origin_country: list[str] = Field(default_factory=list)
     overview: str | None = None
+    director: str | None = None
     added_at: datetime
     """When this film was added to the user's watchlist — used to sort the
     no-AI short-circuit path deterministically (oldest first)."""

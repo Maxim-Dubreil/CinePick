@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui";
+import { FilmPoster } from "@/components/FilmPoster";
 import type { RecommendedFilm } from "@/lib/backend/api";
 
 interface AcceptedScreenProps {
@@ -12,13 +13,12 @@ export function AcceptedScreen({ film, onBackHome }: AcceptedScreenProps) {
       <h2 className="max-w-[440px] font-heading text-4xl italic">
         Bonne séance !
       </h2>
-      {film.poster_url && (
-        <img
-          src={film.poster_url}
-          alt={film.title}
-          className="aspect-[2/3] w-40 rounded-[var(--radius-lg)] object-cover"
-        />
-      )}
+      <FilmPoster
+        posterUrl={film.poster_url}
+        alt={film.title}
+        className="w-40"
+        showPlaceholder={false}
+      />
       <p className="text-lg text-text-secondary">
         {film.year !== null ? `${film.title} (${film.year})` : film.title}
       </p>

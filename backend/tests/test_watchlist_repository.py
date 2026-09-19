@@ -26,7 +26,7 @@ def test_merge_enrichment_with_data():
     film = Film(slug="film-a", title="Film A", year=2020, poster_url="http://x/p.jpg")
     enrichment = FilmEnrichment(
         tmdb_id=42, genres=[28, 12], runtime=120, year=2021, origin_country=["US"],
-        overview="A test synopsis.",
+        overview="A test synopsis.", director="Some Director",
     )
 
     merged = watchlist.merge_enrichment(film, enrichment)
@@ -38,6 +38,7 @@ def test_merge_enrichment_with_data():
     assert merged.year == 2021  # TMDB year wins over the scraped year
     assert merged.origin_country == ["US"]
     assert merged.overview == "A test synopsis."
+    assert merged.director == "Some Director"
 
 
 def test_merge_enrichment_without_data_keeps_scraped_fields():
@@ -108,6 +109,7 @@ def test_upsert_films_omits_enrichment_keys_when_unenriched(supabase_mock):
             runtime=120,
             origin_country=["US"],
             overview="A test synopsis.",
+            director="Some Director",
         ),
     ]
 
@@ -117,7 +119,7 @@ def test_upsert_films_omits_enrichment_keys_when_unenriched(supabase_mock):
     unenriched_record = next(r for r in records if r["letterboxd_slug"] == "film-a")
     enriched_record = next(r for r in records if r["letterboxd_slug"] == "film-b")
 
-    for key in ("tmdb_id", "genres", "runtime", "origin_country"):
+    for key in ("tmdb_id", "genres", "runtime", "origin_country", "director"):
         assert key not in unenriched_record
 
     assert "overview" not in unenriched_record
@@ -126,6 +128,7 @@ def test_upsert_films_omits_enrichment_keys_when_unenriched(supabase_mock):
     assert enriched_record["runtime"] == 120
     assert enriched_record["origin_country"] == ["US"]
     assert enriched_record["overview"] == "A test synopsis."
+    assert enriched_record["director"] == "Some Director"
 
 
 @pytest.mark.integration

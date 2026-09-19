@@ -43,6 +43,7 @@ function film(overrides: Partial<RecommendedFilm> = {}): RecommendedFilm {
     overview: null,
     genres: [],
     origin_country: [],
+    director: null,
     rank: 1,
     match_score: null,
     critique: null,
@@ -86,7 +87,7 @@ describe("useResultFlow", () => {
     const { result, rerender } = renderHook(
       ({ token, ready }: { token: string | null; ready: boolean }) =>
         useResultFlow(ANSWERS, token, ready),
-      { initialProps: { token: null, ready: false } },
+      { initialProps: { token: null as string | null, ready: false } },
     );
 
     expect(result.current.phase).toBe("loading");

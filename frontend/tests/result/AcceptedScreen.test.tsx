@@ -13,6 +13,7 @@ const film: RecommendedFilm = {
   overview: null,
   genres: [],
   origin_country: [],
+  director: null,
   rank: 1,
   match_score: 87,
   critique: "Bon choix",

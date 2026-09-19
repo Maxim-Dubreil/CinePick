@@ -1,4 +1,12 @@
-import { Badge, Card, CardContent, CardHeader, CardTitle } from "@/components/ui";
+import {
+  Badge,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui";
+import { FilmPoster } from "@/components/FilmPoster";
 import type { RecommendedFilm } from "@/lib/backend/api";
 
 interface FilmCardProps {
@@ -10,19 +18,12 @@ export function FilmCard({ film }: FilmCardProps) {
 
   return (
     <Card className="w-full max-w-xs items-center text-center">
-      {film.poster_url ? (
-        <img
-          src={film.poster_url}
-          alt={film.title}
-          className="aspect-[2/3] w-full rounded-[var(--radius-lg)] object-cover"
-        />
-      ) : (
-        <div className="aspect-[2/3] w-full rounded-[var(--radius-lg)] bg-[var(--glass-bg)]" />
-      )}
+      <FilmPoster posterUrl={film.poster_url} alt={film.title} className="w-full" />
       <CardHeader>
         <CardTitle>
           {film.year !== null ? `${film.title} (${film.year})` : film.title}
         </CardTitle>
+        {film.director && <CardDescription>{film.director}</CardDescription>}
       </CardHeader>
       {showAiBlock && (
         <CardContent className="flex flex-col items-center gap-2">
