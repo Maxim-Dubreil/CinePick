@@ -36,6 +36,8 @@ vi.mock("@/hooks/useQuestionFlow", () => ({
       fallbackNote: null,
       loading: false,
       showBackButton: false,
+      watchlistStatus: "ready",
+      retryWatchlistFetch: vi.fn(),
       selectedIds: [],
       hasSelection: false,
       customRegionOpen: false,

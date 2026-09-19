@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import type { User } from '@supabase/supabase-js'
@@ -17,7 +17,11 @@ const mockUser = {
 function renderHero(letterboxdUsername: string | null) {
   return render(
     <MemoryRouter>
-      <ProfileHero user={mockUser} letterboxdUsername={letterboxdUsername} />
+      <ProfileHero
+        user={mockUser}
+        letterboxdUsername={letterboxdUsername}
+        onUnlink={vi.fn()}
+      />
     </MemoryRouter>
   )
 }
