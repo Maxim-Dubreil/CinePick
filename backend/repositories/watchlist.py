@@ -24,6 +24,10 @@ class FilmRow(TypedDict):
 _FILMS_TABLE = "films"
 _WATCHLIST_TABLE = "user_watchlist_items"
 
+_ENRICHMENT_FIELDS = ("tmdb_id", "genres", "runtime", "origin_country", "overview", "director")
+"""TMDB-derived columns on `films`, refreshed together — omitted entirely
+from the upsert record when a film has no enrichment (see `upsert_films`)."""
+
 
 def merge_enrichment(film: Film, enrichment: FilmEnrichment | None) -> EnrichedFilm:
     """Combine a scraped film with its optional TMDB enrichment for storage.
@@ -67,16 +71,10 @@ def upsert_films(films: list[EnrichedFilm]) -> dict[str, str]:
         return {}
     records = []
     for film in films:
-        record = film.model_dump(
-            exclude={"tmdb_id", "genres", "runtime", "origin_country", "overview", "director"}
-        )
+        record = film.model_dump(exclude=set(_ENRICHMENT_FIELDS))
         if film.tmdb_id is not None:
-            record["tmdb_id"] = film.tmdb_id
-            record["genres"] = film.genres
-            record["runtime"] = film.runtime
-            record["origin_country"] = film.origin_country
-            record["overview"] = film.overview
-            record["director"] = film.director
+            for field in _ENRICHMENT_FIELDS:
+                record[field] = getattr(film, field)
         records.append(record)
     response = (
         supabase.table(_FILMS_TABLE).upsert(records, on_conflict="letterboxd_slug").execute()
