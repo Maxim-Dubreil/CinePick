@@ -13,12 +13,9 @@ export function AcceptedScreen({ film, onBackHome }: AcceptedScreenProps) {
       <h2 className="max-w-[440px] font-heading text-4xl italic">
         Bonne séance !
       </h2>
-      <FilmPoster
-        posterUrl={film.poster_url}
-        alt={film.title}
-        className="w-40"
-        showPlaceholder={false}
-      />
+      {film.poster_url && (
+        <FilmPoster posterUrl={film.poster_url} alt={film.title} className="w-40" />
+      )}
       <p className="text-lg text-text-secondary">
         {film.year !== null ? `${film.title} (${film.year})` : film.title}
       </p>

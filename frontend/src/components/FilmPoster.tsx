@@ -2,20 +2,13 @@ interface FilmPosterProps {
   posterUrl: string | null;
   alt: string;
   className?: string;
-  /** Whether to render a placeholder block when `posterUrl` is null, or
-   * nothing at all (e.g. `AcceptedScreen`, which has no fixed-size slot to
-   * fill). Defaults to `true`. */
-  showPlaceholder?: boolean;
 }
 
 /** Poster image with a consistent aspect ratio and rounding, shared between
- * the home "last film" panel and the result screens. */
-export function FilmPoster({
-  posterUrl,
-  alt,
-  className = "",
-  showPlaceholder = true,
-}: FilmPosterProps) {
+ * the home "last film" panel and the result screens. Renders a placeholder
+ * block when `posterUrl` is null — callers with no fixed-size slot to fill
+ * (e.g. `AcceptedScreen`) should guard the render themselves instead. */
+export function FilmPoster({ posterUrl, alt, className = "" }: FilmPosterProps) {
   if (posterUrl) {
     return (
       <img
@@ -25,7 +18,6 @@ export function FilmPoster({
       />
     );
   }
-  if (!showPlaceholder) return null;
   return (
     <div
       className={`aspect-[2/3] rounded-[var(--radius-lg)] bg-[var(--glass-bg)] ${className}`}
