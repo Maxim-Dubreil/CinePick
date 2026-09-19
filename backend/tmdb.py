@@ -15,6 +15,7 @@ import httpx
 from models import Film, FilmEnrichment
 
 _BASE_URL = "https://api.themoviedb.org/3"
+_IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w500"
 _REQUEST_TIMEOUT = 10.0
 
 
@@ -51,6 +52,7 @@ async def _fetch_details(client: httpx.AsyncClient, tmdb_id: int) -> FilmEnrichm
     if response.status_code != 200:
         return None
     data = response.json()
+    poster_path = data.get("poster_path")
     return FilmEnrichment(
         tmdb_id=tmdb_id,
         genres=[g["id"] for g in data.get("genres", [])],
@@ -58,6 +60,7 @@ async def _fetch_details(client: httpx.AsyncClient, tmdb_id: int) -> FilmEnrichm
         year=_parse_year(data.get("release_date")),
         origin_country=[c["iso_3166_1"] for c in data.get("production_countries", [])],
         overview=data.get("overview") or None,
+        poster_url=_IMAGE_BASE_URL + poster_path if poster_path else None,
     )
 
 

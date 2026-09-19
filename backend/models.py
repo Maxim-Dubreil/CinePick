@@ -61,6 +61,11 @@ class FilmEnrichment(BaseModel):
     overview: str | None = None
     """TMDB synopsis — `None` when TMDB doesn't provide one for this film."""
 
+    poster_url: str | None = None
+    """Absolute TMDB CDN image URL, built from `poster_path`. Unlike the
+    scraped `Film.poster_url` (a Letterboxd resolver endpoint, not an image),
+    this one is directly usable as an `<img>` src."""
+
 
 class EnrichedFilm(BaseModel):
     """A scraped film merged with its (optional) TMDB enrichment.

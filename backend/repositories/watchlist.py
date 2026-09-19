@@ -26,19 +26,24 @@ _WATCHLIST_TABLE = "user_watchlist_items"
 
 
 def merge_enrichment(film: Film, enrichment: FilmEnrichment | None) -> EnrichedFilm:
-    """Combine a scraped film with its optional TMDB enrichment for storage."""
+    """Combine a scraped film with its optional TMDB enrichment for storage.
+
+    `poster_url` always comes from TMDB's CDN, never from the scraped
+    `film.poster_url` — that one is a Letterboxd resolver endpoint, not an
+    image, and is never directly displayable (CIN-81).
+    """
     if enrichment is None:
         return EnrichedFilm(
             letterboxd_slug=film.slug,
             title=film.title,
             year=film.year,
-            poster_url=film.poster_url,
+            poster_url=None,
         )
     return EnrichedFilm(
         letterboxd_slug=film.slug,
         title=film.title,
         year=enrichment.year if enrichment.year is not None else film.year,
-        poster_url=film.poster_url,
+        poster_url=enrichment.poster_url,
         tmdb_id=enrichment.tmdb_id,
         genres=[str(genre_id) for genre_id in enrichment.genres],
         runtime=enrichment.runtime,
