@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { ProfileProvider } from "@/contexts/ProfileContext";
 import { Landing } from "@/pages/Landing";
 import { Home } from "@/pages/Home";
 import { Profile } from "@/pages/Profile";
@@ -13,7 +14,7 @@ function App() {
   const [loaderMounted, setLoaderMounted] = useState(true);
 
   return (
-    <>
+    <ProfileProvider>
       {loaderMounted && (
         <AppLoader
           visible={authLoading}
@@ -55,7 +56,7 @@ function App() {
         <Route path="*" element={<NotFound />} />
       </Routes>
       <ThemeToggle />
-    </>
+    </ProfileProvider>
   );
 }
 

@@ -3,6 +3,7 @@ import {
   Avatar,
   AvatarFallback,
   AvatarImage,
+  Badge,
   Button,
   Tabs,
   TabsList,
@@ -10,6 +11,7 @@ import {
 } from "@/components/ui";
 import { signInWithGoogle, signOut } from "@/lib/auth";
 import { useAuth } from "@/hooks/useAuth";
+import { useProfile } from "@/hooks/useProfile";
 
 interface TopbarProps {
   variant?: "landing" | "app";
@@ -17,6 +19,7 @@ interface TopbarProps {
 
 export function Topbar({ variant = "landing" }: TopbarProps) {
   const { user, loading } = useAuth();
+  const { profile } = useProfile();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -29,7 +32,7 @@ export function Topbar({ variant = "landing" }: TopbarProps) {
 
   return (
     <header
-      className="z-50 h-15 flex items-center justify-between px-10 shrink-0"
+      className="relative z-50 h-15 flex items-center justify-between px-10 shrink-0"
       style={{
         background: "var(--topbar-gradient)",
         backdropFilter: "blur(40px)",
@@ -73,6 +76,17 @@ export function Topbar({ variant = "landing" }: TopbarProps) {
         )}
       </div>
 
+      {variant === "app" && user && profile?.letterboxd_username && (
+        <Link
+          to="/profile"
+          className="absolute left-1/2 -translate-x-1/2 hover:opacity-70 transition-opacity"
+        >
+          <Badge variant="letterboxd">
+            <LetterboxdDots />@{profile.letterboxd_username}
+          </Badge>
+        </Link>
+      )}
+
       {/* Right side */}
       <div className="flex items-center gap-6">
         {!loading &&
@@ -109,5 +123,15 @@ export function Topbar({ variant = "landing" }: TopbarProps) {
         )}
       </div>
     </header>
+  );
+}
+
+function LetterboxdDots() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 60 60" aria-hidden="true">
+      <circle cx="14" cy="30" r="9" fill="#00E054" />
+      <circle cx="30" cy="30" r="9" fill="#40BCF4" />
+      <circle cx="46" cy="30" r="9" fill="#FF8000" />
+    </svg>
   );
 }
