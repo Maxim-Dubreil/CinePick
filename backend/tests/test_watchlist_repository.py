@@ -7,7 +7,6 @@ import pytest
 
 from models import EnrichedFilm, Film, FilmEnrichment
 from repositories import watchlist
-from supabase_client import supabase
 
 
 def _table_mock(supabase_mock, table_name: str) -> MagicMock:
@@ -132,7 +131,7 @@ def test_upsert_films_omits_enrichment_keys_when_unenriched(supabase_mock):
 
 
 @pytest.mark.integration
-def test_upsert_films_mixed_batch_against_real_db(require_integration):
+def test_upsert_films_mixed_batch_against_real_db(require_integration, monkeypatch):
     """Regression test for a real bug the mocked tests above cannot catch:
 
     PostgREST's bulk upsert treats a key missing from one row (but present on
@@ -165,13 +164,16 @@ def test_upsert_films_mixed_batch_against_real_db(require_integration):
     ]
 
     try:
+        monkeypatch.setattr(watchlist, "supabase", require_integration)
         result = watchlist.upsert_films(films)
         assert set(result.keys()) == {
             f"{slug_prefix}-enriched",
             f"{slug_prefix}-unenriched",
         }
     finally:
-        supabase.table("films").delete().like("letterboxd_slug", f"{slug_prefix}%").execute()
+        require_integration.table("films").delete().like(
+            "letterboxd_slug", f"{slug_prefix}%"
+        ).execute()
 
 
 # --- sync_user_watchlist --------------------------------------------------

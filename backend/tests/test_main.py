@@ -3,6 +3,7 @@ from datetime import UTC, datetime
 import pytest
 from fastapi.testclient import TestClient
 
+import main as main_module
 import reco_ai
 import scraper
 import tmdb
@@ -27,7 +28,8 @@ def test_health_endpoint():
 
 
 @pytest.mark.integration
-def test_health_ready_endpoint(require_integration):
+def test_health_ready_endpoint(require_integration, monkeypatch):
+    monkeypatch.setattr(main_module, "supabase", require_integration)
     response = client.get("/health/ready")
     assert response.status_code == 200
     data = response.json()
