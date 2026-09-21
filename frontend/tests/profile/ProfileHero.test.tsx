@@ -17,7 +17,10 @@ const mockUser = {
 function renderHero(letterboxdUsername: string | null) {
   return render(
     <MemoryRouter>
-      <ProfileHero user={mockUser} letterboxdUsername={letterboxdUsername} />
+      <ProfileHero
+        user={mockUser}
+        letterboxdUsername={letterboxdUsername}
+      />
     </MemoryRouter>
   )
 }

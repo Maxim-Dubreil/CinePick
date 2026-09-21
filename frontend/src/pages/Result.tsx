@@ -1,98 +1,91 @@
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui";
+import { useAuth } from "@/hooks/useAuth";
+import { useResultFlow } from "@/hooks/useResultFlow";
+import {
+  FilmCard,
+  DecisionButtons,
+  LoadingSteps,
+  AcceptedScreen,
+  DeadEndScreen,
+} from "@/components/result";
+import { Toast } from "@/components/ui";
+import type { RecommendRequest } from "@/lib/backend/api";
 
 interface ResultLocationState {
   filmCount: number;
+  answers: RecommendRequest;
 }
 
 function isResultLocationState(state: unknown): state is ResultLocationState {
   return (
     typeof state === "object" &&
     state !== null &&
-    typeof (state as ResultLocationState).filmCount === "number"
+    typeof (state as ResultLocationState).filmCount === "number" &&
+    typeof (state as ResultLocationState).answers === "object" &&
+    (state as ResultLocationState).answers !== null
   );
 }
 
-const CANDIDATE_LABELS = ["1er choix IA", "2ème candidat", "3ème candidat"];
-const CANDIDATE_GRADIENTS = [
-  "linear-gradient(160deg, rgba(196,181,253,0.22), rgba(91,33,182,0.35))",
-  "linear-gradient(160deg, rgba(124,58,237,0.18), rgba(10,26,46,0.5))",
-  "linear-gradient(160deg, rgba(76,29,149,0.2), rgba(5,5,14,0.6))",
-];
-
 export function Result() {
   const location = useLocation();
-  const navigate = useNavigate();
 
   if (!isResultLocationState(location.state)) {
     return <Navigate to="/home/question" replace />;
   }
 
-  const { filmCount } = location.state;
-  const hasResults = filmCount > 0;
-  const candidateCount = Math.min(3, filmCount);
+  return <ResultFlowScreen answers={location.state.answers} />;
+}
 
-  const heading = !hasResults
-    ? "Aucun film ne correspond à tes critères ce soir."
-    : candidateCount === 1
-      ? "Un film pour ce soir."
-      : candidateCount === 2
-        ? "Deux films pour ce soir."
-        : "Trois films pour ce soir.";
+interface ResultFlowScreenProps {
+  answers: RecommendRequest;
+}
 
-  const countLabel = hasResults
-    ? filmCount === 1
-      ? "9/9 — 1 film correspond"
-      : `9/9 — ${filmCount} films correspondent`
-    : "9/9";
+function ResultFlowScreen({ answers }: ResultFlowScreenProps) {
+  const navigate = useNavigate();
+  const { session, loading: authLoading } = useAuth();
+  const flow = useResultFlow(
+    answers,
+    session?.access_token ?? null,
+    !authLoading,
+  );
 
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-5 px-6 text-center">
-      <p
-        className={
-          hasResults
-            ? "text-[11px] tracking-[0.10em] text-text-tertiary uppercase"
-            : "text-[11px] tracking-[0.10em] text-[rgba(224,112,112,0.6)] uppercase"
-        }
-      >
-        {countLabel}
-      </p>
-      <h2 className="max-w-[520px] font-heading text-4xl italic">{heading}</h2>
+    <div
+      className="relative flex h-full flex-col items-center justify-center gap-6 px-6"
+      aria-live="polite"
+    >
+      {flow.phase === "loading" && <LoadingSteps />}
 
-      {hasResults ? (
+      {flow.phase === "card" && flow.currentFilm && (
         <>
-          <p className="max-w-[440px] text-sm text-text-secondary">
-            L'IA a choisi ces candidats dans ta watchlist filtrée. L'écran
-            Résultat (carte + swipe) est la prochaine étape à prototyper.
-          </p>
-          <div className="mt-2 flex gap-5">
-            {Array.from({ length: candidateCount }).map((_, index) => (
-              <div key={index} className="flex w-40 flex-col gap-2.5">
-                <div
-                  className="aspect-[2/3] rounded-[var(--radius-lg)] border border-[var(--glass-border)] shadow-[0_8px_24px_rgba(0,0,0,0.3)]"
-                  style={{ background: CANDIDATE_GRADIENTS[index] }}
-                />
-                <p className="text-center text-[11px] text-text-tertiary">
-                  {candidateCount === 1 ? "1er choix IA" : CANDIDATE_LABELS[index]}
-                </p>
-              </div>
-            ))}
-          </div>
+          <FilmCard film={flow.currentFilm} />
+          <DecisionButtons
+            onAccept={flow.onAccept}
+            onSkip={flow.onSkip}
+            disabled={flow.deciding}
+          />
         </>
-      ) : (
-        <p className="max-w-[420px] text-sm text-text-secondary">
-          Essaie d'élargir un peu tes réponses — genre, durée ou époque — pour
-          retrouver des films dans ta watchlist.
-        </p>
       )}
 
-      <Button
-        variant="glass"
-        className="mt-3 h-11 rounded-[var(--radius-xl)] px-6"
-        onClick={() => navigate("/home/question", { replace: true })}
-      >
-        Recommencer
-      </Button>
+      {flow.phase === "accepted" && flow.acceptedFilm && (
+        <AcceptedScreen
+          film={flow.acceptedFilm}
+          onBackHome={() => navigate("/home", { replace: true })}
+        />
+      )}
+
+      {flow.phase === "dead-end" && flow.deadEndReason && (
+        <DeadEndScreen
+          reason={flow.deadEndReason}
+          onReset={() => navigate("/home/question", { replace: true })}
+        />
+      )}
+
+      <Toast
+        key={flow.toastId}
+        message={flow.toastMessage}
+        onDismiss={flow.dismissToast}
+      />
     </div>
   );
 }

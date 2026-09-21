@@ -9,6 +9,8 @@ from supabase import create_client
 def _is_integration_test():
     """Check if integration test credentials are available."""
     return bool(
+        os.environ.get("RUN_INTEGRATION_TESTS") == "1"
+        and
         os.environ.get("SUPABASE_URL")
         and os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
     )

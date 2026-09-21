@@ -18,7 +18,6 @@ function Card({
       className={cn(
         // Base
         "group/card flex flex-col gap-3 overflow-hidden rounded-[var(--radius-xl)] text-sm",
-        "backdrop-blur-xl",
         // Inset shine en haut
         "shadow-[var(--shadow-glass)]", // Variantes
         variant === "default" && [

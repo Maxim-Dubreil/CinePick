@@ -1,6 +1,10 @@
-"""Pydantic models for Letterboxd scraping."""
+"""Pydantic models: Letterboxd scraping, watchlist storage, and the
+/recommend questionnaire/response contract."""
 
-from pydantic import BaseModel, Field
+from datetime import datetime
+from typing import Literal
+
+from pydantic import BaseModel, Field, field_validator
 
 
 class Film(BaseModel):
@@ -54,6 +58,18 @@ class FilmEnrichment(BaseModel):
     origin_country: list[str]
     """ISO 3166-1 country codes from `production_countries` — never `original_language`."""
 
+    overview: str | None = None
+    """TMDB synopsis — `None` when TMDB doesn't provide one for this film."""
+
+    poster_url: str | None = None
+    """Absolute TMDB CDN image URL, built from `poster_path`. Unlike the
+    scraped `Film.poster_url` (a Letterboxd resolver endpoint, not an image),
+    this one is directly usable as an `<img>` src."""
+
+    director: str | None = None
+    """Name of the film's director, from `credits.crew` — `None` when TMDB
+    has no crew entry with `job == "Director"`."""
+
 
 class EnrichedFilm(BaseModel):
     """A scraped film merged with its (optional) TMDB enrichment.
@@ -72,3 +88,103 @@ class EnrichedFilm(BaseModel):
     genres: list[str] = Field(default_factory=list)
     runtime: int | None = None
     origin_country: list[str] = Field(default_factory=list)
+    overview: str | None = None
+    director: str | None = None
+
+
+class WatchlistFilm(BaseModel):
+    """A film read back from a user's active watchlist, ready for filtering.
+
+    Distinct from `EnrichedFilm` (write-side, keyed by `letterboxd_slug`):
+    this carries the DB `id`, needed to compare against `watch_history` and
+    against whatever id the AI proxy returns.
+    """
+
+    id: str
+    letterboxd_slug: str
+    title: str
+    year: int | None
+    poster_url: str | None
+    genres: list[str] = Field(default_factory=list)
+    runtime: int | None = None
+    origin_country: list[str] = Field(default_factory=list)
+    overview: str | None = None
+    director: str | None = None
+    added_at: datetime
+    """When this film was added to the user's watchlist — used to sort the
+    no-AI short-circuit path deterministically (oldest first)."""
+
+    @field_validator("genres", "origin_country", mode="before")
+    @classmethod
+    def _null_array_to_empty(cls, value: object) -> object:
+        """`films.genres`/`origin_country` are nullable: PostgREST writes an
+        explicit NULL for unenriched films in a mixed upsert batch (see
+        backend/db/schema.sql and test_upsert_films_mixed_batch_against_real_db)."""
+        return [] if value is None else value
+
+
+class WatchlistFilterFilm(BaseModel):
+    """A single watchlist film, pre-bucketed for the questionnaire's live
+    filter count. Mirrors `filtering.py`'s hard-filter fields exactly (via
+    `duration_bucket`/`era_bucket`), so the frontend can replicate the same
+    rules without duplicating the bucket boundaries."""
+
+    id: str
+    genres: list[str]
+    duration: Literal["lt90", "90-120", "120-150", "150plus"] | None
+    era: Literal["silent", "golden", "newwave", "blockbuster", "2000s", "recent"] | None
+    origin_country: list[str]
+    last_proposed_at: datetime | None
+    """When this film was last proposed to or decided on by the user (from
+    `watch_history`), or `None` if never — mirrors `filtering.py`'s
+    `decision_history` lookup."""
+
+
+class WatchlistFilterResponse(BaseModel):
+    films: list[WatchlistFilterFilm]
+
+
+class RankedCandidate(BaseModel):
+    """One AI-ranked (or short-circuit) recommendation candidate."""
+
+    film: WatchlistFilm
+    rank: int
+    match_score: int | None
+    critique: str | None
+
+
+class RecommendRequest(BaseModel):
+    """Answers to the 9-question flow, sent as-is from the frontend.
+
+    Field names match `QuestionId` in `frontend/src/lib/question/types.ts`
+    exactly — no renaming layer. `genre`/`region` carry `["none"]` for "no
+    preference" (multi-select questions); the single-select fields carry
+    `"any"` for the same meaning, matching `questionnaire.ts`.
+    """
+
+    genre: list[str]
+    """TMDB genre ids as strings (e.g. `["35"]`), or `["none"]`."""
+    emotion: list[str]
+    """Not filtered — forwarded to the AI proxy as-is."""
+    ambiance: list[str]
+    """Not filtered — forwarded to the AI proxy as-is."""
+    withWho: Literal["seul", "amis", "couple", "famille", "any"]
+    """Not filtered — forwarded to the AI proxy as-is."""
+    duration: Literal["lt90", "90-120", "120-150", "150plus", "any"]
+    era: Literal["silent", "golden", "newwave", "blockbuster", "2000s", "recent", "any"]
+    region: list[str]
+    """ISO 3166-1 country codes, `["none"]`, or a user-typed custom region."""
+    subtitles: Literal["with", "without", "any"]
+    """Not filtered — forwarded to the AI proxy as-is."""
+    seen: Literal["nouveau", "any"]
+    """`"any"` disables the default watch_history exclusion (see filtering.py)."""
+
+
+class RecommendDecisionRequest(BaseModel):
+    """Body of POST /recommend/decision — records a swipe outcome."""
+
+    recommendation_session_id: str
+    film_id: str
+    decision: Literal["accepted", "skipped"]
+    match_score: int | None = Field(default=None, ge=0, le=100)
+    critique: str | None = Field(default=None, max_length=1000)

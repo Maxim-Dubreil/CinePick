@@ -1,10 +1,14 @@
+from datetime import UTC, datetime
+
 import pytest
 from fastapi.testclient import TestClient
 
+import reco_ai
 import scraper
 import tmdb
 from main import app
-from models import Film
+from models import Film, RankedCandidate, WatchlistFilm
+from repositories import watch_history as watch_history_repo
 from repositories import watchlist as watchlist_repo
 
 client = TestClient(app)
@@ -152,3 +156,210 @@ def test_letterboxd_sync_empty_username():
 def test_letterboxd_sync_requires_auth():
     response = client.post("/letterboxd/sync", json={"letterboxd_username": "cinephile"})
     assert response.status_code == 401
+
+
+def test_letterboxd_unlink_nominal():
+    response = client.delete("/letterboxd/unlink", headers=AUTH_HEADERS)
+    assert response.status_code == 200
+    assert response.json() == {"unlinked": True}
+
+
+def test_letterboxd_unlink_requires_auth():
+    response = client.delete("/letterboxd/unlink")
+    assert response.status_code == 401
+
+
+TAG_RECOMMEND = "recommend"  # not asserted on; just documents the route's tag
+
+
+def test_watchlist_returns_bucketed_films(monkeypatch):
+    films = [
+        _film("a", genres=["35"], runtime=80, year=1925, origin_country=["FR"]),
+        _film("b", genres=["27"], runtime=None, year=None, origin_country=[]),
+    ]
+    monkeypatch.setattr(watchlist_repo, "get_active_watchlist", lambda user_id: films)
+    monkeypatch.setattr(
+        watch_history_repo,
+        "get_decision_history",
+        lambda user_id: {"a": datetime(2026, 1, 1, tzinfo=UTC)},
+    )
+
+    response = client.get("/watchlist", headers=AUTH_HEADERS)
+
+    assert response.status_code == 200
+    data = response.json()["films"]
+    assert data[0] == {
+        "id": "a",
+        "genres": ["35"],
+        "duration": "lt90",
+        "era": "silent",
+        "origin_country": ["FR"],
+        "last_proposed_at": "2026-01-01T00:00:00Z",
+    }
+    assert data[1]["duration"] is None
+    assert data[1]["era"] is None
+    assert data[1]["last_proposed_at"] is None
+
+
+def test_watchlist_requires_auth(monkeypatch):
+    monkeypatch.setattr(watchlist_repo, "get_active_watchlist", lambda user_id: [])
+    monkeypatch.setattr(watch_history_repo, "get_decision_history", lambda user_id: {})
+    response = client.get("/watchlist")
+    assert response.status_code == 401
+
+
+def _film(id: str, **overrides) -> WatchlistFilm:
+    defaults = dict(
+        letterboxd_slug=id, title=f"Film {id}", year=2020, poster_url="http://x/p.jpg",
+        genres=["35"], runtime=100, origin_country=["US"], overview="A synopsis.",
+        added_at=datetime(2026, 1, 1, tzinfo=UTC),
+    )
+    return WatchlistFilm(id=id, **{**defaults, **overrides})
+
+
+RECOMMEND_BODY = {
+    "genre": ["none"], "emotion": ["Zen"], "ambiance": ["none"], "withWho": "any",
+    "duration": "any", "era": "any", "region": ["none"], "subtitles": "any", "seen": "any",
+}
+
+
+def _patch_recommend(monkeypatch, *, films=None, history=None, ranked=None, ai_raises=None):
+    monkeypatch.setattr(watchlist_repo, "get_active_watchlist", lambda user_id: films or [])
+    monkeypatch.setattr(watch_history_repo, "get_decision_history", lambda user_id: history or {})
+    recorded = []
+    monkeypatch.setattr(
+        watch_history_repo,
+        "record_proposals",
+        lambda user_id, session_id, film_ids, ctx: recorded.append(
+            (user_id, session_id, film_ids, ctx)
+        ),
+    )
+
+    async def fake_pick_candidates(candidates, answers):
+        if ai_raises is not None:
+            raise ai_raises
+        return ranked or [
+            RankedCandidate(film=candidates[0], rank=1, match_score=80, critique="Nice.")
+        ]
+
+    monkeypatch.setattr(reco_ai, "pick_candidates", fake_pick_candidates)
+    return recorded
+
+
+def test_recommend_short_circuits_with_three_or_fewer_candidates(monkeypatch):
+    films = [
+        _film("a", added_at=datetime(2026, 1, 2, tzinfo=UTC)),
+        _film("b", added_at=datetime(2026, 1, 1, tzinfo=UTC)),
+    ]
+    recorded = _patch_recommend(monkeypatch, films=films)
+
+    response = client.post("/recommend", json=RECOMMEND_BODY, headers=AUTH_HEADERS)
+
+    assert response.status_code == 200
+    data = response.json()
+    assert [c["title"] for c in data["candidates"]] == ["Film b", "Film a"]  # oldest first
+    assert all(c["match_score"] is None and c["critique"] is None for c in data["candidates"])
+    assert data["meta"]["candidates_considered"] == 2
+    assert recorded[0][2] == ["b", "a"]  # proposals recorded in the order returned
+    assert [c["film_id"] for c in data["candidates"]] == recorded[0][2]
+    assert data["recommendation_session_id"] == recorded[0][1]
+
+
+def test_recommend_calls_ai_with_more_than_three_candidates(monkeypatch):
+    films = [_film(str(i)) for i in range(4)]
+    chosen = RankedCandidate(film=films[2], rank=1, match_score=95, critique="Top pick.")
+    recorded = _patch_recommend(monkeypatch, films=films, ranked=[chosen])
+
+    response = client.post("/recommend", json=RECOMMEND_BODY, headers=AUTH_HEADERS)
+
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data["candidates"]) == 1
+    assert data["candidates"][0]["match_score"] == 95
+    assert data["candidates"][0]["critique"] == "Top pick."
+    assert recorded[0][2] == ["2"]  # the AI-chosen film's id, matching what was returned
+
+
+def test_recommend_empty_watchlist(monkeypatch):
+    _patch_recommend(monkeypatch, films=[])
+
+    response = client.post("/recommend", json=RECOMMEND_BODY, headers=AUTH_HEADERS)
+
+    assert response.status_code == 422
+    assert response.json()["detail"]["type"] == "empty_watchlist"
+
+
+def test_recommend_no_candidates(monkeypatch):
+    film = _film("a", genres=["27"])
+    _patch_recommend(monkeypatch, films=[film])
+
+    body = {**RECOMMEND_BODY, "genre": ["35"]}
+    response = client.post("/recommend", json=body, headers=AUTH_HEADERS)
+
+    assert response.status_code == 422
+    assert response.json()["detail"]["type"] == "no_candidates"
+
+
+def test_recommend_ai_error(monkeypatch):
+    films = [_film(str(i)) for i in range(4)]
+    _patch_recommend(monkeypatch, films=films, ai_raises=reco_ai.AIProviderError("boom"))
+
+    response = client.post("/recommend", json=RECOMMEND_BODY, headers=AUTH_HEADERS)
+
+    assert response.status_code == 502
+    assert response.json()["detail"]["type"] == "ai_error"
+
+
+def test_recommend_requires_auth(monkeypatch):
+    _patch_recommend(monkeypatch, films=[_film("a")])
+    response = client.post("/recommend", json=RECOMMEND_BODY)
+    assert response.status_code == 401
+
+
+DECISION_BODY = {
+    "recommendation_session_id": "session-1",
+    "film_id": "film-a",
+    "decision": "accepted",
+    "match_score": 80,
+    "critique": "Nice.",
+}
+
+
+def test_recommend_decision_records_when_proposal_exists(monkeypatch):
+    monkeypatch.setattr(watch_history_repo, "record_decision", lambda *a, **k: True)
+
+    response = client.post("/recommend/decision", json=DECISION_BODY, headers=AUTH_HEADERS)
+
+    assert response.status_code == 200
+
+
+def test_recommend_decision_404_when_no_matching_proposal(monkeypatch):
+    monkeypatch.setattr(watch_history_repo, "record_decision", lambda *a, **k: False)
+
+    response = client.post("/recommend/decision", json=DECISION_BODY, headers=AUTH_HEADERS)
+
+    assert response.status_code == 404
+    assert response.json()["detail"]["type"] == "unknown_candidate"
+
+
+def test_recommend_decision_requires_auth(monkeypatch):
+    monkeypatch.setattr(watch_history_repo, "record_decision", lambda *a, **k: True)
+    response = client.post("/recommend/decision", json=DECISION_BODY)
+    assert response.status_code == 401
+
+
+def test_recommend_decision_null_score_and_critique_allowed(monkeypatch):
+    """Short-circuit candidates have no score/critique — decision must
+    still be recordable."""
+    monkeypatch.setattr(watch_history_repo, "record_decision", lambda *a, **k: True)
+    body = {
+        "recommendation_session_id": "session-1",
+        "film_id": "film-a",
+        "decision": "skipped",
+        "match_score": None,
+        "critique": None,
+    }
+
+    response = client.post("/recommend/decision", json=body, headers=AUTH_HEADERS)
+
+    assert response.status_code == 200

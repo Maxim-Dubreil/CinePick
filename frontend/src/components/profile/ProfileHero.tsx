@@ -1,40 +1,49 @@
-import { useNavigate } from 'react-router-dom'
-import { Sparkles, Pencil, Calendar } from 'lucide-react'
-import type { User } from '@supabase/supabase-js'
-import { Avatar, AvatarFallback, AvatarImage, Badge, Button } from '@/components/ui'
+import { useNavigate } from "react-router-dom";
+import { Sparkles, Pencil, Calendar } from "lucide-react";
+import type { User } from "@supabase/supabase-js";
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+  Badge,
+  Button,
+} from "@/components/ui";
 
 interface ProfileHeroProps {
-  user: User
-  letterboxdUsername: string | null
+  user: User;
+  letterboxdUsername: string | null;
 }
 
 function formatMemberSince(isoDate: string): string {
-  const formatted = new Intl.DateTimeFormat('fr-FR', {
-    month: 'long',
-    year: 'numeric',
-  }).format(new Date(isoDate))
-  return `Membre depuis ${formatted}`
+  const formatted = new Intl.DateTimeFormat("fr-FR", {
+    month: "long",
+    year: "numeric",
+  }).format(new Date(isoDate));
+  return `Membre depuis ${formatted}`;
 }
 
 function getInitials(fullName: string): string {
   return fullName
-    .split(' ')
+    .split(" ")
     .slice(0, 2)
-    .map((n) => n[0] ?? '')
-    .join('')
-    .toUpperCase()
+    .map((n) => n[0] ?? "")
+    .join("")
+    .toUpperCase();
 }
 
 export function ProfileHero({ user, letterboxdUsername }: ProfileHeroProps) {
-  const navigate = useNavigate()
-  const fullName = (user.user_metadata?.full_name as string | undefined) ?? user.email ?? 'Utilisateur'
-  const initials = getInitials(fullName)
+  const navigate = useNavigate();
+  const fullName =
+    (user.user_metadata?.full_name as string | undefined) ??
+    user.email ??
+    "Utilisateur";
+  const initials = getInitials(fullName);
 
   return (
-    <section className="rounded-[var(--radius-xl)] bg-[var(--glass-bg)] border border-[var(--glass-border)] backdrop-blur-xl shadow-[var(--shadow-glass)] p-7 flex items-center gap-7">
+    <section className="rounded-[var(--radius-xl)] bg-[var(--glass-bg)] border border-[var(--glass-border)] shadow-[var(--shadow-glass)] p-7 flex items-center gap-7">
       <Avatar className="size-24 shrink-0">
         <AvatarImage
-          src={(user.user_metadata?.picture as string | undefined) ?? ''}
+          src={(user.user_metadata?.picture as string | undefined) ?? ""}
           alt={fullName}
         />
         <AvatarFallback className="text-3xl font-medium bg-gradient-to-br from-violet-400 to-purple-700 text-white rounded-full size-full flex items-center justify-center">
@@ -61,14 +70,17 @@ export function ProfileHero({ user, letterboxdUsername }: ProfileHeroProps) {
             </Badge>
           )}
           <span className="flex items-center gap-1.5 text-sm text-[var(--text-secondary)]">
-            <Calendar size={14} className="text-[var(--text-tertiary)] shrink-0" />
+            <Calendar
+              size={14}
+              className="text-[var(--text-tertiary)] shrink-0"
+            />
             {formatMemberSince(user.created_at)}
           </span>
         </div>
       </div>
 
       <div className="flex flex-col gap-2.5 shrink-0">
-        <Button variant="glass-accent" onClick={() => void navigate('/home')}>
+        <Button variant="glass-accent" onClick={() => void navigate("/home")}>
           <Sparkles size={15} />
           Nouvelle reco
         </Button>
@@ -79,7 +91,7 @@ export function ProfileHero({ user, letterboxdUsername }: ProfileHeroProps) {
         </Button>
       </div>
     </section>
-  )
+  );
 }
 
 function LetterboxdDots() {
@@ -89,5 +101,5 @@ function LetterboxdDots() {
       <circle cx="30" cy="30" r="9" fill="#40BCF4" />
       <circle cx="46" cy="30" r="9" fill="#FF8000" />
     </svg>
-  )
+  );
 }

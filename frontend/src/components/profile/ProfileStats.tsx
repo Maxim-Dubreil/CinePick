@@ -12,7 +12,7 @@ interface StatCardProps {
 
 function StatCard({ value, label, pending = false }: StatCardProps) {
   return (
-    <div className="rounded-[var(--radius-xl)] bg-[var(--glass-bg)] border border-[var(--glass-border)] backdrop-blur-xl shadow-[var(--shadow-glass)] px-5 py-[18px] relative overflow-hidden">
+    <div className="rounded-[var(--radius-xl)] bg-[var(--glass-bg)] border border-[var(--glass-border)] shadow-[var(--shadow-glass)] px-5 py-[18px] relative overflow-hidden">
       {pending && (
         <span className="absolute top-3 right-3">
           <Badge variant="accent" className="text-[10px] px-2 py-0.5">Bientôt</Badge>

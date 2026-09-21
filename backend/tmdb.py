@@ -15,6 +15,7 @@ import httpx
 from models import Film, FilmEnrichment
 
 _BASE_URL = "https://api.themoviedb.org/3"
+_IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w500"
 _REQUEST_TIMEOUT = 10.0
 
 
@@ -46,17 +47,32 @@ async def _search_movie_id(
     return results[0]["id"]
 
 
+def _parse_director(data: dict) -> str | None:
+    crew = data.get("credits", {}).get("crew", [])
+    for member in crew:
+        if member.get("job") == "Director":
+            return member.get("name")
+    return None
+
+
 async def _fetch_details(client: httpx.AsyncClient, tmdb_id: int) -> FilmEnrichment | None:
-    response = await client.get(f"{_BASE_URL}/movie/{tmdb_id}", params={"api_key": _api_key()})
+    response = await client.get(
+        f"{_BASE_URL}/movie/{tmdb_id}",
+        params={"api_key": _api_key(), "append_to_response": "credits", "language": "fr-FR"},
+    )
     if response.status_code != 200:
         return None
     data = response.json()
+    poster_path = data.get("poster_path")
     return FilmEnrichment(
         tmdb_id=tmdb_id,
         genres=[g["id"] for g in data.get("genres", [])],
         runtime=data.get("runtime"),
         year=_parse_year(data.get("release_date")),
         origin_country=[c["iso_3166_1"] for c in data.get("production_countries", [])],
+        overview=data.get("overview") or None,
+        poster_url=_IMAGE_BASE_URL + poster_path if poster_path else None,
+        director=_parse_director(data),
     )
 
 

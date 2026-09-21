@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
+import type { ReactNode } from "react";
 import App from "@/App";
 
 interface AppLoaderProps {
@@ -38,6 +39,10 @@ vi.mock("@/hooks/useAuth", () => ({
 
 vi.mock("@/hooks/useProfile", () => ({
   useProfile: () => ({ profile: null, refetch: () => {} }),
+}));
+
+vi.mock("@/contexts/ProfileContext", () => ({
+  ProfileProvider: ({ children }: { children: ReactNode }) => children,
 }));
 
 describe("App Routing", () => {

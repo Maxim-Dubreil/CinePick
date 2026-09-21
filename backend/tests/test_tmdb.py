@@ -107,6 +107,88 @@ async def test_search_and_enrich_malformed_details_returns_none():
     assert result is None
 
 
+async def test_search_and_enrich_captures_overview():
+    def handler(request: httpx.Request) -> httpx.Response:
+        if "/search/movie" in str(request.url):
+            return httpx.Response(200, json={"results": [{"id": 42}]})
+        if "/movie/42" in str(request.url):
+            return httpx.Response(
+                200,
+                json={
+                    "runtime": 120,
+                    "release_date": "2021-03-04",
+                    "genres": [{"id": 28, "name": "Action"}],
+                    "production_countries": [{"iso_3166_1": "US", "name": "United States"}],
+                    "overview": "A test synopsis.",
+                },
+            )
+        return httpx.Response(404)
+
+    async with _client(handler) as client:
+        result = await search_and_enrich("Some Film", 2021, client=client)
+
+    assert result is not None
+    assert result.overview == "A test synopsis."
+
+
+async def test_search_and_enrich_missing_overview_is_none():
+    def handler(request: httpx.Request) -> httpx.Response:
+        if "/search/movie" in str(request.url):
+            return httpx.Response(200, json={"results": [{"id": 42}]})
+        if "/movie/42" in str(request.url):
+            return httpx.Response(200, json={"genres": []})
+        return httpx.Response(404)
+
+    async with _client(handler) as client:
+        result = await search_and_enrich("Some Film", 2021, client=client)
+
+    assert result is not None
+    assert result.overview is None
+
+
+async def test_search_and_enrich_captures_director():
+    def handler(request: httpx.Request) -> httpx.Response:
+        if "/search/movie" in str(request.url):
+            return httpx.Response(200, json={"results": [{"id": 42}]})
+        if "/movie/42" in str(request.url):
+            return httpx.Response(
+                200,
+                json={
+                    "genres": [],
+                    "credits": {
+                        "crew": [
+                            {"job": "Producer", "name": "Someone Else"},
+                            {"job": "Director", "name": "A Director"},
+                        ]
+                    },
+                },
+            )
+        return httpx.Response(404)
+
+    async with _client(handler) as client:
+        result = await search_and_enrich("Some Film", 2021, client=client)
+
+    assert result is not None
+    assert result.director == "A Director"
+
+
+async def test_search_and_enrich_missing_director_is_none():
+    def handler(request: httpx.Request) -> httpx.Response:
+        if "/search/movie" in str(request.url):
+            return httpx.Response(200, json={"results": [{"id": 42}]})
+        if "/movie/42" in str(request.url):
+            return httpx.Response(
+                200, json={"genres": [], "credits": {"crew": [{"job": "Producer"}]}}
+            )
+        return httpx.Response(404)
+
+    async with _client(handler) as client:
+        result = await search_and_enrich("Some Film", 2021, client=client)
+
+    assert result is not None
+    assert result.director is None
+
+
 async def test_enrich_many_maps_by_slug(monkeypatch):
     films = [
         Film(slug="film-a", title="Film A", year=2020, poster_url=None),

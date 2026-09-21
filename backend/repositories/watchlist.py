@@ -7,10 +7,10 @@ user's watchlist gets timestamped, never deleted, so history survives a
 resync.
 """
 
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import TypedDict
 
-from models import EnrichedFilm, Film, FilmEnrichment
+from models import EnrichedFilm, Film, FilmEnrichment, WatchlistFilm
 from supabase_client import supabase
 
 
@@ -24,25 +24,36 @@ class FilmRow(TypedDict):
 _FILMS_TABLE = "films"
 _WATCHLIST_TABLE = "user_watchlist_items"
 
+_ENRICHMENT_FIELDS = ("tmdb_id", "genres", "runtime", "origin_country", "overview", "director")
+"""TMDB-derived columns on `films`, refreshed together — omitted entirely
+from the upsert record when a film has no enrichment (see `upsert_films`)."""
+
 
 def merge_enrichment(film: Film, enrichment: FilmEnrichment | None) -> EnrichedFilm:
-    """Combine a scraped film with its optional TMDB enrichment for storage."""
+    """Combine a scraped film with its optional TMDB enrichment for storage.
+
+    `poster_url` always comes from TMDB's CDN, never from the scraped
+    `film.poster_url` — that one is a Letterboxd resolver endpoint, not an
+    image, and is never directly displayable (CIN-81).
+    """
     if enrichment is None:
         return EnrichedFilm(
             letterboxd_slug=film.slug,
             title=film.title,
             year=film.year,
-            poster_url=film.poster_url,
+            poster_url=None,
         )
     return EnrichedFilm(
         letterboxd_slug=film.slug,
         title=film.title,
         year=enrichment.year if enrichment.year is not None else film.year,
-        poster_url=film.poster_url,
+        poster_url=enrichment.poster_url,
         tmdb_id=enrichment.tmdb_id,
         genres=[str(genre_id) for genre_id in enrichment.genres],
         runtime=enrichment.runtime,
         origin_country=enrichment.origin_country,
+        overview=enrichment.overview,
+        director=enrichment.director,
     )
 
 
@@ -60,12 +71,10 @@ def upsert_films(films: list[EnrichedFilm]) -> dict[str, str]:
         return {}
     records = []
     for film in films:
-        record = film.model_dump(exclude={"tmdb_id", "genres", "runtime", "origin_country"})
+        record = film.model_dump(exclude=set(_ENRICHMENT_FIELDS))
         if film.tmdb_id is not None:
-            record["tmdb_id"] = film.tmdb_id
-            record["genres"] = film.genres
-            record["runtime"] = film.runtime
-            record["origin_country"] = film.origin_country
+            for field in _ENRICHMENT_FIELDS:
+                record[field] = getattr(film, field)
         records.append(record)
     response = (
         supabase.table(_FILMS_TABLE).upsert(records, on_conflict="letterboxd_slug").execute()
@@ -86,14 +95,36 @@ def sync_user_watchlist(user_id: str, active_film_ids: set[str]) -> None:
     so PostgREST's merge-on-conflict leaves it untouched on existing rows and
     falls back to its column default (`now()`) only for genuinely new ones.
     """
-    now = datetime.now(UTC).isoformat()
+    supabase.rpc(
+        "sync_user_watchlist",
+        {
+            "p_user_id": user_id,
+            "p_active_film_ids": sorted(active_film_ids),
+        },
+    ).execute()
 
-    supabase.table(_WATCHLIST_TABLE).update({"removed_at": now}).eq(
-        "user_id", user_id
-    ).is_("removed_at", "null").execute()
 
-    if active_film_ids:
-        supabase.table(_WATCHLIST_TABLE).upsert(
-            [{"user_id": user_id, "film_id": fid, "removed_at": None} for fid in active_film_ids],
-            on_conflict="user_id,film_id",
-        ).execute()
+class WatchlistItemRow(TypedDict):
+    """One row of a `user_watchlist_items` select joined against `films`."""
+
+    added_at: str
+    films: dict
+
+
+def get_active_watchlist(user_id: str) -> list[WatchlistFilm]:
+    """Read a user's currently active watchlist (soft-deleted rows excluded)."""
+    response = (
+        supabase.table(_WATCHLIST_TABLE)
+        .select("added_at, films(*)")
+        .eq("user_id", user_id)
+        .is_("removed_at", "null")
+        .execute()
+    )
+    rows: list[WatchlistItemRow] = response.data  # type: ignore[assignment]
+    return [
+        WatchlistFilm(
+            **row["films"],
+            added_at=datetime.fromisoformat(row["added_at"]),
+        )
+        for row in rows
+    ]

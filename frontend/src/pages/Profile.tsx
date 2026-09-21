@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
-import { syncWatchlist } from "@/lib/backend/api";
+import { syncWatchlist, unlinkLetterboxdAccount } from "@/lib/backend/api";
 import { signOut } from "@/lib/auth";
 import { LetterboxdConfigModal } from "@/components/home";
+import { Toast } from "@/components/ui";
 import {
   ProfileHero,
   ProfileStats,
@@ -11,6 +12,7 @@ import {
   ProfileTaste,
   ProfileHistory,
   ProfilePreferences,
+  UnlinkLetterboxdModal,
 } from "@/components/profile";
 
 export function Profile() {
@@ -18,63 +20,107 @@ export function Profile() {
   const { profile, refetch } = useProfile();
   const [modalOpen, setModalOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [unlinkModalOpen, setUnlinkModalOpen] = useState(false);
+  const [isUnlinking, setIsUnlinking] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const handleResync = async () => {
     if (!profile?.letterboxd_username || !session?.access_token) return;
     setIsSyncing(true);
+    setActionError(null);
     try {
       await syncWatchlist(profile.letterboxd_username, session.access_token);
       refetch();
+    } catch (error) {
+      console.error("Profile watchlist sync failed", error);
+      setActionError("La synchronisation a échoué. Réessaie dans un instant.");
     } finally {
       setIsSyncing(false);
+    }
+  };
+
+  const handleUnlink = async () => {
+    if (!session?.access_token) return;
+    setIsUnlinking(true);
+    setActionError(null);
+    try {
+      await unlinkLetterboxdAccount(session.access_token);
+      refetch();
+      setUnlinkModalOpen(false);
+    } catch (error) {
+      console.error("Profile Letterboxd unlink failed", error);
+      setActionError("Impossible de délier ce compte pour le moment.");
+    } finally {
+      setIsUnlinking(false);
     }
   };
 
   if (!user) return null;
 
   return (
-    <div className="max-w-5xl mx-auto px-10 py-11 pb-20 flex flex-col gap-5">
-      <ProfileHero
-        user={user}
-        letterboxdUsername={profile?.letterboxd_username ?? null}
+    <>
+      <Toast
+        message={actionError}
+        variant="error"
+        onDismiss={() => setActionError(null)}
       />
+      <div className="max-w-5xl mx-auto px-10 py-11 pb-20 flex flex-col gap-5">
+        <ProfileHero
+          user={user}
+          letterboxdUsername={profile?.letterboxd_username ?? null}
+        />
 
-      <ProfileStats filmCount={profile?.film_count ?? 0} />
+        <ProfileStats filmCount={profile?.film_count ?? 0} />
 
-      <div className="grid grid-cols-[1.55fr_1fr] items-start gap-4">
-        <div className="flex flex-col gap-4">
-          <ProfileTaste />
-          <ProfileHistory />
-        </div>
+        <div className="grid grid-cols-[1.55fr_1fr] items-start gap-4">
+          <div className="flex flex-col gap-4">
+            <ProfileTaste />
+            <ProfileHistory />
+          </div>
 
-        <div className="flex flex-col gap-4">
-          <ProfileSync
-            profile={profile}
-            isSyncing={isSyncing}
-            onResync={() => void handleResync()}
-            onOpenModal={() => setModalOpen(true)}
-          />
-          <ProfilePreferences />
-          <div className="rounded-[var(--radius-xl)] bg-[var(--glass-bg)] border border-[var(--glass-border)] backdrop-blur-xl shadow-[var(--shadow-glass)] px-6 py-5 flex flex-col gap-1">
-            {/* TODO: implémenter la page paramètres du compte */}
-            <AccountButton label="Paramètres du compte" disabled />
-            <AccountButton
-              label="Se déconnecter"
-              onClick={() => void signOut()}
+          <div className="flex flex-col gap-4">
+            <ProfileSync
+              profile={profile}
+              isSyncing={isSyncing}
+              onResync={() => void handleResync()}
+              onOpenModal={() => setModalOpen(true)}
             />
+            <ProfilePreferences />
+            <div className="rounded-[var(--radius-xl)] bg-[var(--glass-bg)] border border-[var(--glass-border)] shadow-[var(--shadow-glass)] px-6 py-5 flex flex-col gap-1">
+              {/* TODO: implémenter la page paramètres du compte */}
+              <AccountButton label="Paramètres du compte" disabled />
+              {profile?.letterboxd_username && (
+                <AccountButton
+                  label="Délier le compte Letterboxd"
+                  destructive
+                  onClick={() => setUnlinkModalOpen(true)}
+                />
+              )}
+              <AccountButton
+                label="Se déconnecter"
+                onClick={() => void signOut()}
+              />
+            </div>
           </div>
         </div>
-      </div>
 
-      <LetterboxdConfigModal
-        open={modalOpen}
-        mode={profile?.letterboxd_username ? "change" : "link"}
-        onOpenChange={setModalOpen}
-        onSuccess={() => void refetch()}
-        onSyncingChange={setIsSyncing}
-        token={session?.access_token ?? null}
-      />
-    </div>
+        <LetterboxdConfigModal
+          open={modalOpen}
+          mode={profile?.letterboxd_username ? "change" : "link"}
+          onOpenChange={setModalOpen}
+          onSuccess={() => void refetch()}
+          onSyncingChange={setIsSyncing}
+          token={session?.access_token ?? null}
+        />
+
+        <UnlinkLetterboxdModal
+          open={unlinkModalOpen}
+          onOpenChange={setUnlinkModalOpen}
+          onConfirm={() => void handleUnlink()}
+          isUnlinking={isUnlinking}
+        />
+      </div>
+    </>
   );
 }
 
@@ -82,15 +128,25 @@ interface AccountButtonProps {
   label: string;
   onClick?: () => void;
   disabled?: boolean;
+  destructive?: boolean;
 }
 
-function AccountButton({ label, onClick, disabled }: AccountButtonProps) {
+function AccountButton({
+  label,
+  onClick,
+  disabled,
+  destructive,
+}: AccountButtonProps) {
   return (
     <button
       type="button"
       disabled={disabled}
       onClick={onClick}
-      className="flex items-center h-9 px-1 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors disabled:opacity-40 disabled:pointer-events-none text-left"
+      className={`flex items-center h-9 px-1 text-sm transition-colors disabled:opacity-40 disabled:pointer-events-none text-left ${
+        destructive
+          ? "text-destructive hover:text-destructive/80"
+          : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+      }`}
     >
       {label}
     </button>

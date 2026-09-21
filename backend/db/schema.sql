@@ -11,8 +11,38 @@ create table users (
   updated_at timestamptz default now()
 );
 
+-- Auto-create a `users` row when someone signs up via Supabase Auth (Google OAuth).
+-- This function + trigger live only in the database (created via the Supabase SQL editor,
+-- not part of the app codebase) — keep this block in sync with the live definition by hand
+-- whenever either changes. See supabase/migrations/20260921095252_fix_handle_new_user_target_table.sql
+-- for the incident this documents (CIN-76: it pointed at the old `profiles` table name and
+-- broke every new signup from 2026-07-03 until the fix).
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.users (id, email, full_name, avatar_url)
+  values (
+    new.id,
+    new.email,
+    new.raw_user_meta_data->>'full_name',
+    new.raw_user_meta_data->>'avatar_url'
+  );
+  return new;
+end;
+$$;
+
+revoke execute on function public.handle_new_user() from public, anon, authenticated;
+
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute function public.handle_new_user();
+
 -- Global film catalog (shared across all users, populated by sync)
--- TMDB fields (genres, runtime, overview) are filled lazily at recommendation time.
+-- TMDB fields (genres, runtime, overview, director) are filled lazily at recommendation time.
 create table films (
   id uuid default gen_random_uuid() primary key,
   letterboxd_slug text not null unique,
@@ -30,6 +60,7 @@ create table films (
   -- test_upsert_films_mixed_batch_against_real_db and docs/db-schema.md).
   origin_country text[] default '{}'::text[],
   overview text,
+  director text,
   created_at timestamptz default now()
 );
 
@@ -47,12 +78,49 @@ create table watch_history (
   id uuid default gen_random_uuid() primary key,
   user_id uuid references users(id) on delete cascade not null,
   film_id uuid references films(id) on delete cascade not null,
-  decision text check (decision in ('accepted', 'skipped')) not null,
+  recommendation_session_id uuid not null,
+  -- 'proposed' is written by /recommend for every candidate shown, before
+  -- the user swipes; /recommend/decision updates that row to 'accepted' or
+  -- 'skipped'. A decision with no matching 'proposed' row is rejected —
+  -- that's how we verify a film was actually shown, not just claimed.
+  decision text check (decision in ('proposed', 'accepted', 'skipped')) not null,
   questions_context jsonb,
   ai_critique text,
   match_score integer,
   decided_at timestamptz default now()
 );
+
+-- get_decision_history reads this on every /recommend call (not just when
+-- seen != "any" as before), and record_proposals writes ~1-3 rows per call
+-- instead of 1 per decision — this table grows and is read faster than
+-- before this migration.
+create index watch_history_user_id_idx on watch_history (user_id);
+
+-- Reconcile a user's watchlist in one transaction. The backend calls this
+-- function with the service role after scraping and enriching the full list.
+create or replace function public.sync_user_watchlist(
+  p_user_id uuid,
+  p_active_film_ids uuid[]
+)
+returns void
+language sql
+security invoker
+set search_path = public
+as $$
+  update public.user_watchlist_items
+  set removed_at = now()
+  where user_id = p_user_id
+    and removed_at is null;
+
+  insert into public.user_watchlist_items (user_id, film_id, removed_at)
+  select p_user_id, film_id, null
+  from unnest(coalesce(p_active_film_ids, '{}'::uuid[])) as film_id
+  on conflict (user_id, film_id)
+  do update set removed_at = null;
+$$;
+
+revoke execute on function public.sync_user_watchlist(uuid, uuid[]) from anon, authenticated;
+grant execute on function public.sync_user_watchlist(uuid, uuid[]) to service_role;
 
 -- Activer RLS
 alter table users enable row level security;
@@ -67,7 +135,8 @@ create policy "Users can view own profile"
 
 create policy "Users can update own profile"
   on users for update
-  using (auth.uid() = id);
+  using (auth.uid() = id)
+  with check (auth.uid() = id);
 
 create policy "Users can insert own profile"
   on users for insert
@@ -93,7 +162,8 @@ create policy "Users can delete own watchlist items"
 
 create policy "Users can update own watchlist items"
   on user_watchlist_items for update
-  using (auth.uid() = user_id);
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
 
 -- Policies watch_history
 create policy "Users can view own history"
@@ -102,4 +172,9 @@ create policy "Users can view own history"
 
 create policy "Users can insert own history"
   on watch_history for insert
+  with check (auth.uid() = user_id);
+
+create policy "Users can update own history"
+  on watch_history for update
+  using (auth.uid() = user_id)
   with check (auth.uid() = user_id);

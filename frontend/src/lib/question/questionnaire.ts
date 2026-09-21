@@ -1,25 +1,5 @@
+import { GENRES } from "@/lib/genres";
 import type { Question, QuestionOption } from "./types";
-
-export const GENRES = [
-  "Action",
-  "Aventure",
-  "Animation",
-  "Comédie",
-  "Crime",
-  "Documentaire",
-  "Drame",
-  "Familial",
-  "Fantastique",
-  "Histoire",
-  "Horreur",
-  "Musique",
-  "Mystère",
-  "Romance",
-  "Science-Fiction",
-  "Thriller",
-  "Guerre",
-  "Western",
-] as const;
 
 export const EMOTIONS = [
   "Peur",
@@ -78,6 +58,39 @@ export const OTHER_COUNTRIES = [
   "AU",
 ];
 
+const COUNTRY_NAME_TO_CODE: Record<string, string> = {
+  allemagne: "DE",
+  australia: "AU",
+  australie: "AU",
+  brésil: "BR",
+  bresil: "BR",
+  brésilienne: "BR",
+  canada: "CA",
+  chine: "CN",
+  china: "CN",
+  corée: "KR",
+  coree: "KR",
+  espagne: "ES",
+  "états-unis": "US",
+  "etats-unis": "US",
+  france: "FR",
+  inde: "IN",
+  italie: "IT",
+  japon: "JP",
+  japan: "JP",
+  mexique: "MX",
+  "royaume-uni": "GB",
+  "royaume uni": "GB",
+  suède: "SE",
+  suede: "SE",
+};
+
+export function resolveCountryCode(value: string): string | null {
+  const normalized = value.trim().toLowerCase();
+  if (/^[a-z]{2}$/i.test(normalized)) return normalized.toUpperCase();
+  return COUNTRY_NAME_TO_CODE[normalized] ?? null;
+}
+
 function withExtraOption(
   options: QuestionOption[],
   extra: QuestionOption,
@@ -86,10 +99,10 @@ function withExtraOption(
 }
 
 export function getQuestions(): Question[] {
-  const genreOptions = withExtraOption(
-    GENRES.map((g) => ({ id: g, label: g })),
-    { id: "none", label: "Pas de préférence" },
-  );
+  const genreOptions = withExtraOption([...GENRES], {
+    id: "none",
+    label: "Pas de préférence",
+  });
   const emotionOptions = withExtraOption(
     EMOTIONS.map((e) => ({ id: e, label: e })),
     { id: "none", label: "Peu m'importe" },
@@ -131,7 +144,7 @@ export function getQuestions(): Question[] {
     },
     {
       id: "withWho",
-      label: "Tu regardes avec qui ce soir ?",
+      label: "Tu regardes avec qui ?",
       hard: false,
       multi: false,
       options: [

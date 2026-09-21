@@ -186,7 +186,11 @@ async def get_full_watchlist(
         total = _extract_count(first_response.text)
         if total is None:
             raise WatchlistPrivateError(username)
-        if not first_films or total <= len(first_films):
+        if total > 0 and not first_films:
+            raise WatchlistScrapeError(
+                "Letterboxd reported a non-empty watchlist but no films were parsed"
+            )
+        if total == 0 or total <= len(first_films):
             return first_films
 
         page_size = len(first_films)

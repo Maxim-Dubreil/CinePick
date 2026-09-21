@@ -1,6 +1,13 @@
 import { useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 import { useQuestionFlow } from "@/hooks/useQuestionFlow";
+import type {
+  AnswerValue,
+  QuestionId,
+} from "@/lib/question/types";
+import type { RecommendRequest } from "@/lib/backend/api";
+import { Button } from "@/components/ui";
 import {
   QuestionFlowHeader,
   FilmCountChip,
@@ -13,16 +20,48 @@ import {
 
 export function Question() {
   const navigate = useNavigate();
+  const { session, loading: authLoading } = useAuth();
 
   const onComplete = useCallback(
-    (filmCount: number) => {
-      navigate("/home/result", { state: { filmCount } });
+    (filmCount: number, answers: Record<QuestionId, AnswerValue>) => {
+      navigate("/home/result", {
+        state: { filmCount, answers: answers as unknown as RecommendRequest },
+      });
     },
     [navigate],
   );
 
-  const flow = useQuestionFlow({ onComplete });
+  const flow = useQuestionFlow({
+    token: session?.access_token ?? null,
+    ready: !authLoading,
+    onComplete,
+  });
   const { currentQuestion } = flow;
+
+  if (flow.watchlistStatus === "error") {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-5 px-6 text-center">
+        <h2 className="max-w-[440px] font-heading text-4xl italic">
+          Impossible de récupérer ta watchlist pour l'instant.
+        </h2>
+        <Button
+          variant="glass"
+          className="mt-3 h-11 rounded-[var(--radius-xl)] px-6"
+          onClick={flow.retryWatchlistFetch}
+        >
+          Réessayer
+        </Button>
+      </div>
+    );
+  }
+
+  if (flow.watchlistStatus === "loading") {
+    return (
+      <div className="relative flex h-full flex-col">
+        <LoadingOverlay visible />
+      </div>
+    );
+  }
 
   return (
     <div className="relative flex h-full flex-col">

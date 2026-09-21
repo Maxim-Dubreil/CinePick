@@ -25,7 +25,8 @@ def _table_mock(supabase_mock, table_name: str) -> MagicMock:
 def test_merge_enrichment_with_data():
     film = Film(slug="film-a", title="Film A", year=2020, poster_url="http://x/p.jpg")
     enrichment = FilmEnrichment(
-        tmdb_id=42, genres=[28, 12], runtime=120, year=2021, origin_country=["US"]
+        tmdb_id=42, genres=[28, 12], runtime=120, year=2021, origin_country=["US"],
+        overview="A test synopsis.", director="Some Director",
     )
 
     merged = watchlist.merge_enrichment(film, enrichment)
@@ -36,6 +37,8 @@ def test_merge_enrichment_with_data():
     assert merged.runtime == 120
     assert merged.year == 2021  # TMDB year wins over the scraped year
     assert merged.origin_country == ["US"]
+    assert merged.overview == "A test synopsis."
+    assert merged.director == "Some Director"
 
 
 def test_merge_enrichment_without_data_keeps_scraped_fields():
@@ -105,6 +108,8 @@ def test_upsert_films_omits_enrichment_keys_when_unenriched(supabase_mock):
             genres=["28"],
             runtime=120,
             origin_country=["US"],
+            overview="A test synopsis.",
+            director="Some Director",
         ),
     ]
 
@@ -114,13 +119,16 @@ def test_upsert_films_omits_enrichment_keys_when_unenriched(supabase_mock):
     unenriched_record = next(r for r in records if r["letterboxd_slug"] == "film-a")
     enriched_record = next(r for r in records if r["letterboxd_slug"] == "film-b")
 
-    for key in ("tmdb_id", "genres", "runtime", "origin_country"):
+    for key in ("tmdb_id", "genres", "runtime", "origin_country", "director"):
         assert key not in unenriched_record
 
+    assert "overview" not in unenriched_record
     assert enriched_record["tmdb_id"] == 42
     assert enriched_record["genres"] == ["28"]
     assert enriched_record["runtime"] == 120
     assert enriched_record["origin_country"] == ["US"]
+    assert enriched_record["overview"] == "A test synopsis."
+    assert enriched_record["director"] == "Some Director"
 
 
 @pytest.mark.integration
@@ -170,45 +178,111 @@ def test_upsert_films_mixed_batch_against_real_db(require_integration):
 
 
 def test_sync_user_watchlist_deactivates_all_then_reactivates_current_set(supabase_mock):
-    """Reconciliation never lists ids in a filter: it blanket-deactivates
-    everything for the user (a plain `user_id` + `removed_at IS NULL` filter,
-    safe at any watchlist size), then reactivates/inserts the current set via
-    a single upsert whose rows travel in the request body."""
-    table = _table_mock(supabase_mock, "user_watchlist_items")
+    """Reconciliation is delegated to one transactional database function."""
 
     watchlist.sync_user_watchlist("user-1", {"film-a", "film-b"})
 
-    eq_args = table.update.return_value.eq.call_args[0]
-    assert eq_args == ("user_id", "user-1")
-    is_args = table.update.return_value.eq.return_value.is_.call_args[0]
-    assert is_args == ("removed_at", "null")
-
-    table.upsert.assert_called_once()
-    upserted_rows, upsert_kwargs = table.upsert.call_args[0], table.upsert.call_args[1]
-    assert {row["film_id"] for row in upserted_rows[0]} == {"film-a", "film-b"}
-    assert all(row["user_id"] == "user-1" and row["removed_at"] is None for row in upserted_rows[0])
-    assert upsert_kwargs["on_conflict"] == "user_id,film_id"
+    supabase_mock.rpc.assert_called_once_with(
+        "sync_user_watchlist",
+        {"p_user_id": "user-1", "p_active_film_ids": ["film-a", "film-b"]},
+    )
+    supabase_mock.rpc.return_value.execute.assert_called_once()
 
 
 def test_sync_user_watchlist_skips_upsert_for_empty_watchlist(supabase_mock):
-    """An emptied watchlist still deactivates existing rows, but must not send
-    an empty upsert payload."""
-    table = _table_mock(supabase_mock, "user_watchlist_items")
+    """An empty set is still reconciled atomically by the database function."""
 
     watchlist.sync_user_watchlist("user-1", set())
 
-    table.update.assert_called_once()
-    table.upsert.assert_not_called()
+    supabase_mock.rpc.assert_called_once_with(
+        "sync_user_watchlist",
+        {"p_user_id": "user-1", "p_active_film_ids": []},
+    )
 
 
 def test_sync_user_watchlist_upsert_omits_added_at(supabase_mock):
-    """`added_at` must never be in the upsert payload: PostgREST's
-    merge-on-conflict only touches columns it's given, so omitting it keeps
-    the original add date on existing rows and falls back to the column
-    default (`now()`) only for genuinely new ones."""
-    table = _table_mock(supabase_mock, "user_watchlist_items")
+    """The repository only sends the film ids; SQL preserves `added_at`."""
 
     watchlist.sync_user_watchlist("user-1", {"film-a"})
 
-    upserted_rows = table.upsert.call_args[0][0]
-    assert all("added_at" not in row for row in upserted_rows)
+    params = supabase_mock.rpc.call_args.args[1]
+    assert params["p_active_film_ids"] == ["film-a"]
+
+
+# --- get_active_watchlist --------------------------------------------------
+
+
+def test_get_active_watchlist_maps_joined_rows(supabase_mock):
+    table = _table_mock(supabase_mock, "user_watchlist_items")
+    table.select.return_value.eq.return_value.is_.return_value.execute.return_value = MagicMock(
+        data=[
+            {
+                "added_at": "2026-01-15T10:00:00+00:00",
+                "films": {
+                    "id": "film-uuid-1",
+                    "letterboxd_slug": "film-a",
+                    "title": "Film A",
+                    "year": 2020,
+                    "poster_url": "http://x/a.jpg",
+                    "genres": ["35"],
+                    "runtime": 100,
+                    "origin_country": ["US"],
+                    "overview": "A synopsis.",
+                }
+            }
+        ]
+    )
+
+    result = watchlist.get_active_watchlist("user-1")
+
+    assert len(result) == 1
+    film = result[0]
+    assert film.id == "film-uuid-1"
+    assert film.added_at.year == 2026
+    assert film.added_at.month == 1
+
+    table.select.assert_called_once_with("added_at, films(*)")
+    eq_args = table.select.return_value.eq.call_args[0]
+    assert eq_args == ("user_id", "user-1")
+    is_args = table.select.return_value.eq.return_value.is_.call_args[0]
+    assert is_args == ("removed_at", "null")
+
+
+def test_get_active_watchlist_normalizes_null_arrays(supabase_mock):
+    """Unenriched films store an explicit SQL NULL for `genres`/`origin_country`
+    (see backend/db/schema.sql), which `films(*)` returns as-is — must not
+    raise a ValidationError, must normalize to an empty list instead."""
+    table = _table_mock(supabase_mock, "user_watchlist_items")
+    table.select.return_value.eq.return_value.is_.return_value.execute.return_value = MagicMock(
+        data=[
+            {
+                "added_at": "2026-01-15T10:00:00+00:00",
+                "films": {
+                    "id": "film-uuid-2",
+                    "letterboxd_slug": "film-b",
+                    "title": "Film B",
+                    "year": 2021,
+                    "poster_url": None,
+                    "genres": None,
+                    "runtime": None,
+                    "origin_country": None,
+                    "overview": None,
+                }
+            }
+        ]
+    )
+
+    result = watchlist.get_active_watchlist("user-1")
+
+    assert len(result) == 1
+    assert result[0].genres == []
+    assert result[0].origin_country == []
+
+
+def test_get_active_watchlist_empty(supabase_mock):
+    table = _table_mock(supabase_mock, "user_watchlist_items")
+    table.select.return_value.eq.return_value.is_.return_value.execute.return_value = MagicMock(
+        data=[]
+    )
+
+    assert watchlist.get_active_watchlist("user-1") == []

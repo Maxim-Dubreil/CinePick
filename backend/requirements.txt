@@ -10,6 +10,7 @@ cryptography==48.0.1
 deprecation==2.1.0
 fastapi==0.136.0
 fsspec==2026.3.0
+google-genai
 h11==0.16.0
 h2==4.3.0
 hpack==4.1.0

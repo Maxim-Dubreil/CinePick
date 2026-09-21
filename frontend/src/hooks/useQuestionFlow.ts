@@ -1,17 +1,16 @@
-import { useEffect, useMemo, useReducer, useState } from "react";
-import { getQuestions } from "@/lib/question/questionnaire";
-import { generateMockFilms } from "@/lib/question/mockFilms";
+import { useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { getQuestions, resolveCountryCode } from "@/lib/question/questionnaire";
 import { buildFilterTest, countMatchingFilms } from "@/lib/question/filters";
+import { getWatchlistForFilter } from "@/lib/backend/api";
 import type {
   AnswerValue,
   AppliedFilter,
-  MockFilm,
+  FilterFilm,
   Question,
   QuestionId,
   QuestionOption,
 } from "@/lib/question/types";
 
-const TOTAL_MOCK_FILMS = 150;
 const LOADING_DELAY_MS = 420;
 const QUESTIONS = getQuestions();
 
@@ -36,7 +35,8 @@ type FlowAction =
   | { type: "GO_BACK" }
   | { type: "OPEN_CUSTOM_REGION" }
   | { type: "SET_CUSTOM_REGION_VALUE"; value: string }
-  | { type: "SUBMIT_CUSTOM_REGION" };
+  | { type: "SUBMIT_CUSTOM_REGION" }
+  | { type: "FILMS_LOADED"; count: number };
 
 function createInitialState(totalFilms: number): FlowState {
   return {
@@ -55,7 +55,7 @@ function createInitialState(totalFilms: number): FlowState {
 
 function confirmAnswer(
   state: FlowState,
-  films: MockFilm[],
+  films: FilterFilm[],
   questionId: QuestionId,
   answer: AnswerValue,
 ): FlowState {
@@ -74,8 +74,7 @@ function confirmAnswer(
     const candidateFilters = [...state.appliedFilters, candidateFilter];
     const candidateCount = countMatchingFilms(films, candidateFilters);
     if (candidateCount === 0) {
-      fallbackNote =
-        "Aucun film ne correspond pile à ce critère — on l'ignore et on te montre les films les plus proches.";
+      fallbackNote = FALLBACK_NOTE;
       filmCount = countMatchingFilms(films, state.appliedFilters);
     } else {
       appliedFilters = candidateFilters;
@@ -93,6 +92,33 @@ function confirmAnswer(
   };
 }
 
+const FALLBACK_NOTE =
+  "Aucun film ne correspond pile à ce critère — on l'ignore et on te montre les films les plus proches.";
+
+/** Live preview of the count while a multi-select question is still being
+ * built (before "Continuer") — same computation as `confirmAnswer`, but
+ * doesn't touch `appliedFilters`/`answers` since nothing is confirmed yet. */
+function previewMultiSelection(
+  state: FlowState,
+  films: FilterFilm[],
+  question: Question,
+  selection: string[],
+): Pick<FlowState, "filmCount" | "fallbackNote"> {
+  const baseCount = countMatchingFilms(films, state.appliedFilters);
+  if (!question.hard || selection.length === 0) {
+    return { filmCount: baseCount, fallbackNote: null };
+  }
+  const candidateFilters = [
+    ...state.appliedFilters,
+    { questionId: question.id, test: buildFilterTest(question.id, selection) },
+  ];
+  const candidateCount = countMatchingFilms(films, candidateFilters);
+  if (candidateCount === 0) {
+    return { filmCount: baseCount, fallbackNote: FALLBACK_NOTE };
+  }
+  return { filmCount: candidateCount, fallbackNote: null };
+}
+
 function mergeCustomRegionOptions(
   options: QuestionOption[],
   customRegions: QuestionOption[],
@@ -106,7 +132,7 @@ function mergeCustomRegionOptions(
   ];
 }
 
-function createFlowReducer(films: MockFilm[]) {
+function createFlowReducer(films: FilterFilm[]) {
   return function flowReducer(state: FlowState, action: FlowAction): FlowState {
     const question = QUESTIONS[state.step];
 
@@ -127,6 +153,7 @@ function createFlowReducer(films: MockFilm[]) {
         return {
           ...state,
           multiSelections: { ...state.multiSelections, [question.id]: next },
+          ...previewMultiSelection(state, films, question, next),
         };
       }
 
@@ -147,7 +174,14 @@ function createFlowReducer(films: MockFilm[]) {
 
       case "GO_BACK":
         if (state.step === 0 || state.loading) return state;
-        return { ...state, step: state.step - 1, fallbackNote: null };
+        // Drop any live preview from an unconfirmed multi-select toggle —
+        // the count must reflect only confirmed answers once we navigate away.
+        return {
+          ...state,
+          step: state.step - 1,
+          fallbackNote: null,
+          filmCount: countMatchingFilms(films, state.appliedFilters),
+        };
 
       case "OPEN_CUSTOM_REGION":
         return { ...state, customRegionOpen: true };
@@ -158,7 +192,8 @@ function createFlowReducer(films: MockFilm[]) {
       case "SUBMIT_CUSTOM_REGION": {
         const value = state.customRegionValue.trim();
         if (!value) return state;
-        const code = value.slice(0, 3).toUpperCase();
+        const code = resolveCountryCode(value);
+        if (!code) return state;
         const alreadyAdded = state.customRegions.some((r) => r.id === code);
         const currentSelection = (state.multiSelections.region ?? []).filter(
           (id) => id !== "none",
@@ -173,8 +208,14 @@ function createFlowReducer(films: MockFilm[]) {
             : [...state.customRegions, { id: code, label: value }],
           multiSelections: { ...state.multiSelections, region: nextSelection },
           customRegionValue: "",
+          ...previewMultiSelection(state, films, question, nextSelection),
         };
       }
+
+      case "FILMS_LOADED":
+        // Only meaningful before the first answer — the watchlist fetch
+        // resolves while the flow still shows step 0 with no filters applied.
+        return { ...state, filmCount: action.count };
 
       default:
         return state;
@@ -183,10 +224,19 @@ function createFlowReducer(films: MockFilm[]) {
 }
 
 export interface UseQuestionFlowOptions {
-  onComplete: (filmCount: number) => void;
+  token: string | null;
+  ready: boolean;
+  onComplete: (
+    filmCount: number,
+    answers: Record<QuestionId, AnswerValue>,
+  ) => void;
 }
 
+export type WatchlistFetchStatus = "loading" | "error" | "ready";
+
 export interface UseQuestionFlowResult {
+  watchlistStatus: WatchlistFetchStatus;
+  retryWatchlistFetch: () => void;
   step: number;
   totalSteps: number;
   currentQuestion: Question;
@@ -208,38 +258,77 @@ export interface UseQuestionFlowResult {
 }
 
 export function useQuestionFlow({
+  token,
+  ready,
   onComplete,
 }: UseQuestionFlowOptions): UseQuestionFlowResult {
-  const [films] = useState(() => generateMockFilms(TOTAL_MOCK_FILMS));
+  const [films, setFilms] = useState<FilterFilm[]>([]);
+  const [watchlistStatus, setWatchlistStatus] =
+    useState<WatchlistFetchStatus>("loading");
+  const [retryCount, setRetryCount] = useState(0);
 
   const reducer = useMemo(() => createFlowReducer(films), [films]);
-  const [state, dispatch] = useReducer(reducer, films.length, createInitialState);
+  const [state, dispatch] = useReducer(reducer, 0, createInitialState);
+
+  // React 19 StrictMode (see frontend/src/main.tsx) mounts effects twice in
+  // dev — without this guard, that would fire two /watchlist calls on load.
+  const hasFetchedRef = useRef(false);
+  useEffect(() => {
+    if (!ready || hasFetchedRef.current) return;
+    hasFetchedRef.current = true;
+    getWatchlistForFilter(token)
+      .then((response) => {
+        setFilms(response.films);
+        setWatchlistStatus("ready");
+        dispatch({ type: "FILMS_LOADED", count: response.films.length });
+      })
+      .catch(() => {
+        setWatchlistStatus("error");
+      });
+  }, [ready, token, retryCount]);
 
   useEffect(() => {
     if (!state.loading) return;
     const isLastQuestion = state.step === QUESTIONS.length - 1;
     const timeoutId = window.setTimeout(() => {
       if (isLastQuestion) {
-        onComplete(state.filmCount);
+        // `state.answers` is `Record<string, AnswerValue>` internally (it starts
+        // empty and fills in over the flow); by the time the last question is
+        // answered every QuestionId key is present, so this cast is safe.
+        onComplete(
+          state.filmCount,
+          state.answers as Record<QuestionId, AnswerValue>,
+        );
       } else {
         dispatch({ type: "FINISH_LOADING" });
       }
     }, LOADING_DELAY_MS);
     return () => window.clearTimeout(timeoutId);
-  }, [state.loading, state.step, state.filmCount, onComplete]);
+  }, [state.loading, state.step, state.filmCount, state.answers, onComplete]);
 
   const question = QUESTIONS[state.step];
   const currentQuestion: Question =
     question.id === "region"
       ? {
           ...question,
-          options: mergeCustomRegionOptions(question.options, state.customRegions),
+          options: mergeCustomRegionOptions(
+            question.options,
+            state.customRegions,
+          ),
         }
       : question;
 
   const selectedIds = state.multiSelections[question.id] ?? [];
 
+  const retryWatchlistFetch = () => {
+    hasFetchedRef.current = false;
+    setWatchlistStatus("loading");
+    setRetryCount((c) => c + 1);
+  };
+
   return {
+    watchlistStatus,
+    retryWatchlistFetch,
     step: state.step,
     totalSteps: QUESTIONS.length,
     currentQuestion,

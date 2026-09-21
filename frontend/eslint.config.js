@@ -27,4 +27,11 @@ export default defineConfig([
       "react-refresh/only-export-components": "off",
     },
   },
+  // Context providers: file mixes a Provider component with its context object/types
+  {
+    files: ["src/contexts/**/*.{ts,tsx}"],
+    rules: {
+      "react-refresh/only-export-components": "off",
+    },
+  },
 ]);
