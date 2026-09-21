@@ -1,4 +1,4 @@
-import { ImageOff } from "lucide-react";
+import { Clapperboard } from "lucide-react";
 import { FilmPoster } from "@/components/FilmPoster";
 import type { UseLastAcceptedFilmResult } from "@/hooks/useLastAcceptedFilm";
 
@@ -41,9 +41,19 @@ export function LastFilmPanel({ film, loading }: LastFilmPanelProps) {
         </div>
       ) : (
         <div className="flex-1 flex items-center justify-center">
-          <div className="flex flex-col items-center gap-2 text-[var(--text-tertiary)]">
-            <ImageOff size={24} strokeWidth={1.5} />
-            <span className="text-xs">Aucun film regardé</span>
+          <div className="flex flex-col items-center gap-3 text-center">
+            <div className="relative flex items-center justify-center size-16 rounded-full bg-[var(--cp-accent)]/10">
+              <div className="absolute inset-0 rounded-full bg-[var(--cp-accent)]/20 blur-lg" />
+              <Clapperboard size={28} strokeWidth={1.5} className="relative text-[var(--cp-accent)]" />
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <p className="text-sm font-medium text-[var(--text-primary)]">
+                Aucune séance pour l'instant
+              </p>
+              <p className="text-xs text-[var(--text-tertiary)]">
+                Ton premier film accepté atterrira ici
+              </p>
+            </div>
           </div>
         </div>
       )}
