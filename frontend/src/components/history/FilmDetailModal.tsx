@@ -24,22 +24,31 @@ interface FilmDetailModalProps {
 export function FilmDetailModal({ entry, onOpenChange }: FilmDetailModalProps) {
   return (
     <Dialog open={entry !== null} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl p-6">
+      <DialogContent
+        className="max-h-[calc(100vh-2rem)] min-h-[32rem] overflow-y-auto p-5 sm:min-h-[36rem] sm:max-w-3xl sm:p-8"
+        overlayClassName="bg-black/20 backdrop-blur-[2px]"
+        disableAnimation
+      >
         {entry && (
           <>
             <DialogHeader>
-              <div className="flex gap-5">
+              <div className="flex gap-6">
                 <FilmPoster
                   posterUrl={entry.posterUrl}
                   alt={entry.title}
-                  className="w-28 shrink-0"
+                  className="w-36 shrink-0 sm:w-44"
                 />
-                <div className="flex flex-col justify-center gap-2 min-w-0">
-                  <DialogTitle className="text-xl">
-                    {entry.year !== null ? `${entry.title} (${entry.year})` : entry.title}
+                <div className="flex min-w-0 flex-col justify-center gap-3">
+                  <DialogTitle className="text-xl sm:text-2xl">
+                    {entry.year !== null
+                      ? `${entry.title} (${entry.year})`
+                      : entry.title}
                   </DialogTitle>
                   <DialogDescription>
-                    {[...entry.genres, entry.runtime !== null ? `${entry.runtime} min` : null]
+                    {[
+                      ...entry.genres,
+                      entry.runtime !== null ? `${entry.runtime} min` : null,
+                    ]
                       .filter(Boolean)
                       .join(" · ")}
                   </DialogDescription>
@@ -61,7 +70,7 @@ export function FilmDetailModal({ entry, onOpenChange }: FilmDetailModalProps) {
               </div>
             </DialogHeader>
 
-            <div className="flex flex-col gap-4 text-sm">
+            <div className="flex flex-col gap-6 text-sm">
               <section>
                 <h3 className="text-xs font-medium uppercase tracking-wide text-[var(--text-tertiary)] mb-1">
                   Synopsis
