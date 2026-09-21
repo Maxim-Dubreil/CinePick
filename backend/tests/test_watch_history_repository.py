@@ -66,12 +66,15 @@ def test_get_decision_history_uses_most_recent_when_film_has_multiple_rows(supab
 def test_record_proposals_inserts_one_row_per_film(supabase_mock):
     table = _table_mock(supabase_mock, "watch_history")
 
-    watch_history.record_proposals("user-1", ["film-1", "film-2"], {"genre": ["none"]})
+    watch_history.record_proposals(
+        "user-1", "session-1", ["film-1", "film-2"], {"genre": ["none"]}
+    )
 
     table.insert.assert_called_once()
     rows = table.insert.call_args[0][0]
     assert len(rows) == 2
     assert all(r["user_id"] == "user-1" and r["decision"] == "proposed" for r in rows)
+    assert all(r["recommendation_session_id"] == "session-1" for r in rows)
     assert {r["film_id"] for r in rows} == {"film-1", "film-2"}
     assert all(r["questions_context"] == {"genre": ["none"]} for r in rows)
 
@@ -79,17 +82,21 @@ def test_record_proposals_inserts_one_row_per_film(supabase_mock):
 def test_record_proposals_empty_list_skips_call(supabase_mock):
     table = _table_mock(supabase_mock, "watch_history")
 
-    watch_history.record_proposals("user-1", [], {})
+    watch_history.record_proposals("user-1", "session-1", [], {})
 
     table.insert.assert_not_called()
 
 
 def test_record_decision_updates_matching_proposed_row(supabase_mock):
     table = _table_mock(supabase_mock, "watch_history")
-    chain = table.update.return_value.eq.return_value.eq.return_value.eq.return_value
+    chain = (
+        table.update.return_value.eq.return_value.eq.return_value.eq.return_value.eq.return_value
+    )
     chain.execute.return_value = MagicMock(data=[{"id": "row-1"}])
 
-    result = watch_history.record_decision("user-1", "film-1", "accepted", 87, "Great pick.")
+    result = watch_history.record_decision(
+        "user-1", "session-1", "film-1", "accepted", 87, "Great pick."
+    )
 
     assert result is True
     update_payload = table.update.call_args[0][0]
@@ -97,27 +104,51 @@ def test_record_decision_updates_matching_proposed_row(supabase_mock):
     assert update_payload["match_score"] == 87
     assert update_payload["ai_critique"] == "Great pick."
     assert "decided_at" in update_payload
-    # Verify the three .eq() filters in correct order
+    # Verify the four .eq() filters in correct order
     assert table.update.return_value.eq.call_args[0] == ("user_id", "user-1")
-    assert table.update.return_value.eq.return_value.eq.call_args[0] == ("film_id", "film-1")
+    assert table.update.return_value.eq.return_value.eq.call_args[0] == (
+        "recommendation_session_id",
+        "session-1",
+    )
     assert table.update.return_value.eq.return_value.eq.return_value.eq.call_args[0] == (
+        "film_id",
+        "film-1",
+    )
+    assert (
+        table.update.return_value.eq.return_value.eq.return_value.eq.return_value.eq.call_args[0]
+        == (
         "decision",
         "proposed",
+        )
     )
 
 
 def test_record_decision_no_matching_proposal_returns_false(supabase_mock):
     table = _table_mock(supabase_mock, "watch_history")
-    chain = table.update.return_value.eq.return_value.eq.return_value.eq.return_value
+    chain = (
+        table.update.return_value.eq.return_value.eq.return_value.eq.return_value.eq.return_value
+    )
     chain.execute.return_value = MagicMock(data=[])
 
-    result = watch_history.record_decision("user-1", "film-1", "skipped", None, None)
+    result = watch_history.record_decision(
+        "user-1", "session-1", "film-1", "skipped", None, None
+    )
 
     assert result is False
-    # Verify the three .eq() filters in correct order
+    # Verify the four .eq() filters in correct order
     assert table.update.return_value.eq.call_args[0] == ("user_id", "user-1")
-    assert table.update.return_value.eq.return_value.eq.call_args[0] == ("film_id", "film-1")
+    assert table.update.return_value.eq.return_value.eq.call_args[0] == (
+        "recommendation_session_id",
+        "session-1",
+    )
     assert table.update.return_value.eq.return_value.eq.return_value.eq.call_args[0] == (
+        "film_id",
+        "film-1",
+    )
+    assert (
+        table.update.return_value.eq.return_value.eq.return_value.eq.return_value.eq.call_args[0]
+        == (
         "decision",
         "proposed",
+        )
     )

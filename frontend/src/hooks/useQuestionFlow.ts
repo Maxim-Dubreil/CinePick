@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
-import { getQuestions } from "@/lib/question/questionnaire";
+import { getQuestions, resolveCountryCode } from "@/lib/question/questionnaire";
 import { buildFilterTest, countMatchingFilms } from "@/lib/question/filters";
 import { getWatchlistForFilter } from "@/lib/backend/api";
 import type {
@@ -192,7 +192,8 @@ function createFlowReducer(films: FilterFilm[]) {
       case "SUBMIT_CUSTOM_REGION": {
         const value = state.customRegionValue.trim();
         if (!value) return state;
-        const code = value.slice(0, 3).toUpperCase();
+        const code = resolveCountryCode(value);
+        if (!code) return state;
         const alreadyAdded = state.customRegions.some((r) => r.id === code);
         const currentSelection = (state.multiSelections.region ?? []).filter(
           (id) => id !== "none",

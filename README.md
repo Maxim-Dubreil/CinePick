@@ -50,6 +50,20 @@ docker compose up --build
 Frontend available at: `http://localhost:5173`
 Backend available at: `http://localhost:8000`
 
+### Local validation
+
+From the repository root, run the same full validation before committing or pushing:
+
+```sh
+make verify
+git diff --check
+```
+
+`make verify` rebuilds the Docker images, runs backend and frontend tests, linting, type
+checking, and the production frontend build. `git diff --check` checks whitespace errors in
+the pending diff. The V1 feature scope and test backlog are tracked in
+[docs/quality-v1.md](docs/quality-v1.md).
+
 ### API reference (Swagger UI)
 
 FastAPI generates interactive API docs automatically — no setup needed. With the backend

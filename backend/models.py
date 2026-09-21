@@ -183,7 +183,8 @@ class RecommendRequest(BaseModel):
 class RecommendDecisionRequest(BaseModel):
     """Body of POST /recommend/decision — records a swipe outcome."""
 
+    recommendation_session_id: str
     film_id: str
     decision: Literal["accepted", "skipped"]
-    match_score: int | None
-    critique: str | None
+    match_score: int | None = Field(default=None, ge=0, le=100)
+    critique: str | None = Field(default=None, max_length=1000)

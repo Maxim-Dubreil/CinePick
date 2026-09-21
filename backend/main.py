@@ -1,6 +1,7 @@
 import logging
 import time
 from datetime import UTC, datetime
+from uuid import uuid4
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -252,6 +253,7 @@ class RecommendMeta(BaseModel):
 class RecommendResponse(BaseModel):
     candidates: list[RecommendedFilm]
     meta: RecommendMeta
+    recommendation_session_id: str
 
 
 def _to_recommended_film(ranked: RankedCandidate) -> dict:
@@ -335,13 +337,18 @@ async def recommend(
                 detail={"type": "ai_error", "message": "The AI recommendation call failed"},
             ) from exc
 
+    recommendation_session_id = str(uuid4())
     watch_history_repo.record_proposals(
-        user_id, [r.film.id for r in ranked], body.model_dump()
+        user_id,
+        recommendation_session_id,
+        [r.film.id for r in ranked],
+        body.model_dump(),
     )
 
     return {
         "candidates": [_to_recommended_film(r) for r in ranked],
         "meta": {"candidates_considered": len(candidates)},
+        "recommendation_session_id": recommendation_session_id,
     }
 
 
@@ -359,7 +366,12 @@ async def recommend_decision(
     """Record a swipe outcome. Only succeeds if a matching "proposed" row
     exists — that's what verifies the film was actually shown (CIN-78)."""
     found = watch_history_repo.record_decision(
-        user_id, body.film_id, body.decision, body.match_score, body.critique
+        user_id,
+        body.recommendation_session_id,
+        body.film_id,
+        body.decision,
+        body.match_score,
+        body.critique,
     )
     if not found:
         raise HTTPException(

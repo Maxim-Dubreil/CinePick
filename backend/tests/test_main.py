@@ -230,7 +230,9 @@ def _patch_recommend(monkeypatch, *, films=None, history=None, ranked=None, ai_r
     monkeypatch.setattr(
         watch_history_repo,
         "record_proposals",
-        lambda user_id, film_ids, ctx: recorded.append((user_id, film_ids, ctx)),
+        lambda user_id, session_id, film_ids, ctx: recorded.append(
+            (user_id, session_id, film_ids, ctx)
+        ),
     )
 
     async def fake_pick_candidates(candidates, answers):
@@ -258,8 +260,9 @@ def test_recommend_short_circuits_with_three_or_fewer_candidates(monkeypatch):
     assert [c["title"] for c in data["candidates"]] == ["Film b", "Film a"]  # oldest first
     assert all(c["match_score"] is None and c["critique"] is None for c in data["candidates"])
     assert data["meta"]["candidates_considered"] == 2
-    assert recorded[0][1] == ["b", "a"]  # proposals recorded in the order returned
-    assert [c["film_id"] for c in data["candidates"]] == recorded[0][1]
+    assert recorded[0][2] == ["b", "a"]  # proposals recorded in the order returned
+    assert [c["film_id"] for c in data["candidates"]] == recorded[0][2]
+    assert data["recommendation_session_id"] == recorded[0][1]
 
 
 def test_recommend_calls_ai_with_more_than_three_candidates(monkeypatch):
@@ -274,7 +277,7 @@ def test_recommend_calls_ai_with_more_than_three_candidates(monkeypatch):
     assert len(data["candidates"]) == 1
     assert data["candidates"][0]["match_score"] == 95
     assert data["candidates"][0]["critique"] == "Top pick."
-    assert recorded[0][1] == ["2"]  # the AI-chosen film's id, matching what was returned
+    assert recorded[0][2] == ["2"]  # the AI-chosen film's id, matching what was returned
 
 
 def test_recommend_empty_watchlist(monkeypatch):
@@ -314,6 +317,7 @@ def test_recommend_requires_auth(monkeypatch):
 
 
 DECISION_BODY = {
+    "recommendation_session_id": "session-1",
     "film_id": "film-a",
     "decision": "accepted",
     "match_score": 80,
@@ -348,7 +352,13 @@ def test_recommend_decision_null_score_and_critique_allowed(monkeypatch):
     """Short-circuit candidates have no score/critique — decision must
     still be recordable."""
     monkeypatch.setattr(watch_history_repo, "record_decision", lambda *a, **k: True)
-    body = {"film_id": "film-a", "decision": "skipped", "match_score": None, "critique": None}
+    body = {
+        "recommendation_session_id": "session-1",
+        "film_id": "film-a",
+        "decision": "skipped",
+        "match_score": None,
+        "critique": None,
+    }
 
     response = client.post("/recommend/decision", json=body, headers=AUTH_HEADERS)
 

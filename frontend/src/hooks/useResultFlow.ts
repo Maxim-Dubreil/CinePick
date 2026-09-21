@@ -13,7 +13,8 @@ import type { DeadEndReason } from "@/components/result/DeadEndScreen";
 export const MIN_LOADING_MS = 900;
 const MAX_ATTEMPTS = 2;
 
-const TOAST_NETWORK = "Petit souci réseau — ta dernière décision n'a peut-être pas été enregistrée.";
+const TOAST_NETWORK =
+  "Petit souci réseau — ta dernière décision n'a peut-être pas été enregistrée.";
 const TOAST_UNKNOWN_CANDIDATE = "Cette décision n'a pas pu être enregistrée.";
 
 function wait(ms: number): Promise<void> {
@@ -36,6 +37,8 @@ interface ResultFlowState {
   toastMessage: string | null;
   toastId: number;
   acceptedFilm: RecommendedFilm | null;
+  deciding: boolean;
+  recommendationSessionId: string | null;
 }
 
 export interface UseResultFlowResult {
@@ -45,6 +48,8 @@ export interface UseResultFlowResult {
   toastMessage: string | null;
   toastId: number;
   acceptedFilm: RecommendedFilm | null;
+  deciding: boolean;
+  recommendationSessionId: string | null;
   onAccept: () => void;
   onSkip: () => void;
   dismissToast: () => void;
@@ -64,6 +69,8 @@ export function useResultFlow(
     toastMessage: null,
     toastId: 0,
     acceptedFilm: null,
+    deciding: false,
+    recommendationSessionId: null,
   });
 
   const requestFilm = useCallback(
@@ -75,7 +82,11 @@ export function useResultFlow(
           wait(MIN_LOADING_MS),
         ]);
         if (response.candidates.length === 0) {
-          setState((s) => ({ ...s, phase: "dead-end", deadEndReason: "no_match" }));
+          setState((s) => ({
+            ...s,
+            phase: "dead-end",
+            deadEndReason: "no_match",
+          }));
           return;
         }
         setState((s) => ({
@@ -83,6 +94,7 @@ export function useResultFlow(
           phase: "card",
           candidates: response.candidates,
           currentIndex: 0,
+          recommendationSessionId: response.recommendation_session_id,
         }));
       } catch (error) {
         setState((s) => ({
@@ -111,28 +123,41 @@ export function useResultFlow(
     recordDecision(
       {
         film_id: filmToRecord.film_id,
+        recommendation_session_id: state.recommendationSessionId ?? "",
         decision,
         match_score: filmToRecord.match_score,
         critique: filmToRecord.critique,
       },
       token,
-    ).catch((error: unknown) => {
-      const message =
-        error instanceof ApiError && error.status === 404
-          ? TOAST_UNKNOWN_CANDIDATE
-          : TOAST_NETWORK;
-      setState((s) => ({ ...s, toastMessage: message, toastId: s.toastId + 1 }));
-    });
+    )
+      .catch((error: unknown) => {
+        const message =
+          error instanceof ApiError && error.status === 404
+            ? TOAST_UNKNOWN_CANDIDATE
+            : TOAST_NETWORK;
+        setState((s) => ({
+          ...s,
+          toastMessage: message,
+          toastId: s.toastId + 1,
+        }));
+      })
+      .finally(() => {
+        setState((s) => ({ ...s, deciding: false }));
+      });
   }
 
   function onAccept() {
     const currentFilm = state.candidates[state.currentIndex];
+    if (!currentFilm || state.deciding) return;
+    setState((s) => ({ ...s, deciding: true }));
     recordDecisionSafely(currentFilm, "accepted");
     setState((s) => ({ ...s, phase: "accepted", acceptedFilm: currentFilm }));
   }
 
   function onSkip() {
     const currentFilm = state.candidates[state.currentIndex];
+    if (!currentFilm || state.deciding) return;
+    setState((s) => ({ ...s, deciding: true }));
     recordDecisionSafely(currentFilm, "skipped");
 
     const nextIndex = state.currentIndex + 1;
@@ -160,6 +185,8 @@ export function useResultFlow(
     toastMessage: state.toastMessage,
     toastId: state.toastId,
     acceptedFilm: state.acceptedFilm,
+    deciding: state.deciding,
+    recommendationSessionId: state.recommendationSessionId,
     onAccept,
     onSkip,
     dismissToast,

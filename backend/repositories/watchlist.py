@@ -7,7 +7,7 @@ user's watchlist gets timestamped, never deleted, so history survives a
 resync.
 """
 
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import TypedDict
 
 from models import EnrichedFilm, Film, FilmEnrichment, WatchlistFilm
@@ -95,17 +95,13 @@ def sync_user_watchlist(user_id: str, active_film_ids: set[str]) -> None:
     so PostgREST's merge-on-conflict leaves it untouched on existing rows and
     falls back to its column default (`now()`) only for genuinely new ones.
     """
-    now = datetime.now(UTC).isoformat()
-
-    supabase.table(_WATCHLIST_TABLE).update({"removed_at": now}).eq(
-        "user_id", user_id
-    ).is_("removed_at", "null").execute()
-
-    if active_film_ids:
-        supabase.table(_WATCHLIST_TABLE).upsert(
-            [{"user_id": user_id, "film_id": fid, "removed_at": None} for fid in active_film_ids],
-            on_conflict="user_id,film_id",
-        ).execute()
+    supabase.rpc(
+        "sync_user_watchlist",
+        {
+            "p_user_id": user_id,
+            "p_active_film_ids": sorted(active_film_ids),
+        },
+    ).execute()
 
 
 class WatchlistItemRow(TypedDict):
@@ -125,4 +121,10 @@ def get_active_watchlist(user_id: str) -> list[WatchlistFilm]:
         .execute()
     )
     rows: list[WatchlistItemRow] = response.data  # type: ignore[assignment]
-    return [WatchlistFilm(**row["films"], added_at=row["added_at"]) for row in rows]
+    return [
+        WatchlistFilm(
+            **row["films"],
+            added_at=datetime.fromisoformat(row["added_at"]),
+        )
+        for row in rows
+    ]

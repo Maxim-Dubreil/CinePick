@@ -38,9 +38,9 @@ _RESPONSE_SCHEMA = {
                 "type": "object",
                 "properties": {
                     "film_id": {"type": "string"},
-                    "rank": {"type": "integer"},
-                    "match_score": {"type": "integer"},
-                    "critique": {"type": "string"},
+                    "rank": {"type": "integer", "minimum": 1, "maximum": _MAX_CANDIDATES},
+                    "match_score": {"type": "integer", "minimum": 0, "maximum": 100},
+                    "critique": {"type": "string", "maxLength": 1000},
                 },
                 "required": ["film_id", "rank", "match_score", "critique"],
             },
@@ -127,6 +127,9 @@ async def pick_candidates(
             raise ValueError("AI returned zero candidates")
         if len(parsed) > _MAX_CANDIDATES or len({c["film_id"] for c in parsed}) != len(parsed):
             raise ValueError("AI returned more than the max candidates, or duplicate film ids")
+        ranks = [candidate["rank"] for candidate in parsed]
+        if ranks != list(range(1, len(parsed) + 1)):
+            raise ValueError("AI returned non-sequential ranks")
         results = [
             RankedCandidate(
                 film=by_id[c["film_id"]],

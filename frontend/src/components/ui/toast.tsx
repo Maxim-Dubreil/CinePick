@@ -7,9 +7,15 @@ interface ToastProps {
   message: string | null;
   onDismiss: () => void;
   className?: string;
+  variant?: "default" | "error";
 }
 
-export function Toast({ message, onDismiss, className }: ToastProps) {
+export function Toast({
+  message,
+  onDismiss,
+  className,
+  variant = "default",
+}: ToastProps) {
   useEffect(() => {
     if (!message) return;
     const timeoutId = window.setTimeout(onDismiss, TOAST_DURATION_MS);
@@ -20,9 +26,12 @@ export function Toast({ message, onDismiss, className }: ToastProps) {
 
   return (
     <div
-      role="status"
+      role={variant === "error" ? "alert" : "status"}
       className={cn(
-        "fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-[var(--radius-lg)] border border-[var(--glass-border)] bg-[var(--glass-bg)] px-4 py-2.5 text-sm text-[var(--text-primary)] shadow-[var(--shadow-glass)]",
+        "fixed left-1/2 top-6 z-[60] w-[min( calc(100% - 2rem), 30rem)] -translate-x-1/2 rounded-[var(--radius-lg)] border px-5 py-3.5 text-center text-sm font-medium shadow-[var(--shadow-glass)]",
+        variant === "error"
+          ? "border-red-400/60 bg-red-950/95 text-red-50"
+          : "border-[var(--glass-border)] bg-[var(--glass-bg)] text-[var(--text-primary)]",
         className,
       )}
     >

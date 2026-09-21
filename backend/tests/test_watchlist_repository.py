@@ -178,48 +178,35 @@ def test_upsert_films_mixed_batch_against_real_db(require_integration):
 
 
 def test_sync_user_watchlist_deactivates_all_then_reactivates_current_set(supabase_mock):
-    """Reconciliation never lists ids in a filter: it blanket-deactivates
-    everything for the user (a plain `user_id` + `removed_at IS NULL` filter,
-    safe at any watchlist size), then reactivates/inserts the current set via
-    a single upsert whose rows travel in the request body."""
-    table = _table_mock(supabase_mock, "user_watchlist_items")
+    """Reconciliation is delegated to one transactional database function."""
 
     watchlist.sync_user_watchlist("user-1", {"film-a", "film-b"})
 
-    eq_args = table.update.return_value.eq.call_args[0]
-    assert eq_args == ("user_id", "user-1")
-    is_args = table.update.return_value.eq.return_value.is_.call_args[0]
-    assert is_args == ("removed_at", "null")
-
-    table.upsert.assert_called_once()
-    upserted_rows, upsert_kwargs = table.upsert.call_args[0], table.upsert.call_args[1]
-    assert {row["film_id"] for row in upserted_rows[0]} == {"film-a", "film-b"}
-    assert all(row["user_id"] == "user-1" and row["removed_at"] is None for row in upserted_rows[0])
-    assert upsert_kwargs["on_conflict"] == "user_id,film_id"
+    supabase_mock.rpc.assert_called_once_with(
+        "sync_user_watchlist",
+        {"p_user_id": "user-1", "p_active_film_ids": ["film-a", "film-b"]},
+    )
+    supabase_mock.rpc.return_value.execute.assert_called_once()
 
 
 def test_sync_user_watchlist_skips_upsert_for_empty_watchlist(supabase_mock):
-    """An emptied watchlist still deactivates existing rows, but must not send
-    an empty upsert payload."""
-    table = _table_mock(supabase_mock, "user_watchlist_items")
+    """An empty set is still reconciled atomically by the database function."""
 
     watchlist.sync_user_watchlist("user-1", set())
 
-    table.update.assert_called_once()
-    table.upsert.assert_not_called()
+    supabase_mock.rpc.assert_called_once_with(
+        "sync_user_watchlist",
+        {"p_user_id": "user-1", "p_active_film_ids": []},
+    )
 
 
 def test_sync_user_watchlist_upsert_omits_added_at(supabase_mock):
-    """`added_at` must never be in the upsert payload: PostgREST's
-    merge-on-conflict only touches columns it's given, so omitting it keeps
-    the original add date on existing rows and falls back to the column
-    default (`now()`) only for genuinely new ones."""
-    table = _table_mock(supabase_mock, "user_watchlist_items")
+    """The repository only sends the film ids; SQL preserves `added_at`."""
 
     watchlist.sync_user_watchlist("user-1", {"film-a"})
 
-    upserted_rows = table.upsert.call_args[0][0]
-    assert all("added_at" not in row for row in upserted_rows)
+    params = supabase_mock.rpc.call_args.args[1]
+    assert params["p_active_film_ids"] == ["film-a"]
 
 
 # --- get_active_watchlist --------------------------------------------------

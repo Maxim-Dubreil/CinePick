@@ -160,7 +160,13 @@ describe("useResultFlow", () => {
     expect(result.current.phase).toBe("accepted");
     expect(result.current.acceptedFilm?.film_id).toBe("f1");
     expect(recordDecisionMock).toHaveBeenCalledWith(
-      { film_id: "f1", decision: "accepted", match_score: null, critique: null },
+      {
+        recommendation_session_id: "",
+        film_id: "f1",
+        decision: "accepted",
+        match_score: null,
+        critique: null,
+      },
       "token",
     );
     expect(getRecommendationMock).toHaveBeenCalledTimes(1);
@@ -273,7 +279,9 @@ describe("useResultFlow", () => {
       candidates: [film({ film_id: "f1" })],
       meta: { candidates_considered: 1 },
     });
-    recordDecisionMock.mockRejectedValue(new ApiError(404, "unknown_candidate"));
+    recordDecisionMock.mockRejectedValue(
+      new ApiError(404, "unknown_candidate"),
+    );
     const { result } = renderHook(() => useResultFlow(ANSWERS, "token", true));
     await act(async () => {
       await vi.advanceTimersByTimeAsync(MIN_LOADING_MS);

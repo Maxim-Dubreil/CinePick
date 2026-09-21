@@ -98,11 +98,13 @@ export interface RecommendedFilm {
 export interface RecommendResponse {
   candidates: RecommendedFilm[];
   meta: { candidates_considered: number };
+  recommendation_session_id: string;
 }
 
 export type RecommendDecision = "accepted" | "skipped";
 
 export interface RecommendDecisionRequest {
+  recommendation_session_id: string;
   film_id: string;
   decision: RecommendDecision;
   match_score: number | null;

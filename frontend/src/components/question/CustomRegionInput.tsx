@@ -6,10 +6,24 @@ interface CustomRegionInputProps {
   onSubmit: () => void;
 }
 
-export function CustomRegionInput({ value, onChange, onSubmit }: CustomRegionInputProps) {
+export function CustomRegionInput({
+  value,
+  onChange,
+  onSubmit,
+}: CustomRegionInputProps) {
   return (
-    <div className="flex items-center gap-2.5">
+    <form
+      className="flex items-center gap-2.5"
+      onSubmit={(event) => {
+        event.preventDefault();
+        onSubmit();
+      }}
+    >
+      <label htmlFor="custom-region" className="sr-only">
+        Nom du pays
+      </label>
       <Input
+        id="custom-region"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder="Nom du pays…"
@@ -18,10 +32,10 @@ export function CustomRegionInput({ value, onChange, onSubmit }: CustomRegionInp
       <Button
         variant="glass"
         className="h-10 rounded-[var(--radius-md)] px-[18px]"
-        onClick={onSubmit}
+        type="submit"
       >
         Ajouter
       </Button>
-    </div>
+    </form>
   );
 }

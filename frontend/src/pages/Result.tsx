@@ -43,7 +43,11 @@ interface ResultFlowScreenProps {
 function ResultFlowScreen({ answers }: ResultFlowScreenProps) {
   const navigate = useNavigate();
   const { session, loading: authLoading } = useAuth();
-  const flow = useResultFlow(answers, session?.access_token ?? null, !authLoading);
+  const flow = useResultFlow(
+    answers,
+    session?.access_token ?? null,
+    !authLoading,
+  );
 
   return (
     <div
@@ -55,7 +59,11 @@ function ResultFlowScreen({ answers }: ResultFlowScreenProps) {
       {flow.phase === "card" && flow.currentFilm && (
         <>
           <FilmCard film={flow.currentFilm} />
-          <DecisionButtons onAccept={flow.onAccept} onSkip={flow.onSkip} />
+          <DecisionButtons
+            onAccept={flow.onAccept}
+            onSkip={flow.onSkip}
+            disabled={flow.deciding}
+          />
         </>
       )}
 
@@ -73,7 +81,11 @@ function ResultFlowScreen({ answers }: ResultFlowScreenProps) {
         />
       )}
 
-      <Toast key={flow.toastId} message={flow.toastMessage} onDismiss={flow.dismissToast} />
+      <Toast
+        key={flow.toastId}
+        message={flow.toastMessage}
+        onDismiss={flow.dismissToast}
+      />
     </div>
   );
 }

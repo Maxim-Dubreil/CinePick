@@ -39,7 +39,10 @@ const ANSWERS: RecommendRequest = {
   seen: "any",
 };
 
-function renderResult(initialState?: { filmCount: number; answers: RecommendRequest }) {
+function renderResult(initialState?: {
+  filmCount: number;
+  answers: RecommendRequest;
+}) {
   return render(
     <MemoryRouter
       initialEntries={[
@@ -99,7 +102,13 @@ describe("Result page", () => {
 
     expect(await screen.findByText("Bonne séance !")).toBeInTheDocument();
     expect(recordDecisionMock).toHaveBeenCalledWith(
-      { film_id: "f1", decision: "accepted", match_score: 87, critique: "Un choix parfait." },
+      {
+        recommendation_session_id: "",
+        film_id: "f1",
+        decision: "accepted",
+        match_score: 87,
+        critique: "Un choix parfait.",
+      },
       "test-token",
     );
   });

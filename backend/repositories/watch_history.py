@@ -44,7 +44,12 @@ def get_decision_history(user_id: str) -> dict[str, datetime]:
     return {row["film_id"]: datetime.fromisoformat(row["decided_at"]) for row in rows}
 
 
-def record_proposals(user_id: str, film_ids: list[str], questions_context: dict) -> None:
+def record_proposals(
+    user_id: str,
+    recommendation_session_id: str,
+    film_ids: list[str],
+    questions_context: dict,
+) -> None:
     """Write one `"proposed"` row per candidate `/recommend` is about to return."""
     if not film_ids:
         return
@@ -52,6 +57,7 @@ def record_proposals(user_id: str, film_ids: list[str], questions_context: dict)
         [
             {
                 "user_id": user_id,
+                "recommendation_session_id": recommendation_session_id,
                 "film_id": film_id,
                 "decision": "proposed",
                 "questions_context": questions_context,
@@ -63,6 +69,7 @@ def record_proposals(user_id: str, film_ids: list[str], questions_context: dict)
 
 def record_decision(
     user_id: str,
+    recommendation_session_id: str,
     film_id: str,
     decision: Literal["accepted", "skipped"],
     match_score: int | None,
@@ -81,6 +88,7 @@ def record_decision(
             }
         )
         .eq("user_id", user_id)
+        .eq("recommendation_session_id", recommendation_session_id)
         .eq("film_id", film_id)
         .eq("decision", "proposed")
         .execute()

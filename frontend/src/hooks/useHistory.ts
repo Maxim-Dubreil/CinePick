@@ -67,10 +67,17 @@ export interface UseHistoryResult {
  * `films`. Mirrors useProfile's direct-Supabase read + `refetchKey` pattern —
  * takes `userId` rather than calling useAuth itself, and paginates
  * server-side via `.range()` since history only grows over time. */
-export function useHistory(userId: string | null, page: number): UseHistoryResult {
+export function useHistory(
+  userId: string | null,
+  page: number,
+): UseHistoryResult {
   const [entries, setEntries] = useState<HistoryEntry[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [loadedQuery, setLoadedQuery] = useState<{
+    userId: string;
+    page: number;
+  } | null>(null);
   const [refetchKey, setRefetchKey] = useState(0);
 
   useEffect(() => {
@@ -96,11 +103,15 @@ export function useHistory(userId: string | null, page: number): UseHistoryResul
           console.error("useHistory: failed to fetch history", error);
           setEntries([]);
           setTotalCount(0);
+          setLoadedQuery({ userId, page });
           setLoading(false);
           return;
         }
-        setEntries(((data ?? []) as unknown as WatchHistoryRow[]).map(rowToEntry));
+        setEntries(
+          ((data ?? []) as unknown as WatchHistoryRow[]).map(rowToEntry),
+        );
         setTotalCount(count ?? 0);
+        setLoadedQuery({ userId, page });
         setLoading(false);
       });
 
@@ -123,5 +134,12 @@ export function useHistory(userId: string | null, page: number): UseHistoryResul
     setRefetchKey((k) => k + 1);
   };
 
-  return { entries, totalCount, loading, removeEntry };
+  const queryIsLoaded =
+    loadedQuery?.userId === userId && loadedQuery.page === page;
+  return {
+    entries: queryIsLoaded ? entries : [],
+    totalCount: queryIsLoaded ? totalCount : 0,
+    loading: userId ? (queryIsLoaded ? loading : true) : false,
+    removeEntry,
+  };
 }

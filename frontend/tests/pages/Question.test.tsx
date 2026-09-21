@@ -54,6 +54,10 @@ vi.mock("@/hooks/useQuestionFlow", () => ({
   },
 }));
 
+vi.mock("@/hooks/useAuth", () => ({
+  useAuth: () => ({ session: null, user: null, loading: false }),
+}));
+
 describe("Question — onComplete", () => {
   it("navigates to /home/result with filmCount and the full answers", () => {
     render(

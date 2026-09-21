@@ -28,7 +28,9 @@ describe("validateLetterboxdAccount", () => {
 
   it("throws ApiError(404) when user not found", async () => {
     vi.mocked(fetch).mockResolvedValue(new Response("", { status: 404 }));
-    await expect(validateLetterboxdAccount("unknown")).rejects.toThrow(ApiError);
+    await expect(validateLetterboxdAccount("unknown")).rejects.toThrow(
+      ApiError,
+    );
     await expect(validateLetterboxdAccount("unknown")).rejects.toMatchObject({
       status: 404,
     });
@@ -36,7 +38,9 @@ describe("validateLetterboxdAccount", () => {
 
   it("throws ApiError(403) when watchlist is private", async () => {
     vi.mocked(fetch).mockResolvedValue(new Response("", { status: 403 }));
-    await expect(validateLetterboxdAccount("private")).rejects.toThrow(ApiError);
+    await expect(validateLetterboxdAccount("private")).rejects.toThrow(
+      ApiError,
+    );
     await expect(validateLetterboxdAccount("private")).rejects.toMatchObject({
       status: 403,
     });
@@ -44,7 +48,9 @@ describe("validateLetterboxdAccount", () => {
 
   it("throws ApiError(0) on network failure", async () => {
     vi.mocked(fetch).mockRejectedValue(new TypeError("Failed to fetch"));
-    await expect(validateLetterboxdAccount("johndoe")).rejects.toThrow(ApiError);
+    await expect(validateLetterboxdAccount("johndoe")).rejects.toThrow(
+      ApiError,
+    );
     await expect(validateLetterboxdAccount("johndoe")).rejects.toMatchObject({
       status: 0,
     });
@@ -81,10 +87,13 @@ describe("syncWatchlist", () => {
 
   it("sends letterboxd_username in JSON body", async () => {
     vi.mocked(fetch).mockResolvedValue(
-      new Response(JSON.stringify({ count: 1, synced_at: "2026-06-25T10:00:00.000Z" }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      }),
+      new Response(
+        JSON.stringify({ count: 1, synced_at: "2026-06-25T10:00:00.000Z" }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
     );
     await syncWatchlist("cinephile", null);
     const [, options] = vi.mocked(fetch).mock.calls[0];
@@ -95,10 +104,13 @@ describe("syncWatchlist", () => {
 
   it("includes Authorization header when token is provided", async () => {
     vi.mocked(fetch).mockResolvedValue(
-      new Response(JSON.stringify({ count: 1, synced_at: "2026-06-25T10:00:00.000Z" }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      }),
+      new Response(
+        JSON.stringify({ count: 1, synced_at: "2026-06-25T10:00:00.000Z" }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
     );
     await syncWatchlist("cinephile", "my-token");
     const [, options] = vi.mocked(fetch).mock.calls[0];
@@ -109,14 +121,19 @@ describe("syncWatchlist", () => {
 
   it("omits Authorization header when token is null", async () => {
     vi.mocked(fetch).mockResolvedValue(
-      new Response(JSON.stringify({ count: 1, synced_at: "2026-06-25T10:00:00.000Z" }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      }),
+      new Response(
+        JSON.stringify({ count: 1, synced_at: "2026-06-25T10:00:00.000Z" }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
     );
     await syncWatchlist("cinephile", null);
     const [, options] = vi.mocked(fetch).mock.calls[0];
-    expect((options as RequestInit).headers).not.toHaveProperty("Authorization");
+    expect((options as RequestInit).headers).not.toHaveProperty(
+      "Authorization",
+    );
   });
 
   it("throws ApiError on non-2xx response", async () => {
@@ -170,6 +187,7 @@ describe("getRecommendation", () => {
         },
       ],
       meta: { candidates_considered: 5 },
+      recommendation_session_id: "session-1",
     };
     vi.mocked(fetch).mockResolvedValue(
       new Response(JSON.stringify(payload), {
@@ -208,7 +226,9 @@ describe("getRecommendation", () => {
     );
     await getRecommendation(SAMPLE_ANSWERS, null);
     const [, options] = vi.mocked(fetch).mock.calls[0];
-    expect((options as RequestInit).headers).not.toHaveProperty("Authorization");
+    expect((options as RequestInit).headers).not.toHaveProperty(
+      "Authorization",
+    );
   });
 
   it("throws ApiError(422) when the watchlist has no match", async () => {
@@ -217,14 +237,18 @@ describe("getRecommendation", () => {
         status: 422,
       }),
     );
-    await expect(getRecommendation(SAMPLE_ANSWERS, "my-token")).rejects.toMatchObject({
+    await expect(
+      getRecommendation(SAMPLE_ANSWERS, "my-token"),
+    ).rejects.toMatchObject({
       status: 422,
     });
   });
 
   it("throws ApiError(0) on network failure", async () => {
     vi.mocked(fetch).mockRejectedValue(new TypeError("Failed to fetch"));
-    await expect(getRecommendation(SAMPLE_ANSWERS, "my-token")).rejects.toMatchObject({
+    await expect(
+      getRecommendation(SAMPLE_ANSWERS, "my-token"),
+    ).rejects.toMatchObject({
       status: 0,
     });
   });
@@ -236,6 +260,7 @@ describe("recordDecision", () => {
   });
 
   const SAMPLE_DECISION: RecommendDecisionRequest = {
+    recommendation_session_id: "session-1",
     film_id: "f1",
     decision: "skipped",
     match_score: 87,
@@ -266,14 +291,18 @@ describe("recordDecision", () => {
         status: 404,
       }),
     );
-    await expect(recordDecision(SAMPLE_DECISION, "my-token")).rejects.toMatchObject({
+    await expect(
+      recordDecision(SAMPLE_DECISION, "my-token"),
+    ).rejects.toMatchObject({
       status: 404,
     });
   });
 
   it("throws ApiError(0) on network failure", async () => {
     vi.mocked(fetch).mockRejectedValue(new TypeError("Failed to fetch"));
-    await expect(recordDecision(SAMPLE_DECISION, "my-token")).rejects.toMatchObject({
+    await expect(
+      recordDecision(SAMPLE_DECISION, "my-token"),
+    ).rejects.toMatchObject({
       status: 0,
     });
   });
