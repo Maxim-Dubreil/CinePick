@@ -51,26 +51,23 @@ Frontend available at: `http://localhost:5173` Backend available at: `http://loc
 
 ### Local validation
 
-From the repository root, run the same full validation before committing or pushing:
-
-```sh
-make verify
-git diff --check
-```
-
-`make verify` rebuilds the Docker images, runs backend and frontend tests, linting, type checking,
-and the production frontend build. `git diff --check` checks whitespace errors in the pending diff.
-The V1 feature scope and test backlog are tracked in [docs/quality-v1.md](docs/quality-v1.md).
-
-To enable the repository pre-commit checks once on a new clone:
+To enable the repository git hooks once on a new clone:
 
 ```sh
 make install-hooks
 ```
 
-The hook checks the staged diff and runs `make verify-db`. The database check uses Supabase
-`db push --dry-run` and `db lint`, so it detects migration drift and schema errors without applying
-changes to the remote database. Run `make verify` separately for the full application test suite.
+Two gates, different speed:
+
+- **pre-commit** (`make verify-commit`): whitespace check on the staged diff + `make verify-db`
+  (Supabase migrations dry-run pushed against the linked project, schema lint — fails if local and
+  remote migration history don't match). Fast, runs on every commit.
+- **pre-push** (`make verify-push`, i.e. `make verify`): rebuilds the Docker images, then runs
+  backend and frontend tests, linting, type checking, and the production frontend build. Slower,
+  runs once per push.
+
+Run either target manually at any time with `make verify-commit` / `make verify-push`. V1
+readiness (test backlog, remaining quality/infra work) is tracked in Linear, not in this repo.
 
 ### API reference (Swagger UI)
 

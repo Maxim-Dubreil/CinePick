@@ -86,14 +86,9 @@ def upsert_films(films: list[EnrichedFilm]) -> dict[str, str]:
 def sync_user_watchlist(user_id: str, active_film_ids: set[str]) -> None:
     """Reconcile a user's watchlist with the freshly scraped set of film ids.
 
-    Deactivates everything currently active for the user with a single
-    user-scoped filter (no film id list involved, so no size limit regardless
-    of watchlist size), then reactivates/inserts the new active set through
-    one upsert whose film ids travel in the request body rather than the URL
-    — the same mechanism already used safely for hundreds of films in
-    `upsert_films`. `added_at` is deliberately left out of the upsert payload
-    so PostgREST's merge-on-conflict leaves it untouched on existing rows and
-    falls back to its column default (`now()`) only for genuinely new ones.
+    Delegates to the `sync_user_watchlist` SQL function (deactivate-then-upsert
+    in one transaction, see `supabase/migrations/`), grantable only to the
+    service role this client authenticates as.
     """
     supabase.rpc(
         "sync_user_watchlist",
