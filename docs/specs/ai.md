@@ -1,7 +1,11 @@
 # Specs AI
 
 > Source de vérité : ce fichier (versionné avec le code qu'il décrit). Miroir en lecture sur [Linear](https://linear.app/maximdubreil/document/specs-ai-ffdc701ff665) — modifie ici, pas là-bas.
-> Référencé depuis [Specs Questions](./questions.md). Détaille le prompt envoyé à Gemini, le format de réponse attendu, et le flow technique après réception de la réponse. Implémentation : `backend/reco_ai.py` (CIN-49/CIN-78).
+> Référencé depuis [Specs Questions](./questions.md). Détaille le prompt envoyé à Gemini, le format de réponse attendu, et le flow technique après réception de la réponse. Implémentation : `backend/reco_ai.py` (CIN-49/CIN-78/CIN-94).
+
+## Modèle
+
+`gemini-3.1-flash-lite` (`_MODEL` dans `reco_ai.py`). **Ne pas repasser sur `gemini-3.5-flash` ou `gemini-3.6-flash`** : les deux renvoient un `503` quasi instantané dès que `response_schema` (sortie JSON structurée) est combiné à leur mode "réflexion" activé par défaut — indépendant de la charge réelle malgré le message d'erreur Google ("high demand"), voir CIN-94. `gemini-3.1-flash-lite` n'a pas ce mode et répond en ~1-4s sur ce prompt. Timeout client : 30s (`_REQUEST_TIMEOUT`).
 
 ## Vue d'ensemble
 

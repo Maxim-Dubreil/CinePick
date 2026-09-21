@@ -77,6 +77,7 @@ function ResultFlowScreen({ answers }: ResultFlowScreenProps) {
       {flow.phase === "dead-end" && flow.deadEndReason && (
         <DeadEndScreen
           reason={flow.deadEndReason}
+          detail={flow.deadEndDetail}
           onReset={() => navigate("/home/question", { replace: true })}
         />
       )}

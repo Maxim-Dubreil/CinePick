@@ -23,8 +23,8 @@ from models import RankedCandidate, RecommendRequest, WatchlistFilm
 
 logger = logging.getLogger(__name__)
 
-_MODEL = "gemini-3.6-flash"
-_REQUEST_TIMEOUT = 10.0
+_MODEL = "gemini-3.1-flash-lite"
+_REQUEST_TIMEOUT = 30.0
 _OVERVIEW_MAX_CHARS = 200
 _MAX_CANDIDATES = 3
 _RESPONSE_SCHEMA = {

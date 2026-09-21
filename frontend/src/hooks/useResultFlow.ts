@@ -28,12 +28,19 @@ function errorToDeadEndReason(error: unknown): DeadEndReason {
   return "technical";
 }
 
+function errorToDevDetail(error: unknown): string | null {
+  if (!import.meta.env.DEV) return null;
+  if (error instanceof ApiError) return `[${error.status}] ${error.message}`;
+  return String(error);
+}
+
 interface ResultFlowState {
   phase: "loading" | "card" | "accepted" | "dead-end";
   candidates: RecommendedFilm[];
   currentIndex: number;
   attempt: number;
   deadEndReason: DeadEndReason | null;
+  deadEndDetail: string | null;
   toastMessage: string | null;
   toastId: number;
   acceptedFilm: RecommendedFilm | null;
@@ -45,6 +52,7 @@ export interface UseResultFlowResult {
   phase: ResultFlowState["phase"];
   currentFilm: RecommendedFilm | null;
   deadEndReason: DeadEndReason | null;
+  deadEndDetail: string | null;
   toastMessage: string | null;
   toastId: number;
   acceptedFilm: RecommendedFilm | null;
@@ -66,6 +74,7 @@ export function useResultFlow(
     currentIndex: 0,
     attempt: 1,
     deadEndReason: null,
+    deadEndDetail: null,
     toastMessage: null,
     toastId: 0,
     acceptedFilm: null,
@@ -101,6 +110,7 @@ export function useResultFlow(
           ...s,
           phase: "dead-end",
           deadEndReason: errorToDeadEndReason(error),
+          deadEndDetail: errorToDevDetail(error),
         }));
       }
     },
@@ -182,6 +192,7 @@ export function useResultFlow(
     phase: state.phase,
     currentFilm: state.candidates[state.currentIndex] ?? null,
     deadEndReason: state.deadEndReason,
+    deadEndDetail: state.deadEndDetail,
     toastMessage: state.toastMessage,
     toastId: state.toastId,
     acceptedFilm: state.acceptedFilm,
