@@ -1,4 +1,4 @@
-# V1 Quality Scope
+# V1 Quality Scope EN COURS (à valider avant la v1)
 
 This document defines the minimum quality scope for the first functional version of CinePick. It
 links user-facing features to automated checks and makes the remaining coverage visible.
