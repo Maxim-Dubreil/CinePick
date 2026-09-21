@@ -34,6 +34,12 @@ def _gemini_response(candidates: list[dict]) -> str:
     return json.dumps({"candidates": candidates})
 
 
+def test_build_prompt_instructs_a_french_critique():
+    prompt = reco_ai._build_prompt([_film("a")], _answers())
+
+    assert "french" in prompt.lower()
+
+
 async def test_pick_candidates_returns_ranked_matching_candidates(monkeypatch):
     candidates = [_film("a"), _film("b"), _film("c")]
 

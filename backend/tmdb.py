@@ -58,7 +58,7 @@ def _parse_director(data: dict) -> str | None:
 async def _fetch_details(client: httpx.AsyncClient, tmdb_id: int) -> FilmEnrichment | None:
     response = await client.get(
         f"{_BASE_URL}/movie/{tmdb_id}",
-        params={"api_key": _api_key(), "append_to_response": "credits"},
+        params={"api_key": _api_key(), "append_to_response": "credits", "language": "fr-FR"},
     )
     if response.status_code != 200:
         return None

@@ -84,10 +84,11 @@ def _build_prompt(candidates: list[WatchlistFilm], answers: RecommendRequest) ->
     return (
         f"Pick up to {_MAX_CANDIDATES} films from this list, ranked best first, "
         f"for someone who {_soft_signals(answers)}. For each, give a match_score "
-        "(0-100) and a 1-2 sentence critique referencing at least one of their "
-        'preferences. Reply with ONLY a JSON object like {"candidates": '
-        '[{"film_id": "<id>", "rank": 1, "match_score": 90, "critique": "..."}]}, '
-        f"using only ids from the list below, nothing else.\n\n{films_block}"
+        "(0-100) and a 1-2 sentence critique, written in French, referencing at "
+        "least one of their preferences. Reply with ONLY a JSON object like "
+        '{"candidates": [{"film_id": "<id>", "rank": 1, "match_score": 90, '
+        '"critique": "..."}]}, using only ids from the list below, nothing else.'
+        f"\n\n{films_block}"
     )
 
 
