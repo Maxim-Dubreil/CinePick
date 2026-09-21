@@ -5,8 +5,14 @@
 
 DO $$
 BEGIN
-  IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'profiles')
-     AND NOT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'users') THEN
+  IF EXISTS (
+    SELECT FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'profiles'
+  )
+     AND NOT EXISTS (
+       SELECT FROM information_schema.tables
+       WHERE table_schema = 'public' AND table_name = 'users'
+     ) THEN
     ALTER TABLE profiles RENAME TO users;
   END IF;
 END $$;
