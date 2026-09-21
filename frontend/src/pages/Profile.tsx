@@ -70,7 +70,7 @@ export function Profile() {
             onOpenModal={() => setModalOpen(true)}
           />
           <ProfilePreferences />
-          <div className="rounded-[var(--radius-xl)] bg-[var(--glass-bg)] border border-[var(--glass-border)] backdrop-blur-xl shadow-[var(--shadow-glass)] px-6 py-5 flex flex-col gap-1">
+          <div className="rounded-[var(--radius-xl)] bg-[var(--glass-bg)] border border-[var(--glass-border)] shadow-[var(--shadow-glass)] px-6 py-5 flex flex-col gap-1">
             {/* TODO: implémenter la page paramètres du compte */}
             <AccountButton label="Paramètres du compte" disabled />
             {profile?.letterboxd_username && (

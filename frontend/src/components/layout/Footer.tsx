@@ -11,8 +11,6 @@ export function Footer({ variant = 'landing' }: FooterProps) {
       className="relative z-10 w-full flex items-center justify-center gap-6 h-12 shrink-0"
       style={{
         background: 'var(--footer-gradient)',
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
         borderTop: '0.5px solid var(--footer-border)',
       }}
     >

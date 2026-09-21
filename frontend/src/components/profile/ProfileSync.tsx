@@ -46,7 +46,7 @@ export function ProfileSync({ profile, isSyncing, onResync, onOpenModal }: Profi
   const age = getSyncAge(profile?.last_sync ?? null)
 
   return (
-    <div className="rounded-[var(--radius-xl)] bg-[var(--accent-subtle)] border border-[var(--accent-border)] backdrop-blur-xl shadow-[var(--shadow-glass-accent)] p-6 flex flex-col gap-4">
+    <div className="rounded-[var(--radius-xl)] bg-[var(--accent-subtle)] border border-[var(--accent-border)] shadow-[var(--shadow-glass-accent)] p-6 flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <h2 className="font-heading font-medium italic text-[22px] text-[var(--text-primary)]">
           Synchronisation

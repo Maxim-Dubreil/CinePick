@@ -141,8 +141,6 @@ export function LandingBackground({ onLoaded }: LandingBackgroundProps) {
         className="absolute inset-0"
         style={{
           background: "var(--bg-overlay)",
-          backdropFilter: "blur(40px)",
-          WebkitBackdropFilter: "blur(34px)",
         }}
       />
 

@@ -40,7 +40,7 @@ export function ProfileHero({ user, letterboxdUsername }: ProfileHeroProps) {
   const initials = getInitials(fullName);
 
   return (
-    <section className="rounded-[var(--radius-xl)] bg-[var(--glass-bg)] border border-[var(--glass-border)] backdrop-blur-xl shadow-[var(--shadow-glass)] p-7 flex items-center gap-7">
+    <section className="rounded-[var(--radius-xl)] bg-[var(--glass-bg)] border border-[var(--glass-border)] shadow-[var(--shadow-glass)] p-7 flex items-center gap-7">
       <Avatar className="size-24 shrink-0">
         <AvatarImage
           src={(user.user_metadata?.picture as string | undefined) ?? ""}

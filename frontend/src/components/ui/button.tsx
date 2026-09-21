@@ -21,11 +21,11 @@ const buttonVariants = cva(
 
         // CinePick custom
         glass:
-          "bg-[var(--glass-bg)] border-[var(--glass-border)] text-[var(--text-primary)] backdrop-blur-xl hover:bg-[var(--hover-glass-bg)] shadow-[var(--shadow-glass)]",
+          "bg-[var(--glass-bg)] border-[var(--glass-border)] text-[var(--text-primary)] hover:bg-[var(--hover-glass-bg)] shadow-[var(--shadow-glass)]",
         "glass-accent":
-          "bg-[var(--accent-subtle)] border-[var(--accent-border)] text-[var(--cp-accent)] backdrop-blur-xl hover:bg-[var(--accent-subtle)]/80 shadow-[var(--shadow-glass-accent)]",
+          "bg-[var(--accent-subtle)] border-[var(--accent-border)] text-[var(--cp-accent)] hover:bg-[var(--accent-subtle)]/80 shadow-[var(--shadow-glass-accent)]",
         "glass-primary":
-          "bg-[var(--glass-primary-bg)] border-[var(--glass-primary-border)] text-[var(--glass-primary-text)] backdrop-blur-xl hover:bg-[var(--glass-primary-hover)] shadow-[var(--shadow-glass-primary)] hover:shadow-[var(--shadow-glass-primary)]",
+          "bg-[var(--glass-primary-bg)] border-[var(--glass-primary-border)] text-[var(--glass-primary-text)] hover:bg-[var(--glass-primary-hover)] shadow-[var(--shadow-glass-primary)] hover:shadow-[var(--shadow-glass-primary)]",
       },
       size: {
         default: "h-9 gap-2 px-4",

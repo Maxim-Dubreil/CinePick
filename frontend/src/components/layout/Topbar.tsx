@@ -35,8 +35,6 @@ export function Topbar({ variant = "landing" }: TopbarProps) {
       className="relative z-50 h-15 flex items-center justify-between px-10 shrink-0"
       style={{
         background: "var(--topbar-gradient)",
-        backdropFilter: "blur(40px)",
-        WebkitBackdropFilter: "blur(40px)",
         borderBottom: "0.5px solid var(--topbar-border)",
       }}
     >

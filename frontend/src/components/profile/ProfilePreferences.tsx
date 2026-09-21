@@ -4,7 +4,7 @@ export function ProfilePreferences() {
   // TODO: brancher préférences soirée depuis l'API
   // Données attendues : { include_long: boolean, prefer_unseen: boolean, subtitles_vost: boolean, preferred_duration: '<90' | '90-120' | 'any' }
   return (
-    <div className="rounded-[var(--radius-xl)] bg-[var(--glass-bg)] border border-[var(--glass-border)] backdrop-blur-xl shadow-[var(--shadow-glass)] p-6 flex flex-col gap-4">
+    <div className="rounded-[var(--radius-xl)] bg-[var(--glass-bg)] border border-[var(--glass-border)] shadow-[var(--shadow-glass)] p-6 flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <h2 className="font-heading font-medium italic text-[22px] text-[var(--text-primary)]">
           Préférences soirée

@@ -6,7 +6,7 @@ interface WatchlistBannerProps {
 
 export function WatchlistBanner({ onOpenModal }: WatchlistBannerProps) {
   return (
-    <div className="flex items-center gap-3 rounded-[var(--radius-lg)] border border-[var(--warning-border)] bg-[var(--warning-subtle)] px-3 py-2 shadow-[var(--shadow-glass)] backdrop-blur-xl">
+    <div className="flex items-center gap-3 rounded-[var(--radius-lg)] border border-[var(--warning-border)] bg-[var(--warning-subtle)] px-3 py-2 shadow-[var(--shadow-glass)]">
       <span className="relative flex size-2 shrink-0">
         <span className="absolute inline-flex size-full animate-ping rounded-full bg-[var(--warning)] opacity-60" />
         <span className="relative inline-flex size-2 rounded-full bg-[var(--warning)]" />
