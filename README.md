@@ -47,8 +47,7 @@ uvicorn main:app --reload
 docker compose up --build
 ```
 
-Frontend available at: `http://localhost:5173`
-Backend available at: `http://localhost:8000`
+Frontend available at: `http://localhost:5173` Backend available at: `http://localhost:8000`
 
 ### Local validation
 
@@ -59,10 +58,9 @@ make verify
 git diff --check
 ```
 
-`make verify` rebuilds the Docker images, runs backend and frontend tests, linting, type
-checking, and the production frontend build. `git diff --check` checks whitespace errors in
-the pending diff. The V1 feature scope and test backlog are tracked in
-[docs/quality-v1.md](docs/quality-v1.md).
+`make verify` rebuilds the Docker images, runs backend and frontend tests, linting, type checking,
+and the production frontend build. `git diff --check` checks whitespace errors in the pending diff.
+The V1 feature scope and test backlog are tracked in [docs/quality-v1.md](docs/quality-v1.md).
 
 To enable the repository pre-commit checks once on a new clone:
 
@@ -71,22 +69,21 @@ make install-hooks
 ```
 
 The hook checks the staged diff and runs `make verify-db`. The database check uses Supabase
-`db push --dry-run` and `db lint`, so it detects migration drift and schema errors without
-applying changes to the remote database. Run `make verify` separately for the full application
-test suite.
+`db push --dry-run` and `db lint`, so it detects migration drift and schema errors without applying
+changes to the remote database. Run `make verify` separately for the full application test suite.
 
 ### API reference (Swagger UI)
 
-FastAPI generates interactive API docs automatically — no setup needed. With the backend
-running, open:
+FastAPI generates interactive API docs automatically — no setup needed. With the backend running,
+open:
 
 - `http://localhost:8000/docs` — Swagger UI (try requests directly in the browser)
 - `http://localhost:8000/redoc` — ReDoc (read-only, cleaner for reference)
 - `http://localhost:8000/openapi.json` — raw OpenAPI schema
 
-Routes are grouped by tag (`health`, `letterboxd`, `profile`). This is the source of truth for
-exact request/response shapes — [docs/specs/api.md](docs/specs/api.md) covers the _why_ (business
-rules, open questions), not the exact contract.
+Routes are grouped by tag (`health`, `letterboxd`, `profile`). This is the source of truth for exact
+request/response shapes — [docs/specs/api.md](docs/specs/api.md) covers the _why_ (business rules,
+open questions), not the exact contract.
 
 ## Project structure
 
@@ -102,8 +99,8 @@ CinePick/
 
 ### Branches
 
-Solo developer: commit directly to `develop` (default branch). `main` is the protected
-production branch (merges only).
+Solo developer: commit directly to `develop` (default branch). `main` is the protected production
+branch (merges only).
 
 ### Commits
 
