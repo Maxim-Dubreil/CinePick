@@ -1,6 +1,6 @@
 # Écrans & Navigation
 
-> Source de vérité : [Linear](https://linear.app/maximdubreil/document/ecrans-and-navigation-3801798532e9). Ce fichier est un miroir — toute modification doit se faire sur Linear puis être resynchronisée ici.
+> Source de vérité : ce fichier (versionné avec le code qu'il décrit). Miroir en lecture sur [Linear](https://linear.app/maximdubreil/document/ecrans-and-navigation-3801798532e9) — modifie ici, pas là-bas.
 > Wireframes basse fidélité réalisés sur Figma. Home détaille la **bannière warning « watchlist non connectée »** + le **bloc stats compte**.
 
 ## Inventaire V1 — 6 écrans + 1 modale
@@ -94,4 +94,4 @@ Wireframes basse fidélité faits. À passer en final design : Home (3 états : 
 
 - [Specs Questions](./questions.md) — détail des 9 questions, types, algorithme de filtrage
 - [Specs AI](./ai.md) — format prompt/réponse IA, mécanisme des 2 tentatives, court-circuit sans IA
-- [Specs DB](./db.md) — schéma des tables, cache vs refresh
+- [Specs DB (Linear)](https://linear.app/maximdubreil/document/specs-db-09a3daa57241) — schéma des tables, cache vs refresh

@@ -1,6 +1,6 @@
 # Schéma DB — CinePick
 
-> Rendu automatiquement par GitHub dans les blocs `mermaid`. Les commentaires entre guillemets sur chaque colonne expliquent le "pourquoi", pas juste le "quoi" — pensés pour qu'un outil ou une personne qui découvre le schéma comprenne les contraintes sans redécouvrir chaque décision. Détails complets et raisonnement long-form : [Specs DB](./specs/db.md).
+> Rendu automatiquement par GitHub dans les blocs `mermaid`. Les commentaires entre guillemets sur chaque colonne expliquent le "pourquoi", pas juste le "quoi" — pensés pour qu'un outil ou une personne qui découvre le schéma comprenne les contraintes sans redécouvrir chaque décision. Détails complets et raisonnement long-form : [Specs DB (Linear)](https://linear.app/maximdubreil/document/specs-db-09a3daa57241).
 
 ## Relations (vue simplifiée)
 
@@ -47,6 +47,7 @@ erDiagram
         int4 runtime "peut etre 0 ou null sur TMDB : traiter comme non-filtrable plutot qu'exclu du filtre duree"
         text overview
         text_array origin_country "pays de production, PAS la langue - piege : un film UK a origin_country=GB mais original_language=en, filtrer sur la langue confond UK et US. NULLABLE (obligatoire malgre le default '{}') : un sync qui melange films enrichis et non-enrichis dans le meme upsert PostgREST envoie une valeur explicite NULL pour les lignes qui omettent la colonne des qu'une autre ligne du meme batch la fournit - une contrainte NOT NULL fait planter tout le sync (voir migration films_origin_country_nullable, backend/tests/test_watchlist_repository.py::test_upsert_films_mixed_batch_against_real_db)"
+        text director "nom du realisateur, depuis TMDB credits.crew - nullable, meme regle d'ecriture best-effort que les quatre autres colonnes d'enrichissement"
         timestamptz created_at
     }
     USER_WATCHLIST_ITEMS {
@@ -59,6 +60,7 @@ erDiagram
         uuid id PK
         uuid user_id FK
         uuid film_id FK
+        uuid recommendation_session_id "genere par /recommend a chaque appel, pas nullable - relie une decision au bon lot de propositions (une meme session peut re-proposer un film revu apres 15min, /recommend/decision verifie session+film_id+'proposed' avant d'accepter la decision)"
         text decision "'proposed'/'accepted'/'skipped' (CHECK constraint) - jamais 'declined', valeur alignee sur le vocabulaire deja utilise dans l'UI (bouton Skip)"
         jsonb questions_context "snapshot des 9 reponses au moment de la decision - seule trace DB de la session, le reste (compteurs, conversation Gemini) reste volatile cote front"
         text ai_critique "vient de Gemini, NULL si court-circuit sans IA (sous-ensemble filtre <= 3 films, voir Specs AI)"
@@ -81,7 +83,7 @@ Trois données existent dans le produit mais n'ont **aucune colonne** — décis
 
 ## Ce qui n'existe pas non plus : table de session
 
-Le "run" Questions → Résultat (réponses aux 9 questions, compteurs skip/échec, conversation Gemini) vit entièrement en state front (React), jamais en DB. Seule la décision finale (accept/skip) survit, dans `watch_history`. Détail complet du raisonnement : [Specs DB](./specs/db.md#gestion-de-session--aucune-table-db-état-front-éphémère).
+Le "run" Questions → Résultat (réponses aux 9 questions, numéro de tentative `/recommend`) vit entièrement en state front (React), jamais en DB. Seule la décision finale (accept/skip) survit, dans `watch_history`. Détail complet du raisonnement : [Specs DB (Linear)](https://linear.app/maximdubreil/document/specs-db-09a3daa57241#gestion-de-session--aucune-table-db-état-front-éphémère).
 
 ## Pour Claude Code — checklist de cohérence
 

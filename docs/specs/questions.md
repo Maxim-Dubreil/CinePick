@@ -1,7 +1,7 @@
 # Specs Questions
 
-> Source de vérité : [Linear](https://linear.app/maximdubreil/document/specs-questions-12a8a783e754). Ce fichier est un miroir — toute modification doit se faire sur Linear puis être resynchronisée ici.
-> Référencé depuis [Écrans & Navigation](../ecrans-navigation.md). Détaille le contenu, les types et l'algorithme de sélection des 9 questions du flow de recommandation. Source des wireframes : Figma (pages CINEPICK).
+> Source de vérité : ce fichier (versionné avec le code qu'il décrit). Miroir en lecture sur [Linear](https://linear.app/maximdubreil/document/specs-questions-12a8a783e754) — modifie ici, pas là-bas.
+> Référencé depuis [Écrans & Navigation](./ecrans-navigation.md). Détaille le contenu, les types et l'algorithme de sélection des 9 questions du flow de recommandation. Source des wireframes : Figma (pages CINEPICK).
 
 ## Principe : deux catégories de questions
 
@@ -121,16 +121,11 @@ Watchlist enrichie téléchargée en bloc, tenue en mémoire côté FRONT
 
 → fallback déclenché sur la dernière étape : on retire le filtre Région, on recalcule → 4 films restants, message "aucun film exact, voici les plus proches".
 
-## Deux enrichissements TMDB distincts, à ne pas confondre
+## Un seul enrichissement TMDB, fait au sync
 
-Le terme "enrichissement TMDB" recouvre en réalité deux opérations différentes en granularité, en timing et en lieu de stockage — détail complet (champs, déclencheur, règles de suppression) dans [Specs DB](./db.md).
+> **Correction du 2026-09-21** : cette section décrivait deux enrichissements distincts ("filtre" léger + "fiche" lourde post-IA) — ce plan n'a jamais été celui livré, voir [Specs DB](https://linear.app/maximdubreil/document/specs-db-09a3daa57241).
 
-|               | Enrichissement "filtre"                                  | Enrichissement "fiche"                                                                                           |
-| ------------- | -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| Champs        | `genre_ids`, `runtime`, `release_date`, `origin_country` | poster, casting, synopsis complet, providers streaming                                                           |
-| Portée        | Toute la watchlist (potentiellement 200+ films)          | Seulement les 1 à 3 candidats retournés par l'IA (ou affichés directement si court-circuit)                      |
-| Déclenché par | Clic "Synchroniser" (modale Letterboxd)                  | Réception de la réponse IA, ou directement si sous-ensemble ≤ 3 (jamais en spéculatif sur tout le sous-ensemble) |
-| Stockage      | DB (Supabase), rafraîchi à chaque resync                 | DB (Supabase), table `films`, jamais supprimé même si l'historique l'est                                         |
+Un seul enrichissement TMDB (`genres`, `runtime`, `origin_country`, `overview`, `director`), appliqué à toute la watchlist au clic "Synchroniser", stocké dans `films`. `/recommend` ne fait aucun appel TMDB — il lit `films` tel quel, y compris pour les candidats retenus par l'IA.
 
 ## Sélection IA : 3 candidats par appel, 2 appels maximum par session — sauf court-circuit
 
@@ -142,11 +137,11 @@ Flow swipe complet (sous-ensemble ≥ 4, avec IA) :
 
 - Skip 1 → candidat rank=2, déjà en cache (aucun appel réseau)
 - Skip 2 → candidat rank=3, déjà en cache (aucun appel réseau)
-- Skip 3 (tous refusés) → **2ème et dernier appel Gemini** dans la même conversation, films refusés exclus du sous-ensemble
+- Skip 3 (tous refusés) → **2ème et dernier appel `/recommend`**, indépendant du premier (pas de conversation Gemini à état — voir [Specs AI](./ai.md)) ; films touchés il y a moins de 15 min naturellement exclus par `filtering.py`
   - Succès → retour sur "Carte film" avec les nouveaux candidats (même logique de swipe, mais pas de 3ème appel possible)
   - Échec (erreur technique ou sous-ensemble épuisé) → écran final "On n'a pas réussi à répondre à ta demande" + bouton **"Recommencer"** → **retour Questions, reset complet des 9 réponses**
 
-2 appels Gemini maximum par session quand l'IA est appelée, sans exception. Passé cette limite, la session est considérée comme épuisée et l'utilisateur repart de zéro.
+2 appels `/recommend` maximum par session quand l'IA est appelée, sans exception (`MAX_ATTEMPTS`, `useResultFlow.ts`). Passé cette limite, la session est considérée comme épuisée et l'utilisateur repart de zéro.
 
 ⚠️ **Diagramme Excalidraw "5. Résultat" à mettre à jour** : il décrit encore "1-2 skips → nouvelle reco IA / 3 skips → retour Questions", ce qui ne correspond plus à ce mécanisme. Changements à faire dans le diagramme (listés mais pas encore appliqués) :
 
