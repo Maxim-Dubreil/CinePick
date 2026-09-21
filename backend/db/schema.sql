@@ -11,6 +11,33 @@ create table users (
   updated_at timestamptz default now()
 );
 
+-- Auto-create a `users` row when someone signs up via Supabase Auth (Google OAuth).
+-- This function + trigger live only in the database (created via the Supabase SQL editor,
+-- not part of the app codebase) — keep this block in sync with the live definition by hand
+-- whenever either changes. See supabase/migrations/20260921120000_fix_handle_new_user_target_table.sql
+-- for the incident this documents (CIN-76: it pointed at the old `profiles` table name and
+-- broke every new signup from 2026-07-03 until the fix).
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer
+as $$
+begin
+  insert into public.users (id, email, full_name, avatar_url)
+  values (
+    new.id,
+    new.email,
+    new.raw_user_meta_data->>'full_name',
+    new.raw_user_meta_data->>'avatar_url'
+  );
+  return new;
+end;
+$$;
+
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute function public.handle_new_user();
+
 -- Global film catalog (shared across all users, populated by sync)
 -- TMDB fields (genres, runtime, overview, director) are filled lazily at recommendation time.
 create table films (
