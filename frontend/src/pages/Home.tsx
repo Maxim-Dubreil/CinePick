@@ -57,7 +57,7 @@ export function Home() {
               <HomeCTA letterboxdUsername={letterboxdUsername} />
 
               {profile?.letterboxd_username && (
-                <div className="flex justify-center px-6 pb-10 pt-[200px]">
+                <div className="flex justify-center px-6 pb-10 pt-[100px]">
                   <div className="flex gap-4 w-full max-w-3xl">
                     <div className="flex-1">
                       <LastFilmPanel

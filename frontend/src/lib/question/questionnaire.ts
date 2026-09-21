@@ -111,7 +111,7 @@ export function getQuestions(): Question[] {
     },
     {
       id: "withWho",
-      label: "Tu regardes avec qui ce soir ?",
+      label: "Tu regardes avec qui ?",
       hard: false,
       multi: false,
       options: [
