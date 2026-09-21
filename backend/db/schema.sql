@@ -14,7 +14,7 @@ create table users (
 -- Auto-create a `users` row when someone signs up via Supabase Auth (Google OAuth).
 -- This function + trigger live only in the database (created via the Supabase SQL editor,
 -- not part of the app codebase) — keep this block in sync with the live definition by hand
--- whenever either changes. See supabase/migrations/20260921120000_fix_handle_new_user_target_table.sql
+-- whenever either changes. See supabase/migrations/20260921095252_fix_handle_new_user_target_table.sql
 -- for the incident this documents (CIN-76: it pointed at the old `profiles` table name and
 -- broke every new signup from 2026-07-03 until the fix).
 create or replace function public.handle_new_user()
