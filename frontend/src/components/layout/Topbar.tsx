@@ -20,7 +20,12 @@ export function Topbar({ variant = "landing" }: TopbarProps) {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const activeTab = location.pathname === "/home" ? "Aujourd'hui" : "";
+  const activeTab =
+    location.pathname === "/home"
+      ? "Aujourd'hui"
+      : location.pathname === "/history"
+        ? "historique"
+        : "";
 
   return (
     <header
@@ -56,6 +61,7 @@ export function Topbar({ variant = "landing" }: TopbarProps) {
             value={activeTab}
             onValueChange={(val) => {
               if (val === "Aujourd'hui") navigate("/home");
+              if (val === "historique") navigate("/history");
             }}
           >
             <TabsList variant="line">

@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Landing } from "@/pages/Landing";
 import { Home } from "@/pages/Home";
 import { Profile } from "@/pages/Profile";
+import { History } from "@/pages/History";
 import { NotFound } from "@/pages/NotFound";
 import { AppLayout, AppLoader, ThemeToggle } from "@/components/layout";
 
@@ -33,6 +34,18 @@ function App() {
             authLoading ? null : user ? (
               <AppLayout>
                 <Profile />
+              </AppLayout>
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
+        />
+        <Route
+          path="/history"
+          element={
+            authLoading ? null : user ? (
+              <AppLayout>
+                <History />
               </AppLayout>
             ) : (
               <Navigate to="/" replace />
