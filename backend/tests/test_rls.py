@@ -4,9 +4,14 @@ import os
 from uuid import uuid4
 
 import pytest
+from postgrest.exceptions import APIError
 from supabase import Client, create_client
 
 pytestmark = pytest.mark.integration
+
+# Postgres error code for "new row violates row-level security policy" —
+# what a WITH CHECK failure raises. Any other error must fail the test.
+_RLS_VIOLATION_CODE = "42501"
 
 
 @pytest.fixture
@@ -52,21 +57,29 @@ def test_user_cannot_reassign_watchlist_item_to_another_user(
     rls_clients: tuple[Client, Client, Client, str, str]
 ):
     admin, first_client, _, first_user_id, second_user_id = rls_clients
-    film = admin.table("films").select("id").limit(1).execute().data[0]
-
-    first_client.table("user_watchlist_items").insert(
-        {"user_id": first_user_id, "film_id": film["id"]}
-    ).execute()
+    film = (
+        admin.table("films")
+        .insert({"letterboxd_slug": f"rls-test-{uuid4().hex}", "title": "RLS test film"})
+        .execute()
+        .data[0]
+    )
     try:
-        response = (
-            first_client.table("user_watchlist_items")
-            .update({"user_id": second_user_id})
-            .eq("user_id", first_user_id)
-            .eq("film_id", film["id"])
-            .execute()
-        )
-    except Exception:
-        return
+        first_client.table("user_watchlist_items").insert(
+            {"user_id": first_user_id, "film_id": film["id"]}
+        ).execute()
+        try:
+            response = (
+                first_client.table("user_watchlist_items")
+                .update({"user_id": second_user_id})
+                .eq("user_id", first_user_id)
+                .eq("film_id", film["id"])
+                .execute()
+            )
+        except APIError as exc:
+            assert exc.code == _RLS_VIOLATION_CODE, f"unexpected error: {exc!r}"
+            return
 
-    assert response.data == []
-    assert response.count in (None, 0)
+        assert response.data == []
+        assert response.count in (None, 0)
+    finally:
+        admin.table("films").delete().eq("id", film["id"]).execute()
