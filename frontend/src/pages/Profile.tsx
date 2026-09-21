@@ -52,7 +52,6 @@ export function Profile() {
       <ProfileHero
         user={user}
         letterboxdUsername={profile?.letterboxd_username ?? null}
-        onUnlink={() => setUnlinkModalOpen(true)}
       />
 
       <ProfileStats filmCount={profile?.film_count ?? 0} />
@@ -74,6 +73,13 @@ export function Profile() {
           <div className="rounded-[var(--radius-xl)] bg-[var(--glass-bg)] border border-[var(--glass-border)] backdrop-blur-xl shadow-[var(--shadow-glass)] px-6 py-5 flex flex-col gap-1">
             {/* TODO: implémenter la page paramètres du compte */}
             <AccountButton label="Paramètres du compte" disabled />
+            {profile?.letterboxd_username && (
+              <AccountButton
+                label="Délier le compte Letterboxd"
+                destructive
+                onClick={() => setUnlinkModalOpen(true)}
+              />
+            )}
             <AccountButton
               label="Se déconnecter"
               onClick={() => void signOut()}
@@ -105,15 +111,25 @@ interface AccountButtonProps {
   label: string;
   onClick?: () => void;
   disabled?: boolean;
+  destructive?: boolean;
 }
 
-function AccountButton({ label, onClick, disabled }: AccountButtonProps) {
+function AccountButton({
+  label,
+  onClick,
+  disabled,
+  destructive,
+}: AccountButtonProps) {
   return (
     <button
       type="button"
       disabled={disabled}
       onClick={onClick}
-      className="flex items-center h-9 px-1 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors disabled:opacity-40 disabled:pointer-events-none text-left"
+      className={`flex items-center h-9 px-1 text-sm transition-colors disabled:opacity-40 disabled:pointer-events-none text-left ${
+        destructive
+          ? "text-destructive hover:text-destructive/80"
+          : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+      }`}
     >
       {label}
     </button>
