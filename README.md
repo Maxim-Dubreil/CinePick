@@ -64,6 +64,17 @@ checking, and the production frontend build. `git diff --check` checks whitespac
 the pending diff. The V1 feature scope and test backlog are tracked in
 [docs/quality-v1.md](docs/quality-v1.md).
 
+To enable the repository pre-commit checks once on a new clone:
+
+```sh
+make install-hooks
+```
+
+The hook checks the staged diff and runs `make verify-db`. The database check uses Supabase
+`db push --dry-run` and `db lint`, so it detects migration drift and schema errors without
+applying changes to the remote database. Run `make verify` separately for the full application
+test suite.
+
 ### API reference (Swagger UI)
 
 FastAPI generates interactive API docs automatically — no setup needed. With the backend
