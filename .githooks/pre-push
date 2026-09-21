@@ -1,0 +1,6 @@
+#!/usr/bin/env sh
+
+set -eu
+
+echo "Running full verification (Docker build, backend + frontend tests/lint/typecheck/build)..."
+make verify-push
