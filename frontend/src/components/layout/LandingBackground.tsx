@@ -119,12 +119,14 @@ export function LandingBackground({ onLoaded }: LandingBackgroundProps) {
 
   return (
     <div className="fixed inset-0 -z-10 overflow-hidden">
-      {/* Grille d'affiches */}
+      {/* Grille d'affiches, floutée pour rester lisible sous le contenu */}
       <div
         className="absolute inset-0 grid"
         style={{
           gridTemplateColumns: "repeat(10, 1fr)",
           gridTemplateRows: "repeat(4, 1fr)",
+          filter: "blur(8px)",
+          transform: "scale(1.1)",
         }}
       >
         {posters.map((src, i) => (
@@ -136,7 +138,7 @@ export function LandingBackground({ onLoaded }: LandingBackgroundProps) {
         ))}
       </div>
 
-      {/* Overlay blur */}
+      {/* Overlay couleur */}
       <div
         className="absolute inset-0"
         style={{
