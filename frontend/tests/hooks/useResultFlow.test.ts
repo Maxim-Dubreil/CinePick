@@ -153,7 +153,7 @@ describe("useResultFlow", () => {
       await vi.advanceTimersByTimeAsync(MIN_LOADING_MS);
     });
 
-    act(() => {
+    await act(async () => {
       result.current.onAccept();
     });
 

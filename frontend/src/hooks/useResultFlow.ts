@@ -160,8 +160,42 @@ export function useResultFlow(
     const currentFilm = state.candidates[state.currentIndex];
     if (!currentFilm || state.deciding) return;
     setState((s) => ({ ...s, deciding: true }));
-    recordDecisionSafely(currentFilm, "accepted");
-    setState((s) => ({ ...s, phase: "accepted", acceptedFilm: currentFilm }));
+
+    // Awaited (unlike skip's fire-and-forget): the "accepted" phase can be
+    // left through several exits (the back-home button, the topbar logo,
+    // "Aujourd'hui"), so the decision must be persisted before that screen
+    // is even shown — otherwise the home screen's "dernier film" refetch
+    // can win the race and still read the previous accepted film.
+    recordDecision(
+      {
+        film_id: currentFilm.film_id,
+        recommendation_session_id: state.recommendationSessionId ?? "",
+        decision: "accepted",
+        match_score: currentFilm.match_score,
+        critique: currentFilm.critique,
+      },
+      token,
+    )
+      .then(() => {
+        setState((s) => ({
+          ...s,
+          deciding: false,
+          phase: "accepted",
+          acceptedFilm: currentFilm,
+        }));
+      })
+      .catch((error: unknown) => {
+        const message =
+          error instanceof ApiError && error.status === 404
+            ? TOAST_UNKNOWN_CANDIDATE
+            : TOAST_NETWORK;
+        setState((s) => ({
+          ...s,
+          deciding: false,
+          toastMessage: message,
+          toastId: s.toastId + 1,
+        }));
+      });
   }
 
   function onSkip() {

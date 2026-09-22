@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useResultFlow } from "@/hooks/useResultFlow";
@@ -57,6 +58,20 @@ function ResultFlowScreen({ answers, onAccepted }: ResultFlowScreenProps) {
     !authLoading,
   );
 
+  // The "accepted" screen can be left through several exits (this button,
+  // the topbar logo, "Aujourd'hui") — not just onBackHome below — so the
+  // refetch signal is tied to leaving this screen while a film was
+  // accepted, not to any single exit's click handler.
+  const phaseRef = useRef(flow.phase);
+  useEffect(() => {
+    phaseRef.current = flow.phase;
+  });
+  useEffect(() => {
+    return () => {
+      if (phaseRef.current === "accepted") onAccepted();
+    };
+  }, [onAccepted]);
+
   return (
     <div
       className="relative flex h-full flex-col items-center justify-center gap-6 px-6"
@@ -78,11 +93,7 @@ function ResultFlowScreen({ answers, onAccepted }: ResultFlowScreenProps) {
       {flow.phase === "accepted" && flow.acceptedFilm && (
         <AcceptedScreen
           film={flow.acceptedFilm}
-          onBackHome={() => {
-            onAccepted();
-            navigate("/home", { replace: true });
-          }}
-          saving={flow.deciding}
+          onBackHome={() => navigate("/home", { replace: true })}
         />
       )}
 

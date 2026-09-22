@@ -5,13 +5,9 @@ import type { RecommendedFilm } from "@/lib/backend/api";
 interface AcceptedScreenProps {
   film: RecommendedFilm;
   onBackHome: () => void;
-  /** True while the accept decision is still being persisted — navigating
-   * home before that resolves races the home screen's "dernier film" fetch
-   * against the write, so the button stays disabled until it settles. */
-  saving?: boolean;
 }
 
-export function AcceptedScreen({ film, onBackHome, saving = false }: AcceptedScreenProps) {
+export function AcceptedScreen({ film, onBackHome }: AcceptedScreenProps) {
   return (
     <div className="flex h-full flex-col items-center justify-center gap-5 px-6 text-center">
       <h2 className="max-w-[440px] font-heading text-4xl italic">
@@ -27,7 +23,6 @@ export function AcceptedScreen({ film, onBackHome, saving = false }: AcceptedScr
         variant="glass"
         className="mt-3 h-11 rounded-[var(--radius-xl)] px-6"
         onClick={onBackHome}
-        disabled={saving}
       >
         Retour à l'accueil
       </Button>
