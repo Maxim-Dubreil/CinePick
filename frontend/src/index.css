@@ -6,18 +6,24 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* App Background — Light theme only */
-[data-theme="light"] .app-bg {
-  background:
-    radial-gradient(55% 45% at 12% 8%, #fce7f3 0%, transparent 62%),
-    radial-gradient(50% 45% at 88% 14%, #d4deff 0%, transparent 65%),
-    radial-gradient(45% 40% at 78% 78%, #d4deff 0%, transparent 64%),
-    radial-gradient(60% 50% at 25% 95%, #fbcfe8 0%, transparent 60%),
-    linear-gradient(180deg, #faf9fb, #f6f4f9) !important;
+.app-bg {
+  background: var(--app-bg-wash);
 }
 
-[data-theme="light"] .app-orb {
-  display: none;
+.app-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: var(--app-vignette);
+}
+
+.app-grain {
+  position: absolute;
+  inset: -20%;
+  pointer-events: none;
+  mix-blend-mode: soft-light;
+  opacity: var(--app-grain-opacity);
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch' result='t'/><feColorMatrix in='t' type='matrix' values='4 0 0 0 -1.5 0 4 0 0 -1.5 0 0 4 0 -1.5 0 0 0 0 1'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
 }
 
 @keyframes shimmer {
@@ -181,35 +187,31 @@
   --footer-border: rgba(255, 255, 255, 0.08);
 
   --app-orb-1: radial-gradient(
-    ellipse,
-    rgba(91, 33, 182, 0.55) 0%,
-    transparent 70%
+    circle,
+    rgba(124, 58, 237, 0.65) 0%,
+    rgba(124, 58, 237, 0.18) 38%,
+    transparent 62%
   );
   --app-orb-2: radial-gradient(
-    ellipse,
-    rgba(124, 58, 237, 0.4) 0%,
-    transparent 70%
+    circle,
+    rgba(183, 148, 246, 0.5) 0%,
+    rgba(183, 148, 246, 0.12) 40%,
+    transparent 65%
   );
   --app-orb-3: radial-gradient(
-    ellipse,
-    rgba(76, 29, 149, 0.45) 0%,
-    transparent 70%
+    circle,
+    rgba(76, 29, 149, 0.6) 0%,
+    rgba(76, 29, 149, 0.15) 38%,
+    transparent 60%
   );
-  --app-orb-4: radial-gradient(
-    ellipse,
-    rgba(109, 40, 217, 0.35) 0%,
-    transparent 70%
+  --app-vignette: radial-gradient(
+    120% 90% at 50% 38%,
+    transparent 0%,
+    transparent 45%,
+    rgba(3, 3, 8, 0.55) 100%
   );
-  --app-orb-5: radial-gradient(
-    ellipse,
-    rgba(139, 92, 246, 0.3) 0%,
-    transparent 70%
-  );
-  --app-orb-6: radial-gradient(
-    ellipse,
-    rgba(67, 20, 140, 0.4) 0%,
-    transparent 70%
-  );
+  --app-grain-opacity: 0.16;
+  --app-bg-wash: var(--bg-page);
 
   --logo-shimmer: linear-gradient(
     90deg,
@@ -324,12 +326,32 @@
   );
   --footer-border: rgba(26, 24, 37, 0.1);
 
-  --app-orb-1: radial-gradient(ellipse, #e9e5ff 0%, transparent 70%);
-  --app-orb-2: radial-gradient(ellipse, #f3e8ff 0%, transparent 70%);
-  --app-orb-3: radial-gradient(ellipse, #faf5ff 0%, transparent 70%);
-  --app-orb-4: radial-gradient(ellipse, #ede9fe 0%, transparent 70%);
-  --app-orb-5: radial-gradient(ellipse, #f5f3ff 0%, transparent 70%);
-  --app-orb-6: radial-gradient(ellipse, #e8e4ff 0%, transparent 70%);
+  --app-orb-1: radial-gradient(
+    circle,
+    rgba(244, 114, 182, 0.38) 0%,
+    rgba(244, 114, 182, 0.12) 40%,
+    transparent 64%
+  );
+  --app-orb-2: radial-gradient(
+    circle,
+    rgba(129, 140, 248, 0.34) 0%,
+    rgba(129, 140, 248, 0.1) 42%,
+    transparent 66%
+  );
+  --app-orb-3: radial-gradient(
+    circle,
+    rgba(196, 132, 252, 0.32) 0%,
+    rgba(196, 132, 252, 0.1) 40%,
+    transparent 62%
+  );
+  --app-vignette: radial-gradient(
+    120% 90% at 50% 35%,
+    transparent 0%,
+    transparent 40%,
+    rgba(76, 29, 149, 0.1) 100%
+  );
+  --app-grain-opacity: 0.11;
+  --app-bg-wash: linear-gradient(180deg, #f7f5fb 0%, #ece6f4 100%);
 
   --logo-shimmer: linear-gradient(
     90deg,
