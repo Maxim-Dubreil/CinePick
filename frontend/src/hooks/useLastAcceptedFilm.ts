@@ -27,6 +27,7 @@ interface FilmsRow {
 export interface UseLastAcceptedFilmResult {
   film: LastAcceptedFilm | null;
   loading: boolean;
+  refetch: () => void;
 }
 
 /** Reads the most recently accepted film from `watch_history` (joined
@@ -44,6 +45,9 @@ export function useLastAcceptedFilm(userId: string | null): UseLastAcceptedFilmR
     userId: "",
     film: null,
   });
+
+  const [refetchKey, setRefetchKey] = useState(0);
+  const refetch = () => setRefetchKey((key) => key + 1);
 
   useEffect(() => {
     if (!userId) return;
@@ -84,11 +88,12 @@ export function useLastAcceptedFilm(userId: string | null): UseLastAcceptedFilmR
     return () => {
       cancelled = true;
     };
-  }, [userId]);
+  }, [userId, refetchKey]);
 
   const upToDate = userId !== null && result.userId === userId;
   return {
     film: upToDate ? result.film : null,
     loading: userId !== null && !upToDate,
+    refetch,
   };
 }

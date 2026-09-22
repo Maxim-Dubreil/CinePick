@@ -21,8 +21,11 @@ import { Toast } from "@/components/ui";
 export function Home() {
   const { session, user } = useAuth();
   const { profile, loading: profileLoading, refetch } = useProfile();
-  const { film: lastAcceptedFilm, loading: lastAcceptedFilmLoading } =
-    useLastAcceptedFilm(user?.id ?? null);
+  const {
+    film: lastAcceptedFilm,
+    loading: lastAcceptedFilmLoading,
+    refetch: refetchLastAcceptedFilm,
+  } = useLastAcceptedFilm(user?.id ?? null);
   const [modalOpen, setModalOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
@@ -97,7 +100,10 @@ export function Home() {
               </>
             }
           />
-          <Route path="result" element={<Result />} />
+          <Route
+            path="result"
+            element={<Result onAccepted={refetchLastAcceptedFilm} />}
+          />
         </Route>
         <Route
           path="question"

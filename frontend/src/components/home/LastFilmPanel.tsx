@@ -2,7 +2,7 @@ import { Clapperboard } from "lucide-react";
 import { FilmPoster } from "@/components/FilmPoster";
 import type { UseLastAcceptedFilmResult } from "@/hooks/useLastAcceptedFilm";
 
-type LastFilmPanelProps = UseLastAcceptedFilmResult;
+type LastFilmPanelProps = Pick<UseLastAcceptedFilmResult, "film" | "loading">;
 
 export function LastFilmPanel({ film, loading }: LastFilmPanelProps) {
   return (

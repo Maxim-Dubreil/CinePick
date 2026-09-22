@@ -26,21 +26,29 @@ function isResultLocationState(state: unknown): state is ResultLocationState {
   );
 }
 
-export function Result() {
+interface ResultProps {
+  /** Called right before navigating back to the home screen after accepting
+   * a film, so `useLastAcceptedFilm` (which otherwise only fetches on mount)
+   * picks up the newly-recorded decision. */
+  onAccepted: () => void;
+}
+
+export function Result({ onAccepted }: ResultProps) {
   const location = useLocation();
 
   if (!isResultLocationState(location.state)) {
     return <Navigate to="/home/question" replace />;
   }
 
-  return <ResultFlowScreen answers={location.state.answers} />;
+  return <ResultFlowScreen answers={location.state.answers} onAccepted={onAccepted} />;
 }
 
 interface ResultFlowScreenProps {
   answers: RecommendRequest;
+  onAccepted: () => void;
 }
 
-function ResultFlowScreen({ answers }: ResultFlowScreenProps) {
+function ResultFlowScreen({ answers, onAccepted }: ResultFlowScreenProps) {
   const navigate = useNavigate();
   const { session, loading: authLoading } = useAuth();
   const flow = useResultFlow(
@@ -70,7 +78,11 @@ function ResultFlowScreen({ answers }: ResultFlowScreenProps) {
       {flow.phase === "accepted" && flow.acceptedFilm && (
         <AcceptedScreen
           film={flow.acceptedFilm}
-          onBackHome={() => navigate("/home", { replace: true })}
+          onBackHome={() => {
+            onAccepted();
+            navigate("/home", { replace: true });
+          }}
+          saving={flow.deciding}
         />
       )}
 

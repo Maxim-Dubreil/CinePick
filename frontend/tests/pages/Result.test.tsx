@@ -52,7 +52,7 @@ function renderResult(initialState?: {
       ]}
     >
       <Routes>
-        <Route path="/home/result" element={<Result />} />
+        <Route path="/home/result" element={<Result onAccepted={() => {}} />} />
         <Route path="/home/question" element={<div>Questions page</div>} />
       </Routes>
     </MemoryRouter>,
