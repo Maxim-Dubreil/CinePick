@@ -117,7 +117,7 @@ export function getQuestions(): Question[] {
   const regionOptions: QuestionOption[] = [
     { id: "none", label: "Pas de préférence" },
     ...REGIONS,
-    { id: "other", label: "Autre région" },
+    { id: "other", label: "Autre pays" },
   ];
 
   return [
@@ -179,7 +179,7 @@ export function getQuestions(): Question[] {
     },
     {
       id: "region",
-      label: "Une région du monde qui t'attire ?",
+      label: "Produit dans quel pays ?",
       phase: "Contenu",
       hard: true,
       multi: true,

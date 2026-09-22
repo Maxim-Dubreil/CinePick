@@ -72,7 +72,11 @@ Champ TMDB : `release_date`.
 
 ### 5. Région — Contenu, filtre dur, multi-select + sous-cas
 
-5 grandes régions en chips : Américain, Britannique, Français, Japonais, Sud-Coréen, + « Pas de préférence » (exclusif) + « Autre région » qui ouvre un input de recherche pour ajouter un ou plusieurs pays hors liste.
+Libellé UI : « Produit dans quel pays ? » — volontairement explicite sur le pays de **production**,
+pas la langue ni le lieu où se déroule l'histoire (voir piège critique ci-dessous). L'ancien libellé
+« Une région du monde qui t'attire ? » prêtait à confusion sur ce point.
+
+5 grandes régions en chips : Américain, Britannique, Français, Japonais, Sud-Coréen, + « Pas de préférence » (exclusif) + « Autre pays » qui ouvre un input de recherche pour ajouter un ou plusieurs pays hors liste.
 
 Champ TMDB : `origin_country` (ou `production_countries`). ⚠️ **Piège critique** : `origin_country` (pays de production) et `original_language` (langue) sont deux champs séparés. Un film britannique a typiquement `origin_country: GB` mais `original_language: en` — identique à un film américain. Filtrer sur la langue confondrait donc systématiquement UK et US. Le filtre doit obligatoirement utiliser `origin_country`, jamais `original_language`.
 
