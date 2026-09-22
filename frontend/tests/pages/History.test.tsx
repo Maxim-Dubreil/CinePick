@@ -1,8 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router-dom";
 import { History } from "@/pages/History";
 import type { HistoryEntry, UseHistoryResult } from "@/hooks/useHistory";
+
+function renderHistory() {
+  return render(
+    <MemoryRouter>
+      <History />
+    </MemoryRouter>,
+  );
+}
 
 const entry: HistoryEntry = {
   id: "entry-1",
@@ -43,7 +52,7 @@ describe("History delete flow", () => {
   });
 
   it("does not delete immediately when clicking the delete button", async () => {
-    render(<History />);
+    renderHistory();
     await userEvent.click(
       screen.getByRole("button", { name: /Supprimer de l'historique/i }),
     );
@@ -51,7 +60,7 @@ describe("History delete flow", () => {
   });
 
   it("opens a confirmation dialog naming the film", async () => {
-    render(<History />);
+    renderHistory();
     await userEvent.click(
       screen.getByRole("button", { name: /Supprimer de l'historique/i }),
     );
@@ -61,7 +70,7 @@ describe("History delete flow", () => {
   });
 
   it("does not delete when cancelling", async () => {
-    render(<History />);
+    renderHistory();
     await userEvent.click(
       screen.getByRole("button", { name: /Supprimer de l'historique/i }),
     );
@@ -71,7 +80,7 @@ describe("History delete flow", () => {
   });
 
   it("deletes the entry when confirming", async () => {
-    render(<History />);
+    renderHistory();
     await userEvent.click(
       screen.getByRole("button", { name: /Supprimer de l'historique/i }),
     );
@@ -80,7 +89,7 @@ describe("History delete flow", () => {
   });
 
   it("closes the dialog after a successful deletion", async () => {
-    render(<History />);
+    renderHistory();
     await userEvent.click(
       screen.getByRole("button", { name: /Supprimer de l'historique/i }),
     );

@@ -4,9 +4,22 @@ import type { UseLastAcceptedFilmResult } from "@/hooks/useLastAcceptedFilm";
 
 type LastFilmPanelProps = Pick<UseLastAcceptedFilmResult, "film" | "loading">;
 
+function MetaRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-baseline justify-between gap-3">
+      <span className="text-[10px] uppercase tracking-wider text-[var(--text-tertiary)]">
+        {label}
+      </span>
+      <span className="text-right text-xs font-medium text-[var(--text-primary)]">
+        {value}
+      </span>
+    </div>
+  );
+}
+
 export function LastFilmPanel({ film, loading }: LastFilmPanelProps) {
   return (
-    <div className="rounded-[var(--radius-xl)] border border-[var(--glass-border)] bg-[var(--glass-bg)] p-5 flex flex-col gap-4 h-full min-h-48">
+    <div className="rounded-[var(--radius-xl)] border border-[var(--accent-border)] bg-[var(--accent-subtle)] p-6 flex flex-col gap-4 min-h-48">
       <p className="text-[10px] font-semibold tracking-widest text-[var(--cp-accent)] uppercase">
         Dernier film
       </p>
@@ -16,26 +29,43 @@ export function LastFilmPanel({ film, loading }: LastFilmPanelProps) {
           <span className="text-xs text-[var(--text-tertiary)]">Chargement…</span>
         </div>
       ) : film ? (
-        <div className="flex-1 flex items-start gap-4 min-h-0">
+        <div className="flex items-start gap-6 min-h-0">
           <FilmPoster
             posterUrl={film.posterUrl}
             alt={film.title}
-            className="h-48 w-auto shrink-0"
+            className="h-[300px] w-auto shrink-0"
           />
-          <div className="flex-1 flex flex-col items-start gap-1 min-w-0">
-            <h3 className="font-semibold text-[var(--text-primary)]">{film.title}</h3>
-            <p className="text-xs text-[var(--text-secondary)]">
-              {[
-                film.director ?? "Réalisateur inconnu",
-                film.year,
-                film.runtime !== null ? `${film.runtime} min` : null,
-                film.genres.length > 0 ? film.genres.join(", ") : null,
-              ]
-                .filter(Boolean)
-                .join(" · ")}
-            </p>
+          <div className="flex-1 flex flex-col gap-3 min-w-0">
+            <h3
+              className="text-2xl italic text-[var(--text-primary)]"
+              style={{ fontFamily: "var(--font-heading)" }}
+            >
+              {film.title}
+            </h3>
+
+            <div className="flex flex-col gap-2">
+              <MetaRow
+                label="Réalisateur"
+                value={film.director ?? "Inconnu"}
+              />
+              {film.year !== null && (
+                <MetaRow label="Année" value={String(film.year)} />
+              )}
+              {film.runtime !== null && (
+                <MetaRow label="Durée" value={`${film.runtime} min`} />
+              )}
+              {film.genres.length > 0 && (
+                <MetaRow label="Genres" value={film.genres.join(", ")} />
+              )}
+            </div>
+
             {film.overview && (
-              <p className="text-xs text-[var(--text-tertiary)]">{film.overview}</p>
+              <>
+                <div className="h-px bg-[var(--border)]" />
+                <p className="text-xs leading-relaxed text-[var(--text-tertiary)]">
+                  {film.overview}
+                </p>
+              </>
             )}
           </div>
         </div>

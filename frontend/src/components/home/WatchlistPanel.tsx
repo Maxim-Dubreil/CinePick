@@ -47,7 +47,7 @@ export function WatchlistPanel({
   const age = getSyncAge(profile.last_sync);
 
   return (
-    <div className="rounded-[var(--radius-xl)] border border-[var(--glass-border)] bg-[var(--glass-bg)] p-5 flex flex-col gap-5">
+    <div className="h-full rounded-[var(--radius-xl)] border border-[var(--glass-border)] bg-[var(--glass-bg)] p-5 flex flex-col gap-5">
       <p className="text-[10px] font-semibold tracking-widest text-[var(--cp-accent)] uppercase">
         Ta watchlist
       </p>
@@ -58,7 +58,7 @@ export function WatchlistPanel({
         </p>
       )}
 
-      <div className="flex flex-col gap-0.5">
+      <div className="flex-1 flex flex-col justify-center gap-0.5">
         <span
           className="text-5xl font-medium leading-none text-[var(--cp-accent)]"
           style={{ fontFamily: "var(--font-heading)" }}

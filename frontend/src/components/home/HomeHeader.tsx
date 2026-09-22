@@ -59,7 +59,7 @@ export function HomeHeader() {
   );
 
   return (
-    <section className="flex flex-col items-center text-center px-10 pt-16 pb-8">
+    <section className="flex flex-col items-center text-center px-10 pt-10 pb-6">
       <div className="flex items-center gap-2 text-xs font-medium tracking-widest text-text-primary uppercase mb-6">
         <span>{periodLabel[timeOfDay]}</span>
         <span>•</span>

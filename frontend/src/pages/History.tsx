@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Clapperboard } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useHistory, HISTORY_PAGE_SIZE } from "@/hooks/useHistory";
 import {
@@ -7,10 +9,11 @@ import {
   FilmDetailModal,
   DeleteHistoryModal,
 } from "@/components/history";
-import { Spinner } from "@/components/ui";
+import { Button, Spinner } from "@/components/ui";
 import type { HistoryEntry } from "@/hooks/useHistory";
 
 export function History() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<HistoryEntry | null>(null);
@@ -52,9 +55,33 @@ export function History() {
           <Spinner className="size-6 text-cp-accent" />
         </div>
       ) : totalCount === 0 ? (
-        <p className="text-sm text-[var(--text-secondary)]">
-          Pas encore de films — lance ta première reco !
-        </p>
+        <div className="flex flex-col items-center gap-4 py-14 text-center">
+          <div className="relative flex size-16 items-center justify-center rounded-full bg-[var(--cp-accent)]/10">
+            <div className="absolute inset-0 rounded-full bg-[var(--cp-accent)]/20 blur-lg" />
+            <Clapperboard
+              size={28}
+              strokeWidth={1.5}
+              className="relative text-[var(--cp-accent)]"
+            />
+          </div>
+          <div className="flex flex-col gap-0.5">
+            <p className="text-sm font-medium text-[var(--text-primary)]">
+              Pas encore de films
+            </p>
+            <p className="text-xs text-[var(--text-tertiary)]">
+              Lance ta première reco pour commencer ton historique
+            </p>
+          </div>
+          <Button
+            variant="glass-primary"
+            size="sm"
+            className="mt-1 gap-2 rounded-[var(--radius-xl)]"
+            onClick={() => navigate("/home/question")}
+          >
+            <Clapperboard size={14} />
+            Lancer un pick
+          </Button>
+        </div>
       ) : (
         <>
           <div className="flex flex-col gap-3">

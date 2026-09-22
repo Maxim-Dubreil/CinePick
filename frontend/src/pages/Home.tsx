@@ -4,7 +4,7 @@ import { AppLayout } from "@/components/layout";
 import {
   HomeHeader,
   HomeCTA,
-  WatchlistBanner,
+  WatchlistOnboarding,
   WatchlistPanel,
   LastFilmPanel,
   LetterboxdConfigModal,
@@ -62,17 +62,20 @@ export function Home() {
             element={
               <>
                 <SyncOverlay visible={isSyncing} />
-                {!profileLoading && !letterboxdUsername && (
-                  <div className="flex justify-end px-4 pt-3">
-                    <WatchlistBanner onOpenModal={() => setModalOpen(true)} />
-                  </div>
-                )}
                 <HomeHeader />
-                <HomeCTA letterboxdUsername={letterboxdUsername} />
+                {letterboxdUsername ? (
+                  <HomeCTA />
+                ) : (
+                  !profileLoading && (
+                    <WatchlistOnboarding
+                      onOpenModal={() => setModalOpen(true)}
+                    />
+                  )
+                )}
 
                 {profile?.letterboxd_username && (
-                  <div className="flex justify-center px-6 pb-10 pt-[100px]">
-                    <div className="flex gap-4 w-full max-w-3xl">
+                  <div className="flex justify-center px-6 pt-10 pb-10">
+                    <div className="flex items-stretch gap-4 w-full max-w-5xl">
                       <div className="flex-1">
                         <LastFilmPanel
                           film={lastAcceptedFilm}

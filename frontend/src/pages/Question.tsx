@@ -76,10 +76,10 @@ export function Question() {
         phase={currentQuestion.phase}
       />
 
-      <div className="flex flex-1 items-center justify-center px-6 pt-4 pb-12">
+      <div className="flex flex-1 items-start justify-center px-6 pt-[7vh] pb-12">
         <div
           key={flow.step}
-          className="flex w-full max-w-[660px] animate-cp-fadein flex-col items-center gap-6"
+          className="flex w-full max-w-[660px] animate-cp-fadein flex-col items-center gap-10"
         >
           <FilmCountChip
             filmCount={flow.filmCount}
@@ -87,7 +87,7 @@ export function Question() {
           />
           <FallbackBanner note={flow.fallbackNote} />
 
-          <h2 className="max-w-[560px] text-center font-heading text-4xl italic">
+          <h2 className="max-w-[600px] text-center font-heading text-[42px] italic">
             {currentQuestion.label}
           </h2>
 
