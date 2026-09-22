@@ -6,8 +6,11 @@ export type QuestionId =
   | "duration"
   | "era"
   | "region"
-  | "subtitles"
   | "seen";
+
+/** Groups questions by intent in the flow header — mirrors the order in
+ * `getQuestions()`, doesn't affect filtering. */
+export type QuestionPhase = "Contexte" | "Contenu" | "Ambiance" | "Verrou";
 
 export interface QuestionOption {
   id: string;
@@ -17,6 +20,7 @@ export interface QuestionOption {
 export interface Question {
   id: QuestionId;
   label: string;
+  phase: QuestionPhase;
   hard: boolean;
   multi: boolean;
   exclusiveId?: string;

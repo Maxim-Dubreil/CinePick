@@ -1,34 +1,21 @@
-import { ChevronLeft } from "lucide-react";
 import { Link } from "react-router-dom";
-import { Button, Progress } from "@/components/ui";
+import { Progress } from "@/components/ui";
+import type { QuestionPhase } from "@/lib/question/types";
 
 interface QuestionFlowHeaderProps {
   step: number;
   totalSteps: number;
-  showBackButton: boolean;
-  onBack: () => void;
+  phase: QuestionPhase;
 }
 
 export function QuestionFlowHeader({
   step,
   totalSteps,
-  showBackButton,
-  onBack,
+  phase,
 }: QuestionFlowHeaderProps) {
   return (
     <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4 px-8 py-6">
-      <div className="flex items-center gap-3.5 justify-self-start">
-        {showBackButton && (
-          <Button
-            variant="glass"
-            size="icon"
-            className="rounded-full"
-            onClick={onBack}
-            aria-label="Retour"
-          >
-            <ChevronLeft size={16} />
-          </Button>
-        )}
+      <div className="justify-self-start">
         <Link
           to="/home"
           className="font-heading text-base font-medium tracking-[0.04em] text-text-primary hover:opacity-80 transition-opacity"
@@ -39,7 +26,7 @@ export function QuestionFlowHeader({
 
       <div className="flex w-80 max-w-[44vw] flex-col items-center gap-2">
         <span className="text-[11px] font-medium tracking-[0.10em] text-text-tertiary uppercase">
-          Question {Math.min(step + 1, totalSteps)}/{totalSteps}
+          {phase} · {Math.min(step + 1, totalSteps)}/{totalSteps}
         </span>
         <Progress
           value={(step / totalSteps) * 100}

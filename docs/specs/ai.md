@@ -41,7 +41,7 @@ using only ids from the list below, nothing else.
 | Champ            | Source                                            | Notes                                                                                          |
 | ----------------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
 | Films candidats    | Sous-ensemble post-filtres durs (Specs Questions)   | Par film : `id`, `title`, `year`, `overview` tronqué à 200 caractères. Pas `genres`/`runtime` (déjà utilisés pour filtrer, inutiles dans le prompt). |
-| Signaux mous       | `emotion`, `ambiance`, `withWho`, `subtitles`       | Rendus en une phrase naturelle (`_soft_signals`), valeurs "no preference" (`none`/`any`) omises  |
+| Signaux mous       | `emotion`, `ambiance`, `withWho`, `subtitles`       | Rendus en une phrase naturelle (`_soft_signals`), valeurs "no preference" (`none`/`any`) omises. `subtitles` n'a plus de question dédiée côté front depuis le 2026-09-22 (voir [Specs Questions](./questions.md)) — toujours envoyé à `"any"`, donc de fait omis en pratique, mais le champ backend reste inchangé |
 
 ## Output — format attendu (JSON structuré, `response_schema` Gemini)
 

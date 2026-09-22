@@ -24,10 +24,11 @@ vi.mock("@/hooks/useQuestionFlow", () => ({
     captured.onComplete = options.onComplete;
     const result: UseQuestionFlowResult = {
       step: 0,
-      totalSteps: 9,
+      totalSteps: 8,
       currentQuestion: {
         id: "genre",
         label: "Genre ?",
+        phase: "Contenu",
         hard: true,
         multi: false,
         options: [],
@@ -59,7 +60,7 @@ vi.mock("@/hooks/useAuth", () => ({
 }));
 
 describe("Question — onComplete", () => {
-  it("navigates to /home/result with filmCount and the full answers", () => {
+  it("navigates to /home/result with filmCount and the full answers, plus the fixed subtitles field", () => {
     render(
       <MemoryRouter>
         <Question />
@@ -70,7 +71,10 @@ describe("Question — onComplete", () => {
     captured.onComplete?.(3, answers);
 
     expect(navigateMock).toHaveBeenCalledWith("/home/result", {
-      state: { filmCount: 3, answers },
+      state: {
+        filmCount: 3,
+        answers: { genre: ["35"], seen: "any", subtitles: "any" },
+      },
     });
   });
 });

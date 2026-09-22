@@ -83,7 +83,7 @@ Trois données existent dans le produit mais n'ont **aucune colonne** — décis
 
 ## Ce qui n'existe pas non plus : table de session
 
-Le "run" Questions → Résultat (réponses aux 9 questions, numéro de tentative `/recommend`) vit entièrement en state front (React), jamais en DB. Seule la décision finale (accept/skip) survit, dans `watch_history`. Détail complet du raisonnement : [Specs DB (Linear)](https://linear.app/maximdubreil/document/specs-db-09a3daa57241#gestion-de-session--aucune-table-db-état-front-éphémère).
+Le "run" Questions → Résultat (réponses aux 8 questions, numéro de tentative `/recommend`) vit entièrement en state front (React), jamais en DB. Seule la décision finale (accept/skip) survit, dans `watch_history`. Détail complet du raisonnement : [Specs DB (Linear)](https://linear.app/maximdubreil/document/specs-db-09a3daa57241#gestion-de-session--aucune-table-db-état-front-éphémère).
 
 ## Pour Claude Code — checklist de cohérence
 

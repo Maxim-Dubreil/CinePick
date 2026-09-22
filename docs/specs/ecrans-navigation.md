@@ -36,9 +36,9 @@ Privé (redirect `/` si non connecté).
 
 ## 3. Questions — `/questions`
 
-Privé, watchlist requise. Barre de progression (X/9), question centrée plein écran, « Pas de préférence » toujours dispo, bouton retour.
+Privé, watchlist requise. Barre de progression (X/8) avec le groupe en cours (Contexte/Contenu/Ambiance/Verrou), question centrée plein écran, « Pas de préférence » toujours dispo, bouton retour.
 
-9 questions fixes, réparties en **filtres durs** (Genre, Durée, Époque, Région, Déjà vu — recalculent la liste de films en temps réel) et **filtres mous** (Émotion, Ambiance, Avec qui, Sous-titres — alimentent le prompt IA sans filtrer). Détail complet des options, types, champs TMDB et algorithme de recalcul : voir [Specs Questions](./questions.md).
+8 questions fixes, réparties en **filtres durs** (Genre, Durée, Époque, Région, Déjà vu — recalculent la liste de films en temps réel) et **filtres mous** (Émotion, Ambiance, Avec qui — alimentent le prompt IA sans filtrer). Détail complet des options, types, groupes, champs TMDB et algorithme de recalcul : voir [Specs Questions](./questions.md).
 
 Réponse → highlight + avance auto après loading court (~300-500ms, "we are cooking"). Pas de navigation hors flow.
 
@@ -92,6 +92,6 @@ Wireframes basse fidélité faits. À passer en final design : Home (3 états : 
 
 ## Docs liées
 
-- [Specs Questions](./questions.md) — détail des 9 questions, types, algorithme de filtrage
+- [Specs Questions](./questions.md) — détail des 8 questions, types, algorithme de filtrage
 - [Specs AI](./ai.md) — format prompt/réponse IA, mécanisme des 2 tentatives, court-circuit sans IA
 - [Specs DB (Linear)](https://linear.app/maximdubreil/document/specs-db-09a3daa57241) — schéma des tables, cache vs refresh

@@ -1,64 +1,90 @@
 # Specs Questions
 
 > Source de vérité : ce fichier (versionné avec le code qu'il décrit). Miroir en lecture sur [Linear](https://linear.app/maximdubreil/document/specs-questions-12a8a783e754) — modifie ici, pas là-bas.
-> Référencé depuis [Écrans & Navigation](./ecrans-navigation.md). Détaille le contenu, les types et l'algorithme de sélection des 9 questions du flow de recommandation. Source des wireframes : Figma (pages CINEPICK).
+> Référencé depuis [Écrans & Navigation](./ecrans-navigation.md). Détaille le contenu, les types et l'algorithme de sélection des 8 questions du flow de recommandation. Source des wireframes : Figma (pages CINEPICK).
 
 ## Principe : deux catégories de questions
 
 C'est la distinction structurante de tout le flow. Elle détermine ce qui filtre réellement la watchlist et ce qui ne fait qu'orienter le prompt envoyé à l'IA.
 
-| Catégorie        | Questions                                | Rôle                                                              | Déclenche un recalcul ? |
-| ---------------- | ---------------------------------------- | ----------------------------------------------------------------- | ----------------------- |
-| **Filtres durs** | Genre, Durée, Époque, Région, Déjà vu    | Réduisent déterministiquement le sous-ensemble de films candidats | Oui — recalcul front    |
-| **Filtres mous** | Émotion, Ambiance, Avec qui, Sous-titres | Texte libre accumulé pour le prompt IA, n'éliminent aucun film    | Non                     |
+| Catégorie        | Questions                              | Rôle                                                              | Déclenche un recalcul ? |
+| ---------------- | --------------------------------------- | ----------------------------------------------------------------- | ----------------------- |
+| **Filtres durs** | Genre, Durée, Époque, Région, Déjà vu  | Réduisent déterministiquement le sous-ensemble de films candidats | Oui — recalcul front    |
+| **Filtres mous** | Émotion, Ambiance, Avec qui            | Texte libre accumulé pour le prompt IA, n'éliminent aucun film    | Non                     |
 
 Les filtres durs correspondent chacun à un champ concret de la watchlist enrichie TMDB (`genre_ids`, `runtime`, `release_date`, `origin_country`), à l'exception de Déjà vu qui s'appuie sur une donnée interne (`historique.film_id`, pas TMDB). Les filtres mous n'ont pas d'équivalent structuré côté données — ils ne servent qu'à nourrir le texte du prompt final.
 
-## Détail des 9 questions
+## Ordre : 4 groupes par intention, pas une liste plate
 
-### 1. Genre — filtre dur, multi-select
+**Correction du 2026-09-22** : le flow posait les questions dans un ordre arbitraire, sans lien
+avec la façon dont on décide vraiment quoi regarder. Réorganisé en 4 groupes affichés dans le
+header (`QuestionFlowHeader`) :
 
-Liste fixe codée côté front (id stable, label en français) : Action, Aventure, Animation, Comédie, Crime, Documentaire, Drame, Familial, Fantastique, Histoire, Horreur, Musique, Mystère, Romance, Science-Fiction, Thriller, Guerre, Western, + « Pas de préférence » (exclusif).
+1. **Contexte** — Durée, Avec qui : les contraintes factuelles du moment, indépendantes du
+   contenu.
+2. **Contenu** — Genre, Époque, Région : ce qu'on a envie de voir.
+3. **Ambiance** — Émotion, Ambiance : comment on veut se sentir.
+4. **Verrou** — Déjà vu : reste seule et dernière, pour la raison structurelle ci-dessous (fige la
+   taille du sous-ensemble avant l'appel IA).
 
-Champ TMDB : `genre_ids`. Pas besoin d'appeler l'endpoint `/genre/movie/list` de TMDB pour ça — les `genres` reviennent déjà en `{id, name}` lors de l'enrichissement de chaque film, et la liste d'options de cette question peut être une constante statique `{28: "Action", ...}` (la liste TMDB est stable depuis des années). ⚠️ Filtrer sur l'id, jamais sur le `name` affiché.
+Le fallback 0-résultat retire toujours le *dernier* filtre dur posé (voir plus bas). La séquence
+des filtres durs elle-même ne change pas d'ordre relatif : Genre → Durée → Époque → Région → Déjà
+vu devient Durée → Genre → Époque → Région → Déjà vu (seuls Genre et Durée sont permutés) — Déjà vu
+reste donc le dernier filtre dur posé dans les deux versions, ce comportement déjà spécifié n'est
+pas affecté par la réorganisation.
 
-### 2. Émotion — filtre mou, multi-select
+**Sous-titres retiré du flow.** Cette question demandait une préférence purement cosmétique — mais
+contrairement à ce que ce document affirmait ici jusqu'au 2026-09-21 ("ignoré par le backend"), le
+champ `subtitles` était en réalité bien transmis à l'IA comme signal mou au même titre
+qu'Émotion/Ambiance/Avec qui (voir `reco_ai.py::_soft_signals`). Le champ reste **requis** côté
+backend (`models.py`) — non modifié pour ne pas toucher à l'API — donc le front envoie désormais
+`subtitles: "any"` en dur à la place de la réponse utilisateur. Conséquence assumée : ce signal
+n'atteint plus jamais l'IA, y compris pour les utilisateurs à qui ça tenait ; jugé acceptable au vu
+de sa valeur marginale face au gain de simplicité (8 questions au lieu de 9).
 
-Peur, Rire, Ému, Tendu, Zen, Inspiré, Nostalgique, Amoureux, Dépaysé, Réfléchi, Choqué, Mystère, Épique, + « Peu m'importe » (exclusif).
+**Ambiance perd "Guerre" et "Fantastique".** Ces deux valeurs existaient déjà dans la liste Genre —
+les redemander en Ambiance dupliquait le signal et pouvait produire une incohérence si
+l'utilisateur ne cochait pas les deux de façon cohérente.
 
-### 3. Ambiance — filtre mou, multi-select
+## Détail des 8 questions
 
-Spatial, Futuriste, Historique, Urbain, Rural, Film noir, Nature, Guerre, Fantastique, Conte, Surréaliste, Post-apocalyptique, Médiéval, Dystopique, Mer, Montagne/froid, Minimaliste, + « Pas de préférence » (exclusif).
-
-### 4. Avec qui — filtre mou, single-select
-
-Seul, Entre amis, En couple, En famille, Pas de préférence.
-
-### 5. Durée disponible — filtre dur, single-select
+### 1. Durée disponible — Contexte, filtre dur, single-select
 
 Moins d'1h30, 1h30–2h, 2h–2h30, 2h30+, Peu importe.
 
 Champ TMDB : `runtime`. ⚠️ Parfois absent ou à `0` sur des films peu renseignés — les traiter comme « non filtrables » (ni inclus ni exclus) plutôt que de les éliminer par erreur.
 
-### 6. Époque — filtre dur, single-select
+### 2. Avec qui — Contexte, filtre mou, single-select
+
+Seul, Entre amis, En couple, En famille, Pas de préférence.
+
+### 3. Genre — Contenu, filtre dur, multi-select
+
+Liste fixe codée côté front (id stable, label en français) : Action, Aventure, Animation, Comédie, Crime, Documentaire, Drame, Familial, Fantastique, Histoire, Horreur, Musique, Mystère, Romance, Science-Fiction, Thriller, Guerre, Western, + « Pas de préférence » (exclusif).
+
+Champ TMDB : `genre_ids`. Pas besoin d'appeler l'endpoint `/genre/movie/list` de TMDB pour ça — les `genres` reviennent déjà en `{id, name}` lors de l'enrichissement de chaque film, et la liste d'options de cette question peut être une constante statique `{28: "Action", ...}` (la liste TMDB est stable depuis des années). ⚠️ Filtrer sur l'id, jamais sur le `name` affiché.
+
+### 4. Époque — Contenu, filtre dur, single-select
 
 Muet & Noir/Blanc (avant 1930), Âge d'or Hollywood (1930–1959), Nouvelle Vague & Westerns (1960–1979), Blockbusters & Indie (1980–1999), 2000–2014, Récent (2015+), Pas de préférence.
 
 Champ TMDB : `release_date`.
 
-### 7. Région — filtre dur, multi-select + sous-cas
+### 5. Région — Contenu, filtre dur, multi-select + sous-cas
 
 5 grandes régions en chips : Américain, Britannique, Français, Japonais, Sud-Coréen, + « Pas de préférence » (exclusif) + « Autre région » qui ouvre un input de recherche pour ajouter un ou plusieurs pays hors liste.
 
 Champ TMDB : `origin_country` (ou `production_countries`). ⚠️ **Piège critique** : `origin_country` (pays de production) et `original_language` (langue) sont deux champs séparés. Un film britannique a typiquement `origin_country: GB` mais `original_language: en` — identique à un film américain. Filtrer sur la langue confondrait donc systématiquement UK et US. Le filtre doit obligatoirement utiliser `origin_country`, jamais `original_language`.
 
-### 8. Sous-titres — filtre mou, single-select
+### 6. Émotion — Ambiance, filtre mou, multi-select
 
-Avec sous-titres, Sans sous-titre, Pas de préférence.
+Peur, Rire, Ému, Tendu, Zen, Inspiré, Nostalgique, Amoureux, Dépaysé, Réfléchi, Choqué, Mystère, Épique, + « Peu m'importe » (exclusif).
 
-Ne filtre aucun film : aucune donnée de sous-titres n'existe dans la watchlist enrichie. Traité comme une préférence cosmétique ignorée par le backend en V1.
+### 7. Ambiance — Ambiance, filtre mou, multi-select
 
-### 9. Déjà vu — filtre dur, single-select
+Spatial, Futuriste, Historique, Urbain, Rural, Film noir, Nature, Conte, Surréaliste, Post-apocalyptique, Médiéval, Dystopique, Mer, Montagne/froid, Minimaliste, + « Pas de préférence » (exclusif). Sans « Guerre » ni « Fantastique » — déjà couverts par Genre, voir plus haut.
+
+### 8. Déjà vu — Verrou, filtre dur, single-select
 
 « Non, je veux du nouveau » (exclut les films déjà validés via CinePick) / « Peu importe » (les inclut aussi, utile pour un rewatch volontaire).
 
@@ -82,7 +108,7 @@ Watchlist enrichie téléchargée en bloc, tenue en mémoire côté FRONT
         │
    ┌────┴─────────────────────────────────────┐
    │ Pour chaque question filtre DUR           │
-   │  (Genre, Durée, Époque, Région, Déjà vu)  │
+   │  (Durée, Genre, Époque, Région, Déjà vu)  │
    │  réponse → recalcul front                 │
    │  (filter sur ids/champs, pas de back)      │
    │  → compteur "N films" affiché              │
@@ -92,11 +118,11 @@ Watchlist enrichie téléchargée en bloc, tenue en mémoire côté FRONT
         │           affiche "aucun film exact, voici les plus proches"
         │ non
         ▼
-   Questions filtres MOUS (Émotion, Ambiance, Avec qui, Sous-titres)
+   Questions filtres MOUS (Avec qui, Émotion, Ambiance)
    → aucune incidence sur la liste, accumulées en texte
         │
         ▼
-   Après Q9 : taille du sous-ensemble final connue
+   Après Déjà vu (dernière question) : taille du sous-ensemble final connue
    → 0 : écran "Aucun film trouvé" + Recommencer
    → 1 à 3 : affichage direct, PAS d'appel IA (voir Specs AI)
    → 4+ : prompt final envoyé à Gemini → 3 candidats classés
@@ -110,16 +136,19 @@ Watchlist enrichie téléchargée en bloc, tenue en mémoire côté FRONT
 
 ### Exemple de parcours (illustratif)
 
-| Étape                | Filtre appliqué | Films restants |
-| -------------------- | --------------- | -------------- |
-| Départ               | —               | 180            |
-| Q1 Genre = Comédie   | dur             | 42             |
-| Q5 Durée = 1h30–2h   | dur             | 19             |
-| Q6 Époque = 2015+    | dur             | 6              |
-| Q9 Déjà vu = Non     | dur             | 4              |
-| Q7 Région = Français | dur             | 0              |
+Ordre réel des filtres durs : Durée → Genre → Époque → Région → Déjà vu (Déjà vu est toujours la
+dernière question, donc le dernier filtre dur posé).
 
-→ fallback déclenché sur la dernière étape : on retire le filtre Région, on recalcule → 4 films restants, message "aucun film exact, voici les plus proches".
+| Étape                | Filtre appliqué | Films restants |
+| --------------------- | --------------- | -------------- |
+| Départ                | —               | 180            |
+| Durée = 1h30–2h       | dur             | 90             |
+| Genre = Comédie       | dur             | 42             |
+| Époque = 2015+        | dur             | 6              |
+| Région = Français     | dur             | 4              |
+| Déjà vu = Non         | dur             | 0              |
+
+→ fallback déclenché sur la dernière étape : on retire le filtre Déjà vu, on recalcule → 4 films restants, message "aucun film exact, voici les plus proches". Sous-ensemble final = 4 → affichage direct, pas d'appel IA (court-circuit ≤ 3... ici 4, donc juste au-dessus : voir seuil dans "Sélection IA" plus bas).
 
 ## Un seul enrichissement TMDB, fait au sync
 

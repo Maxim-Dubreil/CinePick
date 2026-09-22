@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import { ChevronLeft } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuestionFlow } from "@/hooks/useQuestionFlow";
 import type {
@@ -24,8 +25,12 @@ export function Question() {
 
   const onComplete = useCallback(
     (filmCount: number, answers: Record<QuestionId, AnswerValue>) => {
+      // "subtitles" is a required backend field but no longer has a question
+      // of its own (dropped from the flow, see docs/specs/questions.md) — it
+      // always carries "no preference" now.
+      const request = { ...answers, subtitles: "any" } as unknown as RecommendRequest;
       navigate("/home/result", {
-        state: { filmCount, answers: answers as unknown as RecommendRequest },
+        state: { filmCount, answers: request },
       });
     },
     [navigate],
@@ -68,8 +73,7 @@ export function Question() {
       <QuestionFlowHeader
         step={flow.step}
         totalSteps={flow.totalSteps}
-        showBackButton={flow.showBackButton}
-        onBack={flow.onBack}
+        phase={currentQuestion.phase}
       />
 
       <div className="flex flex-1 items-center justify-center px-6 pt-4 pb-12">
@@ -110,6 +114,16 @@ export function Question() {
           />
         </div>
       </div>
+
+      {flow.showBackButton && (
+        <button
+          onClick={flow.onBack}
+          className="fixed bottom-8 left-1/2 -translate-x-1/2 inline-flex items-center gap-1 text-xs font-medium text-text-tertiary transition-colors hover:text-text-secondary"
+        >
+          <ChevronLeft size={14} />
+          Question précédente
+        </button>
+      )}
 
       <LoadingOverlay visible={flow.loading} />
     </div>
