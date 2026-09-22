@@ -93,9 +93,10 @@ describe("Result page", () => {
     renderResult({ filmCount: 1, answers: ANSWERS });
 
     await waitFor(
-      () => expect(screen.getByText("Blade Runner (1982)")).toBeInTheDocument(),
+      () => expect(screen.getByText("Blade Runner")).toBeInTheDocument(),
       { timeout: 2000 },
     );
+    expect(screen.getByText("1982")).toBeInTheDocument();
     expect(screen.getByText("Un choix parfait.")).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "Accepter" }));

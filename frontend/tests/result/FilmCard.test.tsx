@@ -19,9 +19,10 @@ const baseFilm: RecommendedFilm = {
 };
 
 describe("FilmCard", () => {
-  it("renders title and year together", () => {
+  it("renders title and year as separate fields", () => {
     render(<FilmCard film={baseFilm} />);
-    expect(screen.getByText("Blade Runner (1982)")).toBeInTheDocument();
+    expect(screen.getByText("Blade Runner")).toBeInTheDocument();
+    expect(screen.getByText("1982")).toBeInTheDocument();
   });
 
   it("renders the title alone when year is null", () => {

@@ -1,3 +1,4 @@
+import { Heart, X } from "lucide-react";
 import { Button } from "@/components/ui";
 
 interface DecisionButtonsProps {
@@ -16,17 +17,21 @@ export function DecisionButtons({
       <Button
         variant="glass-danger"
         size="lg"
+        className="gap-2 rounded-full px-7 transition-transform hover:scale-105"
         onClick={onSkip}
         disabled={disabled}
       >
+        <X className="size-5" />
         Passer
       </Button>
       <Button
         variant="glass-success"
         size="lg"
+        className="gap-2 rounded-full px-7 transition-transform hover:scale-105"
         onClick={onAccept}
         disabled={disabled}
       >
+        <Heart className="size-5" />
         Accepter
       </Button>
     </div>
