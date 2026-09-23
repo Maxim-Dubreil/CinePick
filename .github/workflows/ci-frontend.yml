@@ -59,7 +59,13 @@ jobs:
 
       - name: Run Vitest
         working-directory: frontend
-        run: pnpm test
+        run: pnpm test:coverage
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          files: frontend/coverage/lcov.info
+          flags: frontend
 
   build:
     name: Build

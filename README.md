@@ -1,5 +1,8 @@
 # CinePick
 
+[![codecov](https://codecov.io/gh/Maxim-Dubreil/CinePick/branch/develop/graph/badge.svg?flag=backend)](https://codecov.io/gh/Maxim-Dubreil/CinePick)
+[![codecov](https://codecov.io/gh/Maxim-Dubreil/CinePick/branch/develop/graph/badge.svg?flag=frontend)](https://codecov.io/gh/Maxim-Dubreil/CinePick)
+
 A web app that analyzes a Letterboxd watchlist to recommend a movie through a question flow and AI.
 
 ## Stack
