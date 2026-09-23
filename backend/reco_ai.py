@@ -5,11 +5,13 @@ this file's internals, never its callers. `_call_gemini` is the sole
 function talking to the real SDK, isolated for testability (same pattern as
 `tmdb.py`'s `_search_movie_id`/`_fetch_details`).
 
-Never retries and never falls back to a random pick: any failure — a
-network/API error, a malformed response, or a response naming a film outside
-`candidates` — raises `AIProviderError` and lets the caller decide (see
-`main.py`, which turns this into a 502). Reproposing a film outside the
-already-filtered watchlist would violate the North Star's principle #2.
+Only retry: a 5xx from the primary model switches once to a fallback model
+(same prompt, same validation). Never falls back to a random pick: any other
+failure — a network/API error, a malformed response, or a response naming a
+film outside `candidates` — raises `AIProviderError` and lets the caller
+decide (see `main.py`, which turns this into a 502). Reproposing a film
+outside the already-filtered watchlist would violate the North Star's
+principle #2.
 """
 
 import json
@@ -17,13 +19,18 @@ import logging
 import os
 
 from google import genai
-from google.genai import types
+from google.genai import errors, types
 
 from models import RankedCandidate, RecommendRequest, WatchlistFilm
 
 logger = logging.getLogger(__name__)
 
 _MODEL = "gemini-3.1-flash-lite"
+# Used only when _MODEL answers a 5xx (Google overload). Thinking is kept at
+# "minimal": at the default level it takes 20s+ on this prompt, close to
+# _REQUEST_TIMEOUT. A "-preview" model can be retired by Google — see CIN-94
+# in docs/specs/ai.md before swapping it.
+_FALLBACK_MODEL = "gemini-3-flash-preview"
 _REQUEST_TIMEOUT = 30.0
 _OVERVIEW_MAX_CHARS = 200
 _MAX_CANDIDATES = 3
@@ -98,14 +105,20 @@ async def _call_gemini(prompt: str) -> str:
         api_key=os.environ["GEMINI_API_KEY"],
         http_options=types.HttpOptions(timeout=int(_REQUEST_TIMEOUT * 1000)),
     )
-    response = await client.aio.models.generate_content(
-        model=_MODEL,
-        contents=prompt,
-        config={
-            "response_mime_type": "application/json",
-            "response_schema": _RESPONSE_SCHEMA,
-        },
+    config = types.GenerateContentConfig(
+        response_mime_type="application/json",
+        response_schema=_RESPONSE_SCHEMA,
     )
+    try:
+        response = await client.aio.models.generate_content(
+            model=_MODEL, contents=prompt, config=config
+        )
+    except errors.ServerError:
+        logger.warning("Gemini %s unavailable, falling back to %s", _MODEL, _FALLBACK_MODEL)
+        config.thinking_config = types.ThinkingConfig(thinking_level=types.ThinkingLevel.MINIMAL)
+        response = await client.aio.models.generate_content(
+            model=_FALLBACK_MODEL, contents=prompt, config=config
+        )
     if response.text is None:
         raise ValueError("Gemini response has no text content")
     return response.text

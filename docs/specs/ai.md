@@ -7,6 +7,8 @@
 
 `gemini-3.1-flash-lite` (`_MODEL` dans `reco_ai.py`). **Ne pas repasser sur `gemini-3.5-flash` ou `gemini-3.6-flash`** : les deux renvoient un `503` quasi instantané dès que `response_schema` (sortie JSON structurée) est combiné à leur mode "réflexion" activé par défaut — indépendant de la charge réelle malgré le message d'erreur Google ("high demand"), voir CIN-94. `gemini-3.1-flash-lite` n'a pas ce mode et répond en ~1-4s sur ce prompt. Timeout client : 30s (`_REQUEST_TIMEOUT`).
 
+**Fallback** : `gemini-3-flash-preview` (`_FALLBACK_MODEL`), appelé une seule fois si `_MODEL` renvoie un `5xx` (surcharge réelle constatée le 23/09 : `503` même sur un prompt de deux mots, sans schéma). Réflexion forcée à `minimal` (~1s ; au niveau par défaut, 20s+ et risque de timeout). `gemini-3.5-flash-lite` écarté : 20-55s sur ce prompt même en `minimal`. Modèle `-preview` : Google peut le retirer, à revérifier en cas de `404`.
+
 ## Vue d'ensemble
 
 L'IA reçoit le sous-ensemble de films déjà filtré (filtres durs, `filtering.py`) + les signaux mous, et renvoie jusqu'à **3 candidats classés** en une seule réponse structurée (JSON). Aucune watchlist complète n'est jamais envoyée — voir Specs Questions pour le détail du filtrage en amont. Chaque appel est **stateless** : pas de conversation Gemini à état, pas d'historique de messages conservé entre deux appels.
@@ -57,7 +59,7 @@ using only ids from the list below, nothing else.
 
 `meta.candidates_considered` (dans la réponse `/recommend`, pas dans la réponse Gemini) est calculé côté back : `len(candidates)` avant l'appel IA — debug/logs, jamais affiché.
 
-Aucun retry ni fallback interne : toute erreur (réseau, JSON malformé, id hors liste, rangs incohérents) lève `AIProviderError`, que `main.py` transforme en `502 ai_error`. Reproposer un film hors du sous-ensemble filtré violerait le principe #2 du North Star.
+Seul retry : le fallback de modèle ci-dessus, sur `5xx` uniquement. Sinon, toute erreur (réseau, JSON malformé, id hors liste, rangs incohérents) lève `AIProviderError`, que `main.py` transforme en `502 ai_error`. Reproposer un film hors du sous-ensemble filtré violerait le principe #2 du North Star.
 
 ## "Retry" après swipes — pas un 2ᵉ prompt, un 2ᵉ appel indépendant
 
