@@ -23,9 +23,12 @@ function wait(ms: number): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
 
-function errorToDeadEndReason(error: unknown): DeadEndReason {
+function errorToDeadEndReason(error: unknown, attempt: number): DeadEndReason {
   if (error instanceof ApiError && error.status === 422) {
-    return "no_match";
+    // A retry uses the same answers that already matched on the first try —
+    // so an empty pool now only means every match was just shown (excluded
+    // by the backend's 15-min session window), not that the filters are off.
+    return attempt > 1 ? "exhausted" : "no_match";
   }
   return "technical";
 }
@@ -55,6 +58,9 @@ interface ResultFlowState {
   deciding: boolean;
   recommendationSessionId: string | null;
   abandoning: boolean;
+  // Size of the filtered pool behind a fresh /recommend call. `null` on a
+  // resumed session: its `meta` only counts the resumed cards, not the pool.
+  candidatesConsidered: number | null;
 }
 
 export interface UseResultFlowResult {
@@ -93,6 +99,7 @@ export function useResultFlow(
     deciding: false,
     recommendationSessionId: null,
     abandoning: false,
+    candidatesConsidered: null,
   });
 
   // The answers that produced (or would retry) this session — a resumed
@@ -122,12 +129,13 @@ export function useResultFlow(
           candidates: response.candidates,
           currentIndex: 0,
           recommendationSessionId: response.recommendation_session_id,
+          candidatesConsidered: response.meta.candidates_considered,
         }));
       } catch (error) {
         setState((s) => ({
           ...s,
           phase: "dead-end",
-          deadEndReason: errorToDeadEndReason(error),
+          deadEndReason: errorToDeadEndReason(error, attempt),
           deadEndDetail: errorToDevDetail(error),
         }));
       }
@@ -235,6 +243,16 @@ export function useResultFlow(
     const nextIndex = state.currentIndex + 1;
     if (nextIndex < state.candidates.length) {
       setState((s) => ({ ...s, currentIndex: nextIndex }));
+      return;
+    }
+
+    // Every film passing the filters was just shown — a retry would only
+    // 422, so skip the call and its loading animation.
+    const poolExhausted =
+      state.candidatesConsidered !== null &&
+      state.candidatesConsidered <= state.candidates.length;
+    if (poolExhausted) {
+      setState((s) => ({ ...s, phase: "dead-end", deadEndReason: "exhausted" }));
       return;
     }
 

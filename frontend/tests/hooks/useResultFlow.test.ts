@@ -198,7 +198,7 @@ describe("useResultFlow", () => {
   it("skipping every candidate of attempt 1 triggers a second /recommend call", async () => {
     getRecommendationMock.mockResolvedValueOnce({
       candidates: [film({ film_id: "f1" })],
-      meta: { candidates_considered: 1 },
+      meta: { candidates_considered: 2 },
     });
     const { result } = renderHook(() => useResultFlow(START, "token", true));
     await act(async () => {
@@ -227,7 +227,7 @@ describe("useResultFlow", () => {
   it("skipping every candidate of attempt 2 dead-ends without a 3rd call", async () => {
     getRecommendationMock.mockResolvedValueOnce({
       candidates: [film({ film_id: "f1" })],
-      meta: { candidates_considered: 1 },
+      meta: { candidates_considered: 2 },
     });
     const { result } = renderHook(() => useResultFlow(START, "token", true));
     await act(async () => {
@@ -236,7 +236,7 @@ describe("useResultFlow", () => {
 
     getRecommendationMock.mockResolvedValueOnce({
       candidates: [film({ film_id: "f2" })],
-      meta: { candidates_considered: 1 },
+      meta: { candidates_considered: 2 },
     });
     act(() => {
       result.current.onSkip();
@@ -252,6 +252,50 @@ describe("useResultFlow", () => {
     expect(getRecommendationMock).toHaveBeenCalledTimes(2);
     expect(result.current.phase).toBe("dead-end");
     expect(result.current.deadEndReason).toBe("no_match");
+  });
+
+  it("skipping the last candidate of an exhausted pool dead-ends without a retry", async () => {
+    getRecommendationMock.mockResolvedValueOnce({
+      candidates: [film({ film_id: "f1" })],
+      meta: { candidates_considered: 1 },
+    });
+    const { result } = renderHook(() => useResultFlow(START, "token", true));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(MIN_LOADING_MS);
+    });
+
+    act(() => {
+      result.current.onSkip();
+    });
+
+    expect(getRecommendationMock).toHaveBeenCalledTimes(1);
+    expect(result.current.phase).toBe("dead-end");
+    expect(result.current.deadEndReason).toBe("exhausted");
+  });
+
+  it("maps a 422 on the retry of a resumed session to exhausted", async () => {
+    const resumed: ResultFlowStart = {
+      type: "resumed",
+      response: {
+        candidates: [film({ film_id: "f1" })],
+        meta: { candidates_considered: 1 },
+        recommendation_session_id: "s1",
+        answers: ANSWERS,
+      },
+    };
+    getRecommendationMock.mockRejectedValueOnce(new ApiError(422, "no_candidates"));
+    const { result } = renderHook(() => useResultFlow(resumed, "token", true));
+
+    act(() => {
+      result.current.onSkip();
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(MIN_LOADING_MS);
+    });
+
+    expect(getRecommendationMock).toHaveBeenCalledTimes(1);
+    expect(result.current.phase).toBe("dead-end");
+    expect(result.current.deadEndReason).toBe("exhausted");
   });
 
   it("shows a retry-worthy toast and still advances when recordDecision fails with a network error", async () => {

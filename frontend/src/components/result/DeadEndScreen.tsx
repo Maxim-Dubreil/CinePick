@@ -1,10 +1,11 @@
 import { Button } from "@/components/ui";
 
-export type DeadEndReason = "technical" | "no_match";
+export type DeadEndReason = "technical" | "no_match" | "exhausted";
 
 const MESSAGES: Record<DeadEndReason, string> = {
   technical: "On n'arrive pas à te proposer un film pour l'instant.",
   no_match: "Aucun film ne correspond à tes critères.",
+  exhausted: "Tu as vu tous les films qui correspondent à tes critères.",
 };
 
 interface DeadEndScreenProps {
