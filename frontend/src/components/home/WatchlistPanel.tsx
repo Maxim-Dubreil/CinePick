@@ -58,7 +58,7 @@ export function WatchlistPanel({
         </p>
       )}
 
-      <div className="flex-1 flex flex-col justify-center gap-0.5">
+      <div className="flex flex-col gap-0.5">
         <span
           className="text-5xl font-medium leading-none text-[var(--cp-accent)]"
           style={{ fontFamily: "var(--font-heading)" }}
@@ -70,27 +70,29 @@ export function WatchlistPanel({
         </span>
       </div>
 
-      <div className="h-px bg-[var(--border)]" />
+      <div className="mt-auto flex flex-col gap-5">
+        <div className="h-px bg-[var(--border)]" />
 
-      <div className="flex items-center justify-between gap-3">
-        <span className="text-[10px] tracking-widest text-[var(--text-tertiary)] uppercase whitespace-nowrap">
-          Dernière sync
-        </span>
-        <span className={`text-sm font-medium ${syncAgeColor[age]}`}>
-          {formatRelativeTime(profile.last_sync)}
-        </span>
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-[10px] tracking-widest text-[var(--text-tertiary)] uppercase whitespace-nowrap">
+            Dernière sync
+          </span>
+          <span className={`text-sm font-medium ${syncAgeColor[age]}`}>
+            {formatRelativeTime(profile.last_sync)}
+          </span>
+        </div>
+
+        <Button
+          variant="glass"
+          size="sm"
+          className="gap-2 w-full"
+          onClick={onResync}
+          disabled={isSyncing}
+        >
+          <RefreshCw size={13} className={isSyncing ? "animate-spin" : ""} />
+          Synchroniser maintenant
+        </Button>
       </div>
-
-      <Button
-        variant="glass"
-        size="sm"
-        className="gap-2 w-full"
-        onClick={onResync}
-        disabled={isSyncing}
-      >
-        <RefreshCw size={13} className={isSyncing ? "animate-spin" : ""} />
-        Synchroniser maintenant
-      </Button>
     </div>
   );
 }

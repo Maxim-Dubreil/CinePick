@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
+import { useRecommendationStats } from "@/hooks/useRecommendationStats";
 import { syncWatchlist, unlinkLetterboxdAccount } from "@/lib/backend/api";
 import { signOut } from "@/lib/auth";
 import { LetterboxdConfigModal } from "@/components/home";
@@ -11,13 +12,13 @@ import {
   ProfileSync,
   ProfileTaste,
   ProfileHistory,
-  ProfilePreferences,
   UnlinkLetterboxdModal,
 } from "@/components/profile";
 
 export function Profile() {
   const { user, session } = useAuth();
   const { profile, refetch } = useProfile();
+  const { stats, loading: statsLoading } = useRecommendationStats(user?.id ?? null);
   const [modalOpen, setModalOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [unlinkModalOpen, setUnlinkModalOpen] = useState(false);
@@ -70,12 +71,16 @@ export function Profile() {
           letterboxdUsername={profile?.letterboxd_username ?? null}
         />
 
-        <ProfileStats filmCount={profile?.film_count ?? 0} />
+        <ProfileStats
+          filmCount={profile?.film_count ?? 0}
+          stats={stats}
+          loading={statsLoading}
+        />
 
         <div className="grid grid-cols-[1.55fr_1fr] items-start gap-4">
           <div className="flex flex-col gap-4">
-            <ProfileTaste />
-            <ProfileHistory />
+            <ProfileTaste stats={stats} loading={statsLoading} />
+            <ProfileHistory userId={user?.id ?? null} />
           </div>
 
           <div className="flex flex-col gap-4">
@@ -85,7 +90,6 @@ export function Profile() {
               onResync={() => void handleResync()}
               onOpenModal={() => setModalOpen(true)}
             />
-            <ProfilePreferences />
             <div className="rounded-[var(--radius-xl)] bg-[var(--glass-bg)] border border-[var(--glass-border)] shadow-[var(--shadow-glass)] px-6 py-5 flex flex-col gap-1">
               {/* TODO: implémenter la page paramètres du compte */}
               <AccountButton label="Paramètres du compte" disabled />

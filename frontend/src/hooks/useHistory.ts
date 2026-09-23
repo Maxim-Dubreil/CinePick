@@ -66,10 +66,15 @@ export interface UseHistoryResult {
  * only — `proposed` rows are in-flight state, not history), joined against
  * `films`. Mirrors useProfile's direct-Supabase read + `refetchKey` pattern —
  * takes `userId` rather than calling useAuth itself, and paginates
- * server-side via `.range()` since history only grows over time. */
+ * server-side via `.range()` since history only grows over time.
+ *
+ * `pageSize` defaults to `HISTORY_PAGE_SIZE` (the full history page) but can
+ * be overridden — e.g. the profile page's "recent recommendations" preview
+ * reuses this same query with `pageSize=4` instead of a separate hook. */
 export function useHistory(
   userId: string | null,
   page: number,
+  pageSize: number = HISTORY_PAGE_SIZE,
 ): UseHistoryResult {
   const [entries, setEntries] = useState<HistoryEntry[]>([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -84,8 +89,8 @@ export function useHistory(
     if (!userId) return;
     let cancelled = false;
 
-    const from = (page - 1) * HISTORY_PAGE_SIZE;
-    const to = from + HISTORY_PAGE_SIZE - 1;
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
 
     supabase
       .from("watch_history")
@@ -118,7 +123,7 @@ export function useHistory(
     return () => {
       cancelled = true;
     };
-  }, [userId, page, refetchKey]);
+  }, [userId, page, pageSize, refetchKey]);
 
   const removeEntry = async (id: string) => {
     if (!userId) return;
