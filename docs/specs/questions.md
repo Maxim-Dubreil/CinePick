@@ -90,7 +90,7 @@ Spatial, Futuriste, Historique, Urbain, Rural, Film noir, Nature, Conte, Surréa
 
 ### 8. Déjà vu — Verrou, filtre dur, single-select
 
-« Non, je veux du nouveau » (exclut les films déjà validés via CinePick) / « Peu importe » (les inclut aussi, utile pour un rewatch volontaire).
+« Oui, je veux du nouveau » (exclut les films déjà validés via CinePick) / « Peu importe » (les inclut aussi, utile pour un rewatch volontaire).
 
 Champ utilisé : interne, pas TMDB — `historique.film_id` (liste des films acceptés via le swipe "Ce soir ✓" dans Résultat), stocké côté Supabase. **C'est aussi la dernière question posée** — sa réponse fige la taille finale du sous-ensemble filtré, envoyé à l'IA (voir "Sélection IA" plus bas).
 
