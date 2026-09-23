@@ -425,6 +425,11 @@ async def recommend_decision(
                 "message": "No pending proposal for this film — nothing to record",
             },
         )
+    # Accepting ends the session: the lower-ranked candidates were never
+    # swiped, and leaving them "proposed" would make /recommend/current
+    # resume this already-finished session.
+    if body.decision == "accepted":
+        watch_history_repo.abandon_session(user_id, body.recommendation_session_id)
     return {"status": "ok"}
 
 
