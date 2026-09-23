@@ -3,7 +3,19 @@
 from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
+from models import RankedCandidate, WatchlistFilm
 from repositories import watch_history
+
+
+def _film(id: str) -> WatchlistFilm:
+    return WatchlistFilm(
+        id=id,
+        letterboxd_slug=id,
+        title=f"Film {id}",
+        year=2020,
+        poster_url=None,
+        added_at=datetime(2026, 1, 1, tzinfo=UTC),
+    )
 
 
 def _table_mock(supabase_mock, table_name: str) -> MagicMock:
@@ -65,10 +77,12 @@ def test_get_decision_history_uses_most_recent_when_film_has_multiple_rows(supab
 
 def test_record_proposals_inserts_one_row_per_film(supabase_mock):
     table = _table_mock(supabase_mock, "watch_history")
+    ranked = [
+        RankedCandidate(film=_film("film-1"), rank=1, match_score=90, critique="Top pick."),
+        RankedCandidate(film=_film("film-2"), rank=2, match_score=70, critique="Also good."),
+    ]
 
-    watch_history.record_proposals(
-        "user-1", "session-1", ["film-1", "film-2"], {"genre": ["none"]}
-    )
+    watch_history.record_proposals("user-1", "session-1", ranked, {"genre": ["none"]})
 
     table.insert.assert_called_once()
     rows = table.insert.call_args[0][0]
@@ -77,6 +91,11 @@ def test_record_proposals_inserts_one_row_per_film(supabase_mock):
     assert all(r["recommendation_session_id"] == "session-1" for r in rows)
     assert {r["film_id"] for r in rows} == {"film-1", "film-2"}
     assert all(r["questions_context"] == {"genre": ["none"]} for r in rows)
+    by_film = {r["film_id"]: r for r in rows}
+    assert by_film["film-1"]["rank"] == 1
+    assert by_film["film-1"]["match_score"] == 90
+    assert by_film["film-1"]["ai_critique"] == "Top pick."
+    assert by_film["film-2"]["rank"] == 2
 
 
 def test_record_proposals_empty_list_skips_call(supabase_mock):
@@ -87,6 +106,60 @@ def test_record_proposals_empty_list_skips_call(supabase_mock):
     table.insert.assert_not_called()
 
 
+def test_get_pending_session_returns_none_when_nothing_proposed(supabase_mock):
+    table = _table_mock(supabase_mock, "watch_history")
+    latest_chain = (
+        table.select.return_value.eq.return_value.eq.return_value.order.return_value.limit
+        .return_value
+    )
+    latest_chain.execute.return_value = MagicMock(data=[])
+
+    assert watch_history.get_pending_session("user-1") is None
+
+
+def test_get_pending_session_returns_most_recent_session_candidates(supabase_mock):
+    table = _table_mock(supabase_mock, "watch_history")
+    after_one_eq = table.select.return_value.eq.return_value
+    after_two_eq = after_one_eq.eq.return_value
+
+    latest_chain = after_two_eq.order.return_value.limit.return_value
+    latest_chain.execute.return_value = MagicMock(
+        data=[
+            {"recommendation_session_id": "session-2", "decided_at": "2026-01-02T00:00:00+00:00"}
+        ]
+    )
+
+    candidates_chain = after_two_eq.eq.return_value.order.return_value
+    candidates_chain.execute.return_value = MagicMock(
+        data=[
+            {
+                "film_id": "film-1",
+                "rank": 1,
+                "match_score": 90,
+                "ai_critique": "Top pick.",
+                "films": {"title": "Film 1"},
+            },
+            {
+                "film_id": "film-2",
+                "rank": 2,
+                "match_score": 70,
+                "ai_critique": "Also good.",
+                "films": {"title": "Film 2"},
+            },
+        ]
+    )
+
+    result = watch_history.get_pending_session("user-1")
+
+    assert result is not None
+    session_id, rows = result
+    assert session_id == "session-2"
+    assert [r["film_id"] for r in rows] == ["film-1", "film-2"]
+    assert rows[0]["films"]["title"] == "Film 1"
+    # The candidates query filters on the session found by the latest query.
+    assert after_one_eq.eq.call_args[0] == ("recommendation_session_id", "session-2")
+
+
 def test_record_decision_updates_matching_proposed_row(supabase_mock):
     table = _table_mock(supabase_mock, "watch_history")
     chain = (
@@ -94,15 +167,11 @@ def test_record_decision_updates_matching_proposed_row(supabase_mock):
     )
     chain.execute.return_value = MagicMock(data=[{"id": "row-1"}])
 
-    result = watch_history.record_decision(
-        "user-1", "session-1", "film-1", "accepted", 87, "Great pick."
-    )
+    result = watch_history.record_decision("user-1", "session-1", "film-1", "accepted")
 
     assert result is True
     update_payload = table.update.call_args[0][0]
     assert update_payload["decision"] == "accepted"
-    assert update_payload["match_score"] == 87
-    assert update_payload["ai_critique"] == "Great pick."
     assert "decided_at" in update_payload
     # Verify the four .eq() filters in correct order
     assert table.update.return_value.eq.call_args[0] == ("user_id", "user-1")
@@ -130,9 +199,7 @@ def test_record_decision_no_matching_proposal_returns_false(supabase_mock):
     )
     chain.execute.return_value = MagicMock(data=[])
 
-    result = watch_history.record_decision(
-        "user-1", "session-1", "film-1", "skipped", None, None
-    )
+    result = watch_history.record_decision("user-1", "session-1", "film-1", "skipped")
 
     assert result is False
     # Verify the four .eq() filters in correct order
@@ -151,4 +218,26 @@ def test_record_decision_no_matching_proposal_returns_false(supabase_mock):
         "decision",
         "proposed",
         )
+    )
+
+
+def test_abandon_session_marks_remaining_proposed_as_skipped(supabase_mock):
+    table = _table_mock(supabase_mock, "watch_history")
+    chain = table.update.return_value.eq.return_value.eq.return_value.eq.return_value
+    chain.execute.return_value = MagicMock(data=[{"id": "row-1"}, {"id": "row-2"}])
+
+    watch_history.abandon_session("user-1", "session-1")
+
+    update_payload = table.update.call_args[0][0]
+    assert update_payload["decision"] == "skipped"
+    assert "decided_at" in update_payload
+    # Verify the three .eq() filters in correct order
+    assert table.update.return_value.eq.call_args[0] == ("user_id", "user-1")
+    assert table.update.return_value.eq.return_value.eq.call_args[0] == (
+        "recommendation_session_id",
+        "session-1",
+    )
+    assert table.update.return_value.eq.return_value.eq.return_value.eq.call_args[0] == (
+        "decision",
+        "proposed",
     )

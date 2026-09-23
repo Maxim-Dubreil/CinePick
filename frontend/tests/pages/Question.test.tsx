@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { Question } from "@/pages/Question";
@@ -7,16 +7,22 @@ import type {
   UseQuestionFlowResult,
 } from "@/hooks/useQuestionFlow";
 
-const { navigateMock, captured } = vi.hoisted(() => ({
+const { navigateMock, captured, getCurrentRecommendationMock } = vi.hoisted(() => ({
   navigateMock: vi.fn(),
   captured: {
     onComplete: null as UseQuestionFlowOptions["onComplete"] | null,
   },
+  getCurrentRecommendationMock: vi.fn(),
 }));
 
 vi.mock("react-router-dom", async (importOriginal) => {
   const actual = await importOriginal<typeof import("react-router-dom")>();
   return { ...actual, useNavigate: () => navigateMock };
+});
+
+vi.mock("@/lib/backend/api", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/backend/api")>();
+  return { ...actual, getCurrentRecommendation: getCurrentRecommendationMock };
 });
 
 vi.mock("@/hooks/useQuestionFlow", () => ({
@@ -60,6 +66,11 @@ vi.mock("@/hooks/useAuth", () => ({
 }));
 
 describe("Question — onComplete", () => {
+  beforeEach(() => {
+    getCurrentRecommendationMock.mockReset();
+    getCurrentRecommendationMock.mockResolvedValue(null);
+  });
+
   it("navigates to /home/result with filmCount and the full answers, plus the fixed subtitles field", () => {
     render(
       <MemoryRouter>

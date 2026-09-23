@@ -1,10 +1,12 @@
 """Watch history reads and writes (CIN-49/CIN-78).
 
 A row moves through exactly one transition: `/recommend` inserts it as
-`"proposed"` for every candidate it returns; `/recommend/decision` updates
-that same row to `"accepted"`/`"skipped"`. A decision naming a film with no
-matching `"proposed"` row has nothing to update — that's the verification
-that the film was actually shown, not just claimed by the client.
+`"proposed"` for every candidate it returns, already carrying `rank`/
+`match_score`/`ai_critique` from the AI response; `/recommend/decision` only
+ever updates `decision`/`decided_at` on that same row. A decision naming a
+film with no matching `"proposed"` row has nothing to update — that's the
+verification that the film was actually shown, not just claimed by the
+client.
 
 `decided_at` doubles as "last touched": it's set at proposal time (column
 default) and overwritten again at decision time. The two-layer exclusion in
@@ -15,6 +17,7 @@ separate proposal/decision timestamp.
 from datetime import UTC, datetime
 from typing import Literal, TypedDict
 
+from models import RankedCandidate
 from supabase_client import supabase
 
 _WATCH_HISTORY_TABLE = "watch_history"
@@ -47,24 +50,92 @@ def get_decision_history(user_id: str) -> dict[str, datetime]:
 def record_proposals(
     user_id: str,
     recommendation_session_id: str,
-    film_ids: list[str],
+    ranked: list[RankedCandidate],
     questions_context: dict,
 ) -> None:
-    """Write one `"proposed"` row per candidate `/recommend` is about to return."""
-    if not film_ids:
+    """Write one `"proposed"` row per candidate `/recommend` is about to
+    return, already carrying its rank/match_score/critique — resuming a
+    session later never needs a second AI call to know these."""
+    if not ranked:
         return
     supabase.table(_WATCH_HISTORY_TABLE).insert(
         [
             {
                 "user_id": user_id,
                 "recommendation_session_id": recommendation_session_id,
-                "film_id": film_id,
+                "film_id": r.film.id,
                 "decision": "proposed",
                 "questions_context": questions_context,
+                "rank": r.rank,
+                "match_score": r.match_score,
+                "ai_critique": r.critique,
             }
-            for film_id in film_ids
+            for r in ranked
         ]
     ).execute()
+
+
+class PendingCandidateRow(TypedDict):
+    film_id: str
+    rank: int
+    match_score: int | None
+    ai_critique: str | None
+    questions_context: dict
+    films: dict
+
+
+class _LatestSessionRow(TypedDict):
+    recommendation_session_id: str
+    decided_at: str
+
+
+def get_pending_session(user_id: str) -> tuple[str, list[PendingCandidateRow]] | None:
+    """The user's most recent recommendation session that still has at least
+    one undecided ("proposed") candidate, each joined with its film — lets
+    `/recommend/current` rebuild a swipe deck without a new AI call.
+
+    `None` means every past recommendation was fully decided (or there was
+    never one) — the front falls back to Questions."""
+    latest = (
+        supabase.table(_WATCH_HISTORY_TABLE)
+        .select("recommendation_session_id, decided_at")
+        .eq("user_id", user_id)
+        .eq("decision", "proposed")
+        .order("decided_at", desc=True)
+        .limit(1)
+        .execute()
+    )
+    latest_rows: list[_LatestSessionRow] = latest.data  # type: ignore[assignment]
+    if not latest_rows:
+        return None
+    session_id = latest_rows[0]["recommendation_session_id"]
+
+    response = (
+        supabase.table(_WATCH_HISTORY_TABLE)
+        .select("film_id, rank, match_score, ai_critique, questions_context, films(*)")
+        .eq("user_id", user_id)
+        .eq("recommendation_session_id", session_id)
+        .eq("decision", "proposed")
+        .order("rank")
+        .execute()
+    )
+    rows: list[PendingCandidateRow] = response.data  # type: ignore[assignment]
+    return session_id, rows
+
+
+def abandon_session(user_id: str, recommendation_session_id: str) -> None:
+    """Mark every still-"proposed" row of this session as "skipped" —
+    the explicit "Recommencer" action, so `get_pending_session` stops
+    returning it. A no-op if nothing there is still "proposed" (already
+    decided, wrong session, or nothing to abandon) — not an error."""
+    supabase.table(_WATCH_HISTORY_TABLE).update(
+        {
+            "decision": "skipped",
+            "decided_at": datetime.now(UTC).isoformat(),
+        }
+    ).eq("user_id", user_id).eq(
+        "recommendation_session_id", recommendation_session_id
+    ).eq("decision", "proposed").execute()
 
 
 def record_decision(
@@ -72,8 +143,6 @@ def record_decision(
     recommendation_session_id: str,
     film_id: str,
     decision: Literal["accepted", "skipped"],
-    match_score: int | None,
-    critique: str | None,
 ) -> bool:
     """Update the matching `"proposed"` row to `decision`. Returns `False`
     (updates nothing) when no such row exists for this user/film."""
@@ -82,8 +151,6 @@ def record_decision(
         .update(
             {
                 "decision": decision,
-                "match_score": match_score,
-                "ai_critique": critique,
                 "decided_at": datetime.now(UTC).isoformat(),
             }
         )

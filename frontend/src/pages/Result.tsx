@@ -1,7 +1,7 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { useResultFlow } from "@/hooks/useResultFlow";
+import { useResultFlow, type ResultFlowStart } from "@/hooks/useResultFlow";
 import {
   FilmCard,
   DecisionButtons,
@@ -10,20 +10,37 @@ import {
   DeadEndScreen,
 } from "@/components/result";
 import { Toast } from "@/components/ui";
-import type { RecommendRequest } from "@/lib/backend/api";
+import {
+  getCurrentRecommendation,
+  type RecommendCurrentResponse,
+  type RecommendRequest,
+} from "@/lib/backend/api";
 
-interface ResultLocationState {
+interface FreshLocationState {
   filmCount: number;
   answers: RecommendRequest;
 }
 
-function isResultLocationState(state: unknown): state is ResultLocationState {
+function isFreshLocationState(state: unknown): state is FreshLocationState {
   return (
     typeof state === "object" &&
     state !== null &&
-    typeof (state as ResultLocationState).filmCount === "number" &&
-    typeof (state as ResultLocationState).answers === "object" &&
-    (state as ResultLocationState).answers !== null
+    typeof (state as FreshLocationState).filmCount === "number" &&
+    typeof (state as FreshLocationState).answers === "object" &&
+    (state as FreshLocationState).answers !== null
+  );
+}
+
+interface ResumedLocationState {
+  resumed: RecommendCurrentResponse;
+}
+
+function isResumedLocationState(state: unknown): state is ResumedLocationState {
+  return (
+    typeof state === "object" &&
+    state !== null &&
+    typeof (state as ResumedLocationState).resumed === "object" &&
+    (state as ResumedLocationState).resumed !== null
   );
 }
 
@@ -36,24 +53,90 @@ interface ResultProps {
 
 export function Result({ onAccepted }: ResultProps) {
   const location = useLocation();
+  const { session, loading: authLoading } = useAuth();
 
-  if (!isResultLocationState(location.state)) {
-    return <Navigate to="/home/question" replace />;
+  if (isFreshLocationState(location.state)) {
+    return (
+      <ResultFlowScreen
+        start={{ type: "fresh", answers: location.state.answers }}
+        onAccepted={onAccepted}
+      />
+    );
   }
 
-  return <ResultFlowScreen answers={location.state.answers} onAccepted={onAccepted} />;
+  if (isResumedLocationState(location.state)) {
+    return (
+      <ResultFlowScreen
+        start={{ type: "resumed", response: location.state.resumed }}
+        onAccepted={onAccepted}
+      />
+    );
+  }
+
+  // No usable navigation state at all (reload, direct link, lost state) —
+  // check for a pending session before giving up on Questions.
+  return (
+    <ResumeCheck
+      authLoading={authLoading}
+      token={session?.access_token ?? null}
+      onAccepted={onAccepted}
+    />
+  );
 }
 
-interface ResultFlowScreenProps {
-  answers: RecommendRequest;
+interface ResumeCheckProps {
+  authLoading: boolean;
+  token: string | null;
   onAccepted: () => void;
 }
 
-function ResultFlowScreen({ answers, onAccepted }: ResultFlowScreenProps) {
+function ResumeCheck({ authLoading, token, onAccepted }: ResumeCheckProps) {
+  const [pending, setPending] = useState<"checking" | "none" | ResultFlowStart>(
+    "checking",
+  );
+  const hasChecked = useRef(false);
+  useEffect(() => {
+    if (hasChecked.current || authLoading) return;
+    hasChecked.current = true;
+    getCurrentRecommendation(token)
+      .then((response) => {
+        setPending(response ? { type: "resumed", response } : "none");
+      })
+      .catch(() => {
+        // Best-effort: same fallback as before this feature existed —
+        // no usable state, no way to check, so back to Questions.
+        setPending("none");
+      });
+  }, [authLoading, token]);
+
+  if (pending === "checking") {
+    return (
+      <div
+        className="relative flex h-full flex-col items-center justify-center gap-6 px-6"
+        aria-live="polite"
+      >
+        <LoadingSteps />
+      </div>
+    );
+  }
+
+  if (pending === "none") {
+    return <Navigate to="/home/question" replace />;
+  }
+
+  return <ResultFlowScreen start={pending} onAccepted={onAccepted} />;
+}
+
+interface ResultFlowScreenProps {
+  start: ResultFlowStart;
+  onAccepted: () => void;
+}
+
+function ResultFlowScreen({ start, onAccepted }: ResultFlowScreenProps) {
   const navigate = useNavigate();
   const { session, loading: authLoading } = useAuth();
   const flow = useResultFlow(
-    answers,
+    start,
     session?.access_token ?? null,
     !authLoading,
   );
@@ -87,6 +170,19 @@ function ResultFlowScreen({ answers, onAccepted }: ResultFlowScreenProps) {
             onSkip={flow.onSkip}
             disabled={flow.deciding}
           />
+          {flow.resumed && (
+            <button
+              onClick={() => {
+                void flow.onAbandon().then(() => {
+                  navigate("/home/question", { replace: true });
+                });
+              }}
+              disabled={flow.abandoning}
+              className="text-xs font-medium text-text-tertiary transition-colors hover:text-text-secondary"
+            >
+              Recommencer
+            </button>
+          )}
         </>
       )}
 

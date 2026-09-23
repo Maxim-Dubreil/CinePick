@@ -60,9 +60,9 @@ Watchlist active de l'utilisateur, allégée et pré-bucketée (`duration`, `era
 
 ### `POST /recommend`
 
-Reçoit les 9 réponses brutes du questionnaire (pas de pré-filtrage côté front — voir [Specs Questions](./questions.md)). Filtre le watchlist actif côté back (`filtering.py`). Si ≤ 3 candidats restent, les retourne triés par date d'ajout sans appel IA (`match_score`/`critique` à `null`). Sinon, appelle Gemini pour classer jusqu'à 3 candidats avec score et critique. Génère un `recommendation_session_id` (UUID) et enregistre une ligne `"proposed"` par candidat dans `watch_history` avant de répondre — c'est ce que `/recommend/decision` vérifie ensuite.
+Reçoit les 9 réponses brutes du questionnaire (pas de pré-filtrage côté front — voir [Specs Questions](./questions.md)). Filtre le watchlist actif côté back (`filtering.py`), puis appelle Gemini pour classer jusqu'à 3 candidats avec score et critique — **toujours**, dès qu'il reste au moins 1 candidat après filtrage (plus de court-circuit sous un seuil : voir [Specs AI](./ai.md)). Génère un `recommendation_session_id` (UUID) et enregistre une ligne `"proposed"` par candidat dans `watch_history` avant de répondre, déjà porteuse de son `rank`/`match_score`/`ai_critique` — c'est ce que `/recommend/decision` vérifie ensuite, et ce que `/recommend/current` relit pour reprendre une session sans rappeler l'IA.
 
-Un nouvel appel à `/recommend` (même body, mêmes films déjà proposés exclus via `watch_history`) est le mécanisme de "retry" — pas de route dédiée, pas de conversation IA à état : chaque appel est indépendant (voir [Specs AI](./ai.md)).
+Un nouvel appel à `/recommend` (même body, mêmes films déjà proposés exclus via `watch_history`) est le mécanisme de "retry" — pas de route dédiée, pas de conversation IA à état : chaque appel est indépendant, avec un nouveau `recommendation_session_id` (voir [Specs AI](./ai.md)).
 
 |                 |                                                                                                                        |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------ |
@@ -70,17 +70,40 @@ Un nouvel appel à `/recommend` (même body, mêmes films déjà proposés exclu
 | Body            | 9 champs du questionnaire — voir `RecommendRequest` dans `backend/models.py` et [Specs Questions](./questions.md)         |
 | Réponse         | `{ candidates: [{ film_id, title, poster_url, year, runtime, overview, genres, origin_country, director, rank, match_score, critique }], meta: { candidates_considered }, recommendation_session_id }` |
 | Erreurs typées  | `422 empty_watchlist` / `422 no_candidates` / `502 ai_error`                                                              |
-| Appels externes | Gemini, uniquement si > 3 candidats après filtrage                                                                        |
+| Appels externes | Gemini, dès qu'au moins 1 candidat reste après filtrage                                                                   |
 | Détail complet  | [Specs AI](./ai.md)                                                                                                       |
 
-### `POST /recommend/decision`
+### `GET /recommend/current`
 
-Enregistre un swipe (accepté/passé). N'accepte que si une ligne `"proposed"` correspondante existe pour ce `recommendation_session_id` + `film_id` — c'est la preuve que le film a vraiment été montré (CIN-78).
+Reprend la session de recommandation en attente de l'utilisateur, s'il y en a une — c'est-à-dire un `recommendation_session_id` dont au moins une ligne `watch_history` est encore `"proposed"` (aucune décision prise sur ces candidats). Aucun appel IA : tout (`rank`, `match_score`, `ai_critique`, `questions_context`) est déjà en base depuis l'appel `/recommend` d'origine. Utilisé par le front avant de router vers Questions ou Résultat (au chargement de l'app, au clic sur "Nouvelle recherche", après un reload de la page Résultat) — voir [Specs Questions](./questions.md), section "Session pérenne".
+
+`answers` dans la réponse est le `questions_context` d'origine — nécessaire pour pouvoir relancer un `/recommend` (retry) si tous les candidats repris sont ensuite passés, sans jamais être repassé par Questions cette session-ci.
+
+|                 |                                                                                                                        |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Auth            | Requis                                                                                                                    |
+| Réponse         | Même forme que `POST /recommend`, plus `answers` (le `RecommendRequest` d'origine)                                       |
+| Erreurs typées  | `404 no_pending_session` — rien en attente, le front retombe sur Questions                                               |
+| Appels externes | Aucun                                                                                                                     |
+
+### `POST /recommend/current/abandon`
+
+Le "Recommencer" explicite depuis une session reprise (pas depuis un premier lancement) : marque en masse tous les candidats encore `"proposed"` de la session comme `"skipped"`, pour que `/recommend/current` arrête de la renvoyer. Idempotent — abandonner une session sans rien à abandonner (déjà décidée, id obsolète) n'est pas une erreur.
 
 |                 |                                                                                    |
 | --------------- | ------------------------------------------------------------------------------------ |
 | Auth            | Requis                                                                                |
-| Body            | `{ recommendation_session_id, film_id, decision: "accepted" \| "skipped", match_score?, critique? }` |
+| Body            | `{ recommendation_session_id }`                                                       |
+| Réponse         | `{ status: "ok" }`                                                                    |
+
+### `POST /recommend/decision`
+
+Enregistre un swipe (accepté/passé). N'accepte que si une ligne `"proposed"` correspondante existe pour ce `recommendation_session_id` + `film_id` — c'est la preuve que le film a vraiment été montré (CIN-78). Ne touche plus `match_score`/`ai_critique` : ces champs sont écrits une fois pour toutes à la proposition (voir `POST /recommend` ci-dessus), pas à la décision.
+
+|                 |                                                                                    |
+| --------------- | ------------------------------------------------------------------------------------ |
+| Auth            | Requis                                                                                |
+| Body            | `{ recommendation_session_id, film_id, decision: "accepted" \| "skipped" }`           |
 | Réponse         | `{ status: "ok" }`                                                                    |
 | Erreurs typées  | `404 unknown_candidate` — pas de proposition en attente pour ce film                  |
 

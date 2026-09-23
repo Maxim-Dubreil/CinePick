@@ -87,6 +87,10 @@ create table watch_history (
   questions_context jsonb,
   ai_critique text,
   match_score integer,
+  -- Not recoverable from id (UUID, no natural order) or decided_at (tied
+  -- across one batch's insert). Written at proposal time alongside
+  -- ai_critique/match_score, needed to replay candidates in AI order.
+  rank smallint,
   decided_at timestamptz default now()
 );
 

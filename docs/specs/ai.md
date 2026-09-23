@@ -11,15 +11,17 @@
 
 L'IA reçoit le sous-ensemble de films déjà filtré (filtres durs, `filtering.py`) + les signaux mous, et renvoie jusqu'à **3 candidats classés** en une seule réponse structurée (JSON). Aucune watchlist complète n'est jamais envoyée — voir Specs Questions pour le détail du filtrage en amont. Chaque appel est **stateless** : pas de conversation Gemini à état, pas d'historique de messages conservé entre deux appels.
 
-**L'IA n'est pas toujours appelée** — voir "Court-circuit sans IA" ci-dessous : si le sous-ensemble filtré contient 3 films ou moins, l'appel Gemini est sauté entièrement.
-
-## Court-circuit sans IA (sous-ensemble ≤ 3 films)
+**Correction du 2026-09-23** : l'IA est désormais appelée dès qu'il reste **au moins 1** candidat après
+filtrage — l'ancien court-circuit (retour direct sans IA si ≤ 3 candidats) a été retiré. Il laissait
+`match_score`/`critique` à `null` en dessous du seuil, et surtout rendait les filtres mous (Avec
+qui / Émotion / Ambiance) sans aucun effet dès que le sous-ensemble était petit, puisque l'IA
+— seule consommatrice de ces signaux — n'était jamais appelée. Le prompt gère déjà nativement moins
+de 3 candidats (*"Pick up to 3 films"*), donc aucun changement de prompt n'était nécessaire.
 
 | Taille du sous-ensemble | Comportement                                                     |
 | ------------------------ | ----------------------------------------------------------------- |
 | 0                         | `422 no_candidates` / `422 empty_watchlist` (voir Specs API)       |
-| 1 à 3                     | Retour direct des films triés par date d'ajout, **sans appel Gemini**, `match_score`/`critique` à `null` |
-| 4 et +                    | Appel Gemini (voir reste du doc)                                  |
+| 1 et +                    | Appel Gemini, toujours (voir reste du doc)                        |
 
 ## Prompt (un seul, généré par `_build_prompt`)
 
@@ -50,8 +52,8 @@ using only ids from the list below, nothing else.
 | `candidates`                   | array (1 à `_MAX_CANDIDATES`=3) | Les candidats retenus                                                                          |
 | `candidates[].film_id`         | string                       | Doit être un id de la liste envoyée — un id hors liste, un doublon, ou des rangs non séquentiels fait échouer tout l'appel (`AIProviderError`) |
 | `candidates[].rank`            | int (1-3), séquentiel         | 1 = meilleur choix                                                                              |
-| `candidates[].match_score`     | int (0-100)                  | Stocké tel quel dans `watch_history.match_score`                                                |
-| `candidates[].critique`        | string, max 1000 caractères  | En français, doit référencer au moins un signal mou                                             |
+| `candidates[].match_score`     | int (0-100)                  | Écrit dans `watch_history.match_score` **à la proposition** (avant même que l'utilisateur swipe) — voir "Session pérenne" ci-dessous |
+| `candidates[].critique`        | string, max 1000 caractères  | En français, doit référencer au moins un signal mou ; écrite dans `ai_critique` au même moment que `match_score` |
 
 `meta.candidates_considered` (dans la réponse `/recommend`, pas dans la réponse Gemini) est calculé côté back : `len(candidates)` avant l'appel IA — debug/logs, jamais affiché.
 
@@ -59,7 +61,16 @@ Aucun retry ni fallback interne : toute erreur (réseau, JSON malformé, id hors
 
 ## "Retry" après swipes — pas un 2ᵉ prompt, un 2ᵉ appel indépendant
 
-Il n'y a pas de continuation de conversation. Quand le front épuise les candidats reçus (tous skip), il rappelle `POST /recommend` avec le même body. Les films déjà proposés à cette session sont naturellement exclus par `filtering.py` : toute ligne `watch_history` (proposée ou décidée) touchée il y a moins de 15 minutes (`_SESSION_WINDOW`) est retirée du sous-ensemble, qu'elle ait été acceptée, skip, ou juste montrée sans décision. Le front plafonne à 2 tentatives (`MAX_ATTEMPTS` dans `useResultFlow.ts`) avant d'afficher l'écran "aucun film trouvé".
+Il n'y a pas de continuation de conversation. Quand le front épuise les candidats reçus (tous skip), il rappelle `POST /recommend` avec le même body — un nouveau `recommendation_session_id` est généré, indépendant du premier. Les films déjà proposés à cette session sont naturellement exclus par `filtering.py` : toute ligne `watch_history` (proposée ou décidée) touchée il y a moins de 15 minutes (`_SESSION_WINDOW`) est retirée du sous-ensemble, qu'elle ait été acceptée, skip, ou juste montrée sans décision. Le front plafonne à 2 tentatives (`MAX_ATTEMPTS` dans `useResultFlow.ts`) avant d'afficher l'écran "aucun film trouvé".
+
+## Session pérenne — reprendre sans rappeler l'IA
+
+**Ajouté le 2026-09-23**, voir [Specs Questions](./questions.md#session-pérenne) pour le détail du
+mécanisme et le rôle de `GET /recommend/current` / `POST /recommend/current/abandon`. Le point qui
+concerne ce doc : `match_score`/`ai_critique`/`rank` sont écrits en base **à la proposition**, pas
+à la décision — `/recommend/decision` ne les reçoit plus du tout, il ne fait plus que changer
+`decision`/`decided_at`. Conséquence directe : reprendre une session interrompue (reload, app
+relancée) ne nécessite jamais un second appel Gemini, tout est déjà en base.
 
 ## Enrichissement des candidats — rien après la réponse IA
 

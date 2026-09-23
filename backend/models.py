@@ -111,8 +111,7 @@ class WatchlistFilm(BaseModel):
     overview: str | None = None
     director: str | None = None
     added_at: datetime
-    """When this film was added to the user's watchlist — used to sort the
-    no-AI short-circuit path deterministically (oldest first)."""
+    """When this film was added to the user's watchlist."""
 
     @field_validator("genres", "origin_country", mode="before")
     @classmethod
@@ -186,5 +185,9 @@ class RecommendDecisionRequest(BaseModel):
     recommendation_session_id: str
     film_id: str
     decision: Literal["accepted", "skipped"]
-    match_score: int | None = Field(default=None, ge=0, le=100)
-    critique: str | None = Field(default=None, max_length=1000)
+
+
+class AbandonSessionRequest(BaseModel):
+    """Body of POST /recommend/current/abandon — the explicit "Recommencer"."""
+
+    recommendation_session_id: str

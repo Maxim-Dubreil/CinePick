@@ -5,10 +5,12 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { Result } from "@/pages/Result";
 import { ApiError, type RecommendRequest } from "@/lib/backend/api";
 
-const { getRecommendationMock, recordDecisionMock } = vi.hoisted(() => ({
-  getRecommendationMock: vi.fn(),
-  recordDecisionMock: vi.fn(),
-}));
+const { getRecommendationMock, recordDecisionMock, getCurrentRecommendationMock } =
+  vi.hoisted(() => ({
+    getRecommendationMock: vi.fn(),
+    recordDecisionMock: vi.fn(),
+    getCurrentRecommendationMock: vi.fn(),
+  }));
 
 vi.mock("@/lib/backend/api", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/backend/api")>();
@@ -16,6 +18,7 @@ vi.mock("@/lib/backend/api", async (importOriginal) => {
     ...actual,
     getRecommendation: getRecommendationMock,
     recordDecision: recordDecisionMock,
+    getCurrentRecommendation: getCurrentRecommendationMock,
   };
 });
 
@@ -64,11 +67,15 @@ describe("Result page", () => {
     getRecommendationMock.mockReset();
     recordDecisionMock.mockReset();
     recordDecisionMock.mockResolvedValue(undefined);
+    getCurrentRecommendationMock.mockReset();
+    getCurrentRecommendationMock.mockResolvedValue(null);
   });
 
-  it("redirects to Questions when router state is missing", () => {
+  it("redirects to Questions when router state is missing and nothing is pending", async () => {
     renderResult();
-    expect(screen.getByText("Questions page")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByText("Questions page")).toBeInTheDocument(),
+    );
   });
 
   it("shows the recommended film and lets the user accept it", async () => {
@@ -107,8 +114,6 @@ describe("Result page", () => {
         recommendation_session_id: "",
         film_id: "f1",
         decision: "accepted",
-        match_score: 87,
-        critique: "Un choix parfait.",
       },
       "test-token",
     );

@@ -92,7 +92,7 @@ Spatial, Futuriste, Historique, Urbain, Rural, Film noir, Nature, Conte, Surréa
 
 « Non, je veux du nouveau » (exclut les films déjà validés via CinePick) / « Peu importe » (les inclut aussi, utile pour un rewatch volontaire).
 
-Champ utilisé : interne, pas TMDB — `historique.film_id` (liste des films acceptés via le swipe "Ce soir ✓" dans Résultat), stocké côté Supabase. **C'est aussi la dernière question posée** — sa réponse fige la taille finale du sous-ensemble filtré, qui détermine ensuite si l'IA est appelée ou non (voir "Sélection IA" plus bas).
+Champ utilisé : interne, pas TMDB — `historique.film_id` (liste des films acceptés via le swipe "Ce soir ✓" dans Résultat), stocké côté Supabase. **C'est aussi la dernière question posée** — sa réponse fige la taille finale du sous-ensemble filtré, envoyé à l'IA (voir "Sélection IA" plus bas).
 
 ⚠️ **À affiner plus tard** : un film marqué vu directement sur Letterboxd (sans passer par CinePick) ne disparaît de la watchlist qu'au prochain resync. Entre deux syncs, "déjà vu" (CinePick) et "retiré de la watchlist" (Letterboxd) peuvent diverger — mis de côté pour l'instant, pas bloquant pour la V1.
 
@@ -128,8 +128,7 @@ Watchlist enrichie téléchargée en bloc, tenue en mémoire côté FRONT
         ▼
    Après Déjà vu (dernière question) : taille du sous-ensemble final connue
    → 0 : écran "Aucun film trouvé" + Recommencer
-   → 1 à 3 : affichage direct, PAS d'appel IA (voir Specs AI)
-   → 4+ : prompt final envoyé à Gemini → 3 candidats classés
+   → 1+ : prompt final envoyé à Gemini → jusqu'à 3 candidats classés (voir Specs AI)
 ```
 
 **Pourquoi le recalcul est en front et pas en back** : la watchlist enrichie est chargée une seule fois en mémoire après le scrape. Filtrer quelques centaines de films sur des critères simples (ids, runtime, date, pays, historique interne) est de l'ordre de la milliseconde — un aller-retour réseau à chaque question ajouterait de la latence pour rien.
@@ -152,7 +151,7 @@ dernière question, donc le dernier filtre dur posé).
 | Région = Français     | dur             | 4              |
 | Déjà vu = Non         | dur             | 0              |
 
-→ fallback déclenché sur la dernière étape : on retire le filtre Déjà vu, on recalcule → 4 films restants, message "aucun film exact, voici les plus proches". Sous-ensemble final = 4 → affichage direct, pas d'appel IA (court-circuit ≤ 3... ici 4, donc juste au-dessus : voir seuil dans "Sélection IA" plus bas).
+→ fallback déclenché sur la dernière étape : on retire le filtre Déjà vu, on recalcule → 4 films restants, message "aucun film exact, voici les plus proches". Sous-ensemble final = 4 → envoyé à Gemini, qui classe jusqu'à 3 candidats (voir "Sélection IA" plus bas).
 
 ## Un seul enrichissement TMDB, fait au sync
 
@@ -160,13 +159,19 @@ dernière question, donc le dernier filtre dur posé).
 
 Un seul enrichissement TMDB (`genres`, `runtime`, `origin_country`, `overview`, `director`), appliqué à toute la watchlist au clic "Synchroniser", stocké dans `films`. `/recommend` ne fait aucun appel TMDB — il lit `films` tel quel, y compris pour les candidats retenus par l'IA.
 
-## Sélection IA : 3 candidats par appel, 2 appels maximum par session — sauf court-circuit
+## Sélection IA : 3 candidats par appel, 2 appels maximum par session
 
-L'IA renvoie 3 candidats classés en un seul appel (détail complet du prompt, format et flow technique : [Specs AI](./ai.md)).
+L'IA renvoie jusqu'à 3 candidats classés en un seul appel, dès qu'il reste au moins 1 film après
+Déjà vu (détail complet du prompt, format et flow technique : [Specs AI](./ai.md)).
 
-**Court-circuit sans IA** : si le sous-ensemble final (après Q9) contient 3 films ou moins, l'IA n'est pas appelée du tout — rien à sélectionner, ce serait juste réordonner 1 à 3 films déjà connus pour rien. Affichage direct, `match_score`/`ai_critique` restent `null`, badge score et critique masqués sur Résultat. Détail complet : [Specs AI](./ai.md).
+**Correction du 2026-09-23** : l'ancien court-circuit ("≤ 3 films → affichage direct, pas d'appel
+IA") a été retiré. Il avait deux effets de bord non voulus, remontés en test utilisateur : les
+questions filtres mous (Avec qui, Émotion, Ambiance) n'avaient plus aucun effet dès que le
+sous-ensemble était petit (l'IA, seule à les lire, n'était jamais appelée), et `match_score`/
+`ai_critique` restaient `null` — pas de résumé sur Résultat. L'IA est maintenant appelée dans tous
+les cas où il reste au moins 1 film ; le prompt gère déjà nativement moins de 3 candidats.
 
-Flow swipe complet (sous-ensemble ≥ 4, avec IA) :
+Flow swipe complet :
 
 - Skip 1 → candidat rank=2, déjà en cache (aucun appel réseau)
 - Skip 2 → candidat rank=3, déjà en cache (aucun appel réseau)
@@ -176,21 +181,61 @@ Flow swipe complet (sous-ensemble ≥ 4, avec IA) :
 
 2 appels `/recommend` maximum par session quand l'IA est appelée, sans exception (`MAX_ATTEMPTS`, `useResultFlow.ts`). Passé cette limite, la session est considérée comme épuisée et l'utilisateur repart de zéro.
 
+## Session pérenne
+
+Comment reprendre une recommandation en attente.
+
+**Ajouté le 2026-09-23**, suite à un trou remonté en test utilisateur : une recommandation jamais
+tranchée (reload de la page Résultat, app relancée, onglet fermé) n'avait aucune existence en
+dehors de la mémoire de l'onglet — impossible d'y revenir, et rouvrir Questions relançait un appel
+IA pour rien.
+
+Le principe : `watch_history` est déjà la source de vérité (chaque candidat proposé y a une ligne
+`"proposed"` avant même que l'utilisateur swipe, avec `rank`/`match_score`/`ai_critique` déjà
+écrits — voir [Specs AI](./ai.md#session-pérenne)). Une session est **en attente** tant qu'au moins
+une de ses lignes n'a pas de décision. Rien à stocker en plus côté serveur, et rien à garder côté
+navigateur (`sessionStorage`, `location.state`) : la question "y a-t-il une recommandation en
+attente" se répond avec une seule requête (`GET /recommend/current`, voir [Specs API](./api.md)).
+
+**Le point d'entrée décide, jamais la page** :
+
+- Avant de router vers Questions ou Résultat (clic sur "Nouvelle recherche", reload, retour dans
+  l'app), le front appelle `GET /recommend/current`. Une session en attente → Résultat, reprise
+  directement, aucun appel IA. Rien en attente → Questions, flow normal.
+- Résultat n'a donc plus besoin de recevoir quoi que ce soit du routeur pour se reconstruire —
+  l'URL fonctionne même après un reload complet ou depuis un autre appareil.
+
+**"Recommencer"** (bouton visible uniquement sur une session reprise, pas sur un premier lancement)
+appelle `POST /recommend/current/abandon` : marque en masse les candidats encore `"proposed"` de la
+session comme `"skipped"` — réutilise la valeur de decision existante, rien de nouveau à modéliser.
+Best-effort côté front (un échec réseau affiche un toast mais ne bloque pas le retour à Questions).
+
+**Films jamais décidés et le verrou Déjà vu** : avec cette architecture, une session ne reste plus
+jamais orpheline en silence — elle est soit reprise, soit explicitement close via "Recommencer".
+Le cas résiduel (session très ancienne, jamais rouverte) suit la même règle qu'aujourd'hui : au-delà
+de la fenêtre de 15 minutes (`_SESSION_WINDOW`, `filtering.py`), plus rien ne la distingue d'un
+film simplement "touché" — comportement inchangé, pas de nouvelle règle nécessaire côté filtres durs.
+
 ⚠️ **Diagramme Excalidraw "5. Résultat" à mettre à jour** : il décrit encore "1-2 skips → nouvelle reco IA / 3 skips → retour Questions", ce qui ne correspond plus à ce mécanisme. Changements à faire dans le diagramme (listés mais pas encore appliqués) :
 
 1. "1-2 skips → Nouvelle reco IA" → remplacer par "Carte suivante (cache)"
 2. "3 skips → ? Questions (reset ?)" → remplacer par "2ème prompt Gemini (exclut films refusés)"
 3. Ajouter deux sorties au 2ème prompt : succès → "Carte film" / échec → "Recommencer → Questions (reset)"
-4. Ajouter le branchement court-circuit (0 / 1-3 / 4+) en amont de la boucle de swipe
+4. Ajouter le branchement 0 / 1+ (plus de palier 1-3 vs 4+, voir "Sélection IA" plus haut) en amont
+   de la boucle de swipe
+5. Ajouter l'entrée "session en attente" (`GET /recommend/current`) en amont de Questions — voir
+   "Session pérenne" plus haut
 
-## Trous produit — état au 03/07/2026
+## Trous produit — état au 2026-09-23
 
 | Sujet                                                                      | Statut                                                                                   |
 | -------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
 | 0 film après filtres durs                                                  | ✅ Résolu — fallback "plus proche" (retire le dernier filtre, recalcule)                 |
-| Sous-ensemble < 3 films pour l'IA                                          | ✅ Résolu — court-circuit, pas d'appel IA du tout (voir Specs AI)                        |
+| Sous-ensemble < 3 films pour l'IA                                          | ✅ Résolu — plus de court-circuit, l'IA est appelée dès 1 film (voir Specs AI)           |
+| Filtres mous sans effet sur un petit sous-ensemble                        | ✅ Résolu — conséquence directe du point ci-dessus                                       |
 | Compteurs skip/échec scopés à une session                                  | ✅ Résolu — state front uniquement, pas de colonne DB nécessaire en V1                   |
 | Fin de session après échec des 2 prompts IA                                | ✅ Résolu — message "On n'a pas réussi" + bouton "Recommencer" → Questions reset complet |
+| Recommandation jamais décidée = orpheline (reload, app relancée)          | ✅ Résolu — session pérenne, voir "Session pérenne" plus haut                            |
 | Watchlist publique vide au scrape (0 film trouvé)                          | ⏳ Ouvert                                                                                |
 | Bouton "précédent" sur Question 1 — annule vers Home ou désactivé ?        | ⏳ Ouvert                                                                                |
 | Désync Letterboxd / "déjà vu" CinePick entre deux syncs                    | ⏳ Ouvert, non bloquant V1                                                               |

@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  abandonCurrentRecommendation,
   ApiError,
   getRecommendation,
   recordDecision,
+  type RecommendCurrentResponse,
   type RecommendedFilm,
   type RecommendRequest,
 } from "@/lib/backend/api";
@@ -34,6 +36,12 @@ function errorToDevDetail(error: unknown): string | null {
   return String(error);
 }
 
+/** A fresh flow POSTs /recommend on mount; a resumed one hydrates directly
+ * from an already-fetched GET /recommend/current response — no AI call. */
+export type ResultFlowStart =
+  | { type: "fresh"; answers: RecommendRequest }
+  | { type: "resumed"; response: RecommendCurrentResponse };
+
 interface ResultFlowState {
   phase: "loading" | "card" | "accepted" | "dead-end";
   candidates: RecommendedFilm[];
@@ -46,6 +54,7 @@ interface ResultFlowState {
   acceptedFilm: RecommendedFilm | null;
   deciding: boolean;
   recommendationSessionId: string | null;
+  abandoning: boolean;
 }
 
 export interface UseResultFlowResult {
@@ -58,13 +67,16 @@ export interface UseResultFlowResult {
   acceptedFilm: RecommendedFilm | null;
   deciding: boolean;
   recommendationSessionId: string | null;
+  resumed: boolean;
+  abandoning: boolean;
   onAccept: () => void;
   onSkip: () => void;
+  onAbandon: () => Promise<void>;
   dismissToast: () => void;
 }
 
 export function useResultFlow(
-  answers: RecommendRequest,
+  start: ResultFlowStart,
   token: string | null,
   ready: boolean,
 ): UseResultFlowResult {
@@ -80,7 +92,13 @@ export function useResultFlow(
     acceptedFilm: null,
     deciding: false,
     recommendationSessionId: null,
+    abandoning: false,
   });
+
+  // The answers that produced (or would retry) this session — a resumed
+  // start carries them from its original /recommend call, since the front
+  // never went through Questions this time to have them any other way.
+  const answers = start.type === "fresh" ? start.answers : start.response.answers;
 
   const requestFilm = useCallback(
     async (attempt: number) => {
@@ -123,8 +141,22 @@ export function useResultFlow(
   useEffect(() => {
     if (hasStarted.current || !ready) return;
     hasStarted.current = true;
+    // A resumed start already has its candidates (GET /recommend/current
+    // fetched them) — hydrate directly, no AI call. 0 candidates can't
+    // happen here: the backend 404s that case instead of returning it.
+    if (start.type === "resumed") {
+      const { response } = start;
+      setState((s) => ({
+        ...s,
+        phase: "card",
+        candidates: response.candidates,
+        currentIndex: 0,
+        recommendationSessionId: response.recommendation_session_id,
+      }));
+      return;
+    }
     void requestFilm(1);
-  }, [requestFilm, ready]);
+  }, [requestFilm, ready, start]);
 
   function recordDecisionSafely(
     filmToRecord: RecommendedFilm,
@@ -135,8 +167,6 @@ export function useResultFlow(
         film_id: filmToRecord.film_id,
         recommendation_session_id: state.recommendationSessionId ?? "",
         decision,
-        match_score: filmToRecord.match_score,
-        critique: filmToRecord.critique,
       },
       token,
     )
@@ -171,8 +201,6 @@ export function useResultFlow(
         film_id: currentFilm.film_id,
         recommendation_session_id: state.recommendationSessionId ?? "",
         decision: "accepted",
-        match_score: currentFilm.match_score,
-        critique: currentFilm.critique,
       },
       token,
     )
@@ -222,6 +250,27 @@ export function useResultFlow(
     setState((s) => ({ ...s, toastMessage: null }));
   }, []);
 
+  // "Recommencer" on a resumed session: clears the still-pending candidates
+  // server-side (marked skipped) so /recommend/current stops returning
+  // them. Best-effort — a failure here just means a toast, the caller
+  // navigates to Questions regardless (see Result.tsx).
+  async function onAbandon(): Promise<void> {
+    const sessionId = state.recommendationSessionId;
+    if (state.abandoning || !sessionId) return;
+    setState((s) => ({ ...s, abandoning: true }));
+    try {
+      await abandonCurrentRecommendation(sessionId, token);
+    } catch {
+      setState((s) => ({
+        ...s,
+        toastMessage: TOAST_NETWORK,
+        toastId: s.toastId + 1,
+      }));
+    } finally {
+      setState((s) => ({ ...s, abandoning: false }));
+    }
+  }
+
   return {
     phase: state.phase,
     currentFilm: state.candidates[state.currentIndex] ?? null,
@@ -232,8 +281,11 @@ export function useResultFlow(
     acceptedFilm: state.acceptedFilm,
     deciding: state.deciding,
     recommendationSessionId: state.recommendationSessionId,
+    resumed: start.type === "resumed",
+    abandoning: state.abandoning,
     onAccept,
     onSkip,
+    onAbandon,
     dismissToast,
   };
 }

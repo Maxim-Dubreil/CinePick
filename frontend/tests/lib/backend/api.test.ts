@@ -263,8 +263,6 @@ describe("recordDecision", () => {
     recommendation_session_id: "session-1",
     film_id: "f1",
     decision: "skipped",
-    match_score: 87,
-    critique: "Bon choix",
   };
 
   it("sends the decision as JSON body with Authorization header", async () => {

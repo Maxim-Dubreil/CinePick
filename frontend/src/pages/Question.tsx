@@ -1,5 +1,5 @@
-import { useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Navigate, useNavigate } from "react-router-dom";
 import { ChevronLeft } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuestionFlow } from "@/hooks/useQuestionFlow";
@@ -7,7 +7,11 @@ import type {
   AnswerValue,
   QuestionId,
 } from "@/lib/question/types";
-import type { RecommendRequest } from "@/lib/backend/api";
+import {
+  getCurrentRecommendation,
+  type RecommendCurrentResponse,
+  type RecommendRequest,
+} from "@/lib/backend/api";
 import { Button } from "@/components/ui";
 import {
   QuestionFlowHeader,
@@ -22,6 +26,27 @@ import {
 export function Question() {
   const navigate = useNavigate();
   const { session, loading: authLoading } = useAuth();
+
+  // A pending recommendation always wins over starting a new one — resuming
+  // it is the "point d'entrée décide" rule, checked once before the
+  // questionnaire (or its own watchlist fetch) ever renders.
+  const [pending, setPending] = useState<"checking" | "none" | RecommendCurrentResponse>(
+    "checking",
+  );
+  const hasChecked = useRef(false);
+  useEffect(() => {
+    if (hasChecked.current || authLoading) return;
+    hasChecked.current = true;
+    getCurrentRecommendation(session?.access_token ?? null)
+      .then((response) => {
+        setPending(response ?? "none");
+      })
+      .catch(() => {
+        // Best-effort: a failed check just means "start fresh", same as
+        // before this feature existed — never blocks the questionnaire.
+        setPending("none");
+      });
+  }, [authLoading, session?.access_token]);
 
   const onComplete = useCallback(
     (filmCount: number, answers: Record<QuestionId, AnswerValue>) => {
@@ -38,10 +63,22 @@ export function Question() {
 
   const flow = useQuestionFlow({
     token: session?.access_token ?? null,
-    ready: !authLoading,
+    ready: !authLoading && pending === "none",
     onComplete,
   });
   const { currentQuestion } = flow;
+
+  if (pending === "checking") {
+    return (
+      <div className="relative flex h-full flex-col">
+        <LoadingOverlay visible />
+      </div>
+    );
+  }
+
+  if (pending !== "none") {
+    return <Navigate to="/home/result" state={{ resumed: pending }} replace />;
+  }
 
   if (flow.watchlistStatus === "error") {
     return (

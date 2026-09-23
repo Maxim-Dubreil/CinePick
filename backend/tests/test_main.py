@@ -232,8 +232,8 @@ def _patch_recommend(monkeypatch, *, films=None, history=None, ranked=None, ai_r
     monkeypatch.setattr(
         watch_history_repo,
         "record_proposals",
-        lambda user_id, session_id, film_ids, ctx: recorded.append(
-            (user_id, session_id, film_ids, ctx)
+        lambda user_id, session_id, ranked, ctx: recorded.append(
+            (user_id, session_id, ranked, ctx)
         ),
     )
 
@@ -248,22 +248,91 @@ def _patch_recommend(monkeypatch, *, films=None, history=None, ranked=None, ai_r
     return recorded
 
 
-def test_recommend_short_circuits_with_three_or_fewer_candidates(monkeypatch):
-    films = [
-        _film("a", added_at=datetime(2026, 1, 2, tzinfo=UTC)),
-        _film("b", added_at=datetime(2026, 1, 1, tzinfo=UTC)),
+def test_recommend_current_returns_404_when_nothing_pending(monkeypatch):
+    monkeypatch.setattr(watch_history_repo, "get_pending_session", lambda user_id: None)
+
+    response = client.get("/recommend/current", headers=AUTH_HEADERS)
+
+    assert response.status_code == 404
+    assert response.json()["detail"]["type"] == "no_pending_session"
+
+
+def test_recommend_current_returns_pending_candidates(monkeypatch):
+    rows = [
+        {
+            "film_id": "b",
+            "rank": 1,
+            "match_score": 88,
+            "ai_critique": "Belle pioche.",
+            "questions_context": RECOMMEND_BODY,
+            "films": {
+                "title": "Film b",
+                "poster_url": "http://x/p.jpg",
+                "year": 2020,
+                "runtime": 100,
+                "overview": "A synopsis.",
+                "genres": ["35"],
+                "origin_country": ["US"],
+                "director": None,
+            },
+        }
     ]
-    recorded = _patch_recommend(monkeypatch, films=films)
+    monkeypatch.setattr(
+        watch_history_repo, "get_pending_session", lambda user_id: ("session-1", rows)
+    )
+
+    response = client.get("/recommend/current", headers=AUTH_HEADERS)
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["recommendation_session_id"] == "session-1"
+    assert data["meta"]["candidates_considered"] == 1
+    assert data["candidates"] == [
+        {
+            "film_id": "b",
+            "title": "Film b",
+            "poster_url": "http://x/p.jpg",
+            "year": 2020,
+            "runtime": 100,
+            "overview": "A synopsis.",
+            "genres": ["35"],
+            "origin_country": ["US"],
+            "director": None,
+            "rank": 1,
+            "match_score": 88,
+            "critique": "Belle pioche.",
+        }
+    ]
+    assert data["answers"] == RECOMMEND_BODY
+
+
+def test_recommend_calls_ai_even_with_two_candidates(monkeypatch):
+    films = [_film("a"), _film("b")]
+    chosen = RankedCandidate(film=films[1], rank=1, match_score=88, critique="Belle pioche.")
+    recorded = _patch_recommend(monkeypatch, films=films, ranked=[chosen])
 
     response = client.post("/recommend", json=RECOMMEND_BODY, headers=AUTH_HEADERS)
 
     assert response.status_code == 200
     data = response.json()
-    assert [c["title"] for c in data["candidates"]] == ["Film b", "Film a"]  # oldest first
-    assert all(c["match_score"] is None and c["critique"] is None for c in data["candidates"])
+    assert data["candidates"] == [
+        {
+            "film_id": "b",
+            "title": "Film b",
+            "poster_url": "http://x/p.jpg",
+            "year": 2020,
+            "runtime": 100,
+            "overview": "A synopsis.",
+            "genres": ["35"],
+            "origin_country": ["US"],
+            "director": None,
+            "rank": 1,
+            "match_score": 88,
+            "critique": "Belle pioche.",
+        }
+    ]
     assert data["meta"]["candidates_considered"] == 2
-    assert recorded[0][2] == ["b", "a"]  # proposals recorded in the order returned
-    assert [c["film_id"] for c in data["candidates"]] == recorded[0][2]
+    assert [r.film.id for r in recorded[0][2]] == ["b"]
     assert data["recommendation_session_id"] == recorded[0][1]
 
 
@@ -279,7 +348,7 @@ def test_recommend_calls_ai_with_more_than_three_candidates(monkeypatch):
     assert len(data["candidates"]) == 1
     assert data["candidates"][0]["match_score"] == 95
     assert data["candidates"][0]["critique"] == "Top pick."
-    assert recorded[0][2] == ["2"]  # the AI-chosen film's id, matching what was returned
+    assert [r.film.id for r in recorded[0][2]] == ["2"]  # matches what was returned
 
 
 def test_recommend_empty_watchlist(monkeypatch):
@@ -365,3 +434,33 @@ def test_recommend_decision_null_score_and_critique_allowed(monkeypatch):
     response = client.post("/recommend/decision", json=body, headers=AUTH_HEADERS)
 
     assert response.status_code == 200
+
+
+def test_recommend_current_abandon_marks_remaining_as_skipped(monkeypatch):
+    calls = []
+    monkeypatch.setattr(
+        watch_history_repo,
+        "abandon_session",
+        lambda user_id, session_id: calls.append((user_id, session_id)),
+    )
+
+    response = client.post(
+        "/recommend/current/abandon",
+        json={"recommendation_session_id": "session-1"},
+        headers=AUTH_HEADERS,
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}
+    assert len(calls) == 1
+    assert calls[0][1] == "session-1"
+
+
+def test_recommend_current_abandon_requires_auth(monkeypatch):
+    monkeypatch.setattr(watch_history_repo, "abandon_session", lambda *a, **k: None)
+
+    response = client.post(
+        "/recommend/current/abandon", json={"recommendation_session_id": "session-1"}
+    )
+
+    assert response.status_code == 401

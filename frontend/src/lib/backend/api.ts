@@ -101,14 +101,18 @@ export interface RecommendResponse {
   recommendation_session_id: string;
 }
 
+export interface RecommendCurrentResponse extends RecommendResponse {
+  /** The answers that produced this session — lets the front retry with a
+   * fresh /recommend call if every resumed candidate gets skipped. */
+  answers: RecommendRequest;
+}
+
 export type RecommendDecision = "accepted" | "skipped";
 
 export interface RecommendDecisionRequest {
   recommendation_session_id: string;
   film_id: string;
   decision: RecommendDecision;
-  match_score: number | null;
-  critique: string | null;
 }
 
 export interface WatchlistFilterFilm {
@@ -166,5 +170,35 @@ export async function recordDecision(
       ...(token !== null ? { Authorization: `Bearer ${token}` } : {}),
     },
     body: JSON.stringify(body),
+  });
+}
+
+/** `null` means nothing is awaiting a decision (backend 404) — not an error. */
+export async function getCurrentRecommendation(
+  token: string | null,
+): Promise<RecommendCurrentResponse | null> {
+  try {
+    return await apiFetch<RecommendCurrentResponse>("/recommend/current", {
+      headers: {
+        ...(token !== null ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) return null;
+    throw error;
+  }
+}
+
+export async function abandonCurrentRecommendation(
+  recommendationSessionId: string,
+  token: string | null,
+): Promise<void> {
+  await apiFetch("/recommend/current/abandon", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token !== null ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ recommendation_session_id: recommendationSessionId }),
   });
 }

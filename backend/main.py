@@ -16,6 +16,7 @@ import reco_ai
 import scraper
 import tmdb
 from models import (
+    AbandonSessionRequest,
     RankedCandidate,
     RecommendDecisionRequest,
     RecommendRequest,
@@ -256,6 +257,15 @@ class RecommendResponse(BaseModel):
     recommendation_session_id: str
 
 
+class RecommendCurrentResponse(RecommendResponse):
+    """Body of GET /recommend/current — additionally carries the original
+    answers (stored per-row as `questions_context`), needed so the front can
+    retry with a fresh /recommend call if every resumed candidate gets
+    skipped, without ever having gone through Questions this session."""
+
+    answers: RecommendRequest
+
+
 def _to_recommended_film(ranked: RankedCandidate) -> dict:
     film = ranked.film
     return {
@@ -297,6 +307,47 @@ async def watchlist(user_id: str = Depends(get_current_user_id)):
     }
 
 
+@app.get("/recommend/current", response_model=RecommendCurrentResponse, tags=[TAG_RECOMMEND])
+async def recommend_current(user_id: str = Depends(get_current_user_id)):
+    """The user's most recent recommendation still awaiting a decision, if
+    any — lets the front resume a swipe deck after a reload or a lost
+    session without a new AI call. 404 means there's nothing pending; the
+    front falls back to Questions."""
+    pending = watch_history_repo.get_pending_session(user_id)
+    if pending is None:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "type": "no_pending_session",
+                "message": "No recommendation is awaiting a decision",
+            },
+        )
+    recommendation_session_id, rows = pending
+    candidates = [
+        {
+            "film_id": row["film_id"],
+            "title": row["films"]["title"],
+            "poster_url": row["films"]["poster_url"],
+            "year": row["films"]["year"],
+            "runtime": row["films"]["runtime"],
+            "overview": row["films"]["overview"],
+            "genres": row["films"]["genres"],
+            "origin_country": row["films"]["origin_country"],
+            "director": row["films"]["director"],
+            "rank": row["rank"],
+            "match_score": row["match_score"],
+            "critique": row["ai_critique"],
+        }
+        for row in rows
+    ]
+    return {
+        "candidates": candidates,
+        "meta": {"candidates_considered": len(candidates)},
+        "recommendation_session_id": recommendation_session_id,
+        "answers": rows[0]["questions_context"],
+    }
+
+
 @app.post("/recommend", response_model=RecommendResponse, tags=[TAG_RECOMMEND])
 async def recommend(
     body: RecommendRequest,
@@ -335,7 +386,7 @@ async def recommend(
     watch_history_repo.record_proposals(
         user_id,
         recommendation_session_id,
-        [r.film.id for r in ranked],
+        ranked,
         body.model_dump(),
     )
 
@@ -364,8 +415,6 @@ async def recommend_decision(
         body.recommendation_session_id,
         body.film_id,
         body.decision,
-        body.match_score,
-        body.critique,
     )
     if not found:
         raise HTTPException(
@@ -375,4 +424,19 @@ async def recommend_decision(
                 "message": "No pending proposal for this film — nothing to record",
             },
         )
+    return {"status": "ok"}
+
+
+@app.post(
+    "/recommend/current/abandon", response_model=RecommendDecisionResponse, tags=[TAG_RECOMMEND]
+)
+async def recommend_current_abandon(
+    body: AbandonSessionRequest,
+    user_id: str = Depends(get_current_user_id),
+):
+    """Explicit "Recommencer": marks every still-undecided candidate of this
+    session as skipped, so /recommend/current stops returning it. Always
+    succeeds — abandoning a session with nothing left to abandon (already
+    decided, or a stale id) is a no-op, not an error."""
+    watch_history_repo.abandon_session(user_id, body.recommendation_session_id)
     return {"status": "ok"}
