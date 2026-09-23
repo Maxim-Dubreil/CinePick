@@ -302,9 +302,10 @@ async def recommend(
     body: RecommendRequest,
     user_id: str = Depends(get_current_user_id),
 ):
-    """Pre-filter the user's watchlist, then either short-circuit (≤3
-    candidates, no AI) or proxy an AI call to rank up to 3 (CIN-49/CIN-78).
-    Records a "proposed" row per candidate before responding, so a later
+    """Pre-filter the user's watchlist, then proxy an AI call to rank up to 3
+    candidates (CIN-49/CIN-78) — always, down to a single remaining film, so
+    match_score/critique are populated regardless of subset size. Records a
+    "proposed" row per candidate before responding, so a later
     /recommend/decision call has something to verify against."""
     active_watchlist = watchlist_repo.get_active_watchlist(user_id)
     decision_history = watch_history_repo.get_decision_history(user_id)
@@ -322,20 +323,13 @@ async def recommend(
             detail={"type": "no_candidates", "message": "No film matches the selected filters"},
         ) from exc
 
-    if len(candidates) <= 3:
-        sorted_films = sorted(candidates, key=lambda f: f.added_at)
-        ranked = [
-            RankedCandidate(film=film, rank=i + 1, match_score=None, critique=None)
-            for i, film in enumerate(sorted_films)
-        ]
-    else:
-        try:
-            ranked = await reco_ai.pick_candidates(candidates, body)
-        except reco_ai.AIProviderError as exc:
-            raise HTTPException(
-                status_code=502,
-                detail={"type": "ai_error", "message": "The AI recommendation call failed"},
-            ) from exc
+    try:
+        ranked = await reco_ai.pick_candidates(candidates, body)
+    except reco_ai.AIProviderError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail={"type": "ai_error", "message": "The AI recommendation call failed"},
+        ) from exc
 
     recommendation_session_id = str(uuid4())
     watch_history_repo.record_proposals(
