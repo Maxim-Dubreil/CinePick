@@ -331,8 +331,9 @@ async def recommend_current(user_id: str = Depends(get_current_user_id)):
             "year": row["films"]["year"],
             "runtime": row["films"]["runtime"],
             "overview": row["films"]["overview"],
-            "genres": row["films"]["genres"],
-            "origin_country": row["films"]["origin_country"],
+            # Nullable for unenriched films — same coercion as WatchlistFilm.
+            "genres": row["films"]["genres"] or [],
+            "origin_country": row["films"]["origin_country"] or [],
             "director": row["films"]["director"],
             "rank": row["rank"],
             "match_score": row["match_score"],
