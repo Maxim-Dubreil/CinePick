@@ -130,5 +130,5 @@ messages) in French — currently hardcoded (no i18n layer).
 ## Key Conventions
 
 - **Package manager**: pnpm (frontend only; never npm/yarn)
-- **Python**: 3.12 (enforced in CI); Ruff line length 100
+- **Python**: 3.13 (enforced in CI); Ruff line length 100
 - **Tests**: backend mocks Supabase in `conftest.py` before importing `main`

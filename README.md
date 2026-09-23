@@ -15,8 +15,9 @@ A web app that analyzes a Letterboxd watchlist to recommend a movie through a qu
 
 ### Prerequisites
 
-- Node.js 22
-- Python 3.12
+- Node.js 24
+- pnpm 11.27.1
+- Python 3.13
 - Docker / Docker Desktop
 
 ### Environment variables
