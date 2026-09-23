@@ -53,6 +53,13 @@ function createInitialState(totalFilms: number): FlowState {
   };
 }
 
+function withoutFilter(
+  filters: AppliedFilter[],
+  questionId: QuestionId,
+): AppliedFilter[] {
+  return filters.filter((f) => f.questionId !== questionId);
+}
+
 function confirmAnswer(
   state: FlowState,
   films: FilterFilm[],
@@ -71,11 +78,15 @@ function confirmAnswer(
       questionId,
       test: buildFilterTest(questionId, answer),
     };
-    const candidateFilters = [...state.appliedFilters, candidateFilter];
+    // Re-answering after going back replaces this question's filter rather
+    // than stacking a second one on top of it.
+    const baseFilters = withoutFilter(state.appliedFilters, questionId);
+    const candidateFilters = [...baseFilters, candidateFilter];
     const candidateCount = countMatchingFilms(films, candidateFilters);
     if (candidateCount === 0) {
       fallbackNote = FALLBACK_NOTE;
-      filmCount = countMatchingFilms(films, state.appliedFilters);
+      appliedFilters = baseFilters;
+      filmCount = countMatchingFilms(films, baseFilters);
     } else {
       appliedFilters = candidateFilters;
       filmCount = candidateCount;
@@ -104,12 +115,13 @@ function previewMultiSelection(
   question: Question,
   selection: string[],
 ): Pick<FlowState, "filmCount" | "fallbackNote"> {
-  const baseCount = countMatchingFilms(films, state.appliedFilters);
+  const baseFilters = withoutFilter(state.appliedFilters, question.id);
+  const baseCount = countMatchingFilms(films, baseFilters);
   if (!question.hard || selection.length === 0) {
     return { filmCount: baseCount, fallbackNote: null };
   }
   const candidateFilters = [
-    ...state.appliedFilters,
+    ...baseFilters,
     { questionId: question.id, test: buildFilterTest(question.id, selection) },
   ];
   const candidateCount = countMatchingFilms(films, candidateFilters);
