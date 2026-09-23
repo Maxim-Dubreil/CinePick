@@ -1,5 +1,6 @@
 pytest==9.0.3
 pytest-cov==7.1.0
 pytest-asyncio==1.4.0
+httpx2==2.13.1
 ruff==0.16.8
 pyright==1.1.414
