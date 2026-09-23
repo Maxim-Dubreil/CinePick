@@ -12,9 +12,9 @@ export default defineConfig(({ mode }) => {
     resolve: {
       alias: {
         ...(env.VITE_MOCK_AUTH === "true" && {
-          "@/hooks/useAuth": path.resolve(__dirname, "./__mocks__/useAuth.ts"),
+          "@/hooks/useAuth": path.resolve(import.meta.dirname, "./__mocks__/useAuth.ts"),
         }),
-        "@": path.resolve(__dirname, "./src"),
+        "@": path.resolve(import.meta.dirname, "./src"),
       },
     },
   };
