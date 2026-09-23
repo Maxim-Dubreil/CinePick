@@ -66,6 +66,7 @@ jobs:
         with:
           files: frontend/coverage/lcov.info
           flags: frontend
+          token: ${{ secrets.CODECOV_TOKEN }}
 
   build:
     name: Build

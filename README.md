@@ -1,7 +1,7 @@
 # CinePick
 
-[![codecov](https://codecov.io/gh/Maxim-Dubreil/CinePick/branch/develop/graph/badge.svg?flag=backend)](https://codecov.io/gh/Maxim-Dubreil/CinePick)
-[![codecov](https://codecov.io/gh/Maxim-Dubreil/CinePick/branch/develop/graph/badge.svg?flag=frontend)](https://codecov.io/gh/Maxim-Dubreil/CinePick)
+[![backend coverage](https://img.shields.io/codecov/c/github/Maxim-Dubreil/CinePick/develop?flag=backend&label=backend%20coverage)](https://app.codecov.io/gh/Maxim-Dubreil/CinePick?flags%5B0%5D=backend)
+[![frontend coverage](https://img.shields.io/codecov/c/github/Maxim-Dubreil/CinePick/develop?flag=frontend&label=frontend%20coverage)](https://app.codecov.io/gh/Maxim-Dubreil/CinePick?flags%5B0%5D=frontend)
 
 A web app that analyzes a Letterboxd watchlist to recommend a movie through a question flow and AI.
 

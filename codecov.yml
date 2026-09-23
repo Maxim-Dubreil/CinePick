@@ -1,0 +1,12 @@
+# CI is path-filtered: a commit touching only one side uploads only that flag. Carryforward
+# reuses the last known report for the other flag so both badges stay populated.
+flag_management:
+  default_rules:
+    carryforward: true
+  individual_flags:
+    - name: backend
+      paths:
+        - backend/
+    - name: frontend
+      paths:
+        - frontend/
