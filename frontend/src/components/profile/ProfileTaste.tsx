@@ -64,7 +64,7 @@ export function ProfileTaste({ stats, loading }: ProfileTasteProps) {
                 {stats.topDirector !== null && (
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-sm text-[var(--text-secondary)]">
-                      Réalisateur le plus vu
+                      Réalisateur le plus choisi
                     </span>
                     <span className="text-sm font-medium text-[var(--text-primary)] truncate">
                       {stats.topDirector}

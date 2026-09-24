@@ -15,6 +15,8 @@ export interface RecommendationStats {
   topGenres: { name: string; pct: number }[];
   /** Up to 3 decades (e.g. "1990s"), most frequent first, among accepted films. */
   topDecades: string[];
+  /** Director of the most accepted films; null unless they account for at
+   * least 2 — below that every director ties at 1 and the pick is arbitrary. */
   topDirector: string | null;
   /** Average runtime (minutes) of accepted films, rounded; null with none. */
   averageRuntime: number | null;
@@ -80,6 +82,8 @@ function computeStats(rows: WatchHistoryStatsRow[]): RecommendationStats {
     if (film.runtime !== null) runtimes.push(film.runtime);
   }
 
+  const topDirector = topByCount(directorCounts, 1)[0];
+
   return {
     totalCount,
     acceptedCount,
@@ -89,7 +93,9 @@ function computeStats(rows: WatchHistoryStatsRow[]): RecommendationStats {
       pct: Math.round(((genreCounts.get(name) ?? 0) / acceptedCount) * 100),
     })),
     topDecades: topByCount(decadeCounts, 3),
-    topDirector: topByCount(directorCounts, 1)[0] ?? null,
+    topDirector: topDirector !== undefined && (directorCounts.get(topDirector) ?? 0) >= 2
+      ? topDirector
+      : null,
     averageRuntime:
       runtimes.length > 0
         ? Math.round(runtimes.reduce((sum, r) => sum + r, 0) / runtimes.length)
