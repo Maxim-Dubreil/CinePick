@@ -47,22 +47,55 @@ async def _search_movie_id(
     return results[0]["id"]
 
 
-def _parse_director(data: dict) -> str | None:
-    crew = data.get("credits", {}).get("crew", [])
-    for member in crew:
+def _parse_director(credits: dict) -> str | None:
+    for member in credits.get("crew", []):
         if member.get("job") == "Director":
             return member.get("name")
     return None
 
 
-async def _fetch_details(client: httpx.AsyncClient, tmdb_id: int) -> FilmEnrichment | None:
-    response = await client.get(
+def _parse_cast(credits: dict) -> list[str]:
+    """Up to 5 main cast names, TMDB billing order (`cast[].order`, already
+    ascending in the API response — sorted explicitly here rather than
+    relying on that)."""
+    cast = sorted(credits.get("cast", []), key=lambda member: member["order"])
+    return [member["name"] for member in cast[:5]]
+
+
+def _details_request(client: httpx.AsyncClient, tmdb_id: int):
+    return client.get(
         f"{_BASE_URL}/movie/{tmdb_id}",
-        params={"api_key": _api_key(), "append_to_response": "credits", "language": "fr-FR"},
+        params={"api_key": _api_key(), "language": "fr-FR"},
     )
-    if response.status_code != 200:
+
+
+def _credits_request(client: httpx.AsyncClient, tmdb_id: int):
+    """Cast/crew, fetched with no `language` param (TMDB defaults to
+    en-US) — deliberately separate from the details call's `language=fr-FR`.
+    TMDB falls back to a person's `original_name` (native script) when no
+    name translation exists for the requested locale, and that happens far
+    more often for `fr-FR` than `en-US` (e.g. many Japanese crew have no
+    French "known as" entry but do have an English/romanized one) — so
+    credits stay in Latin script even though the rest of the film's metadata
+    is fetched in French."""
+    return client.get(
+        f"{_BASE_URL}/movie/{tmdb_id}/credits",
+        params={"api_key": _api_key()},
+    )
+
+
+async def _fetch_details(client: httpx.AsyncClient, tmdb_id: int) -> FilmEnrichment | None:
+    # Run both requests concurrently — they're independent (credits doesn't
+    # need anything from the details response) — rather than adding a full
+    # extra sequential round trip per film on top of the search call that
+    # already precedes this.
+    details_response, credits_response = await asyncio.gather(
+        _details_request(client, tmdb_id), _credits_request(client, tmdb_id)
+    )
+    if details_response.status_code != 200:
         return None
-    data = response.json()
+    data = details_response.json()
+    credits = credits_response.json() if credits_response.status_code == 200 else {}
     poster_path = data.get("poster_path")
     return FilmEnrichment(
         tmdb_id=tmdb_id,
@@ -72,7 +105,8 @@ async def _fetch_details(client: httpx.AsyncClient, tmdb_id: int) -> FilmEnrichm
         origin_country=[c["iso_3166_1"] for c in data.get("production_countries", [])],
         overview=data.get("overview") or None,
         poster_url=_IMAGE_BASE_URL + poster_path if poster_path else None,
-        director=_parse_director(data),
+        director=_parse_director(credits),
+        actors=_parse_cast(credits),
     )
 
 

@@ -91,6 +91,7 @@ export interface RecommendedFilm {
   genres: string[];
   origin_country: string[];
   director: string | null;
+  actors: string[];
   rank: number;
   match_score: number | null;
   critique: string | null;
@@ -214,6 +215,20 @@ export async function getWatchProviders(
   token: string | null,
 ): Promise<WatchProvidersResponse> {
   return apiFetch(`/films/${tmdbId}/watch-providers`, {
+    headers: {
+      ...(token !== null ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+}
+
+export interface RatingResponse {
+  /** TMDB's average vote out of 10, or `null` when it has no votes yet for
+   * this film. */
+  vote_average: number | null;
+}
+
+export async function getRating(tmdbId: number, token: string | null): Promise<RatingResponse> {
+  return apiFetch(`/films/${tmdbId}/rating`, {
     headers: {
       ...(token !== null ? { Authorization: `Bearer ${token}` } : {}),
     },

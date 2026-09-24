@@ -16,6 +16,7 @@ import filtering
 import reco_ai
 import scraper
 import tmdb
+import tmdb_rating
 import watch_providers
 from models import (
     AbandonSessionRequest,
@@ -27,6 +28,7 @@ from models import (
 from repositories import watch_history as watch_history_repo
 from repositories import watchlist as watchlist_repo
 from supabase_client import supabase
+from tmdb_rating import RatingResponse
 from watch_providers import WatchProvidersResponse
 
 logger = logging.getLogger(__name__)
@@ -247,6 +249,7 @@ class RecommendedFilm(BaseModel):
     genres: list[str]
     origin_country: list[str]
     director: str | None
+    actors: list[str]
     rank: int
     match_score: int | None
     critique: str | None
@@ -284,6 +287,7 @@ def _to_recommended_film(ranked: RankedCandidate) -> dict:
         "genres": film.genres,
         "origin_country": film.origin_country,
         "director": film.director,
+        "actors": film.actors,
         "rank": ranked.rank,
         "match_score": ranked.match_score,
         "critique": ranked.critique,
@@ -342,6 +346,7 @@ async def recommend_current(user_id: str = Depends(get_current_user_id)):
             "genres": row["films"]["genres"] or [],
             "origin_country": row["films"]["origin_country"] or [],
             "director": row["films"]["director"],
+            "actors": row["films"]["actors"] or [],
             "rank": row["rank"],
             "match_score": row["match_score"],
             "critique": row["ai_critique"],
@@ -476,4 +481,24 @@ async def films_watch_providers(
         return await watch_providers.get_watch_providers(tmdb_id)
     except httpx.HTTPError as exc:
         logger.warning("TMDB watch-providers lookup failed for tmdb_id=%s: %s", tmdb_id, exc)
+        raise HTTPException(status_code=502, detail="Could not reach TMDB") from exc
+
+
+@app.get(
+    "/films/{tmdb_id}/rating",
+    response_model=RatingResponse,
+    tags=[TAG_FILMS],
+)
+async def films_rating(
+    tmdb_id: int,
+    user_id: str = Depends(get_current_user_id),
+):
+    """TMDB rating for a film (CIN-104) — live-fetched, never persisted (see
+    `tmdb_rating.py`). Same error contract as `/films/{tmdb_id}/watch-providers`:
+    a TMDB/network failure raises 502, a bug inside `get_rating` itself
+    surfaces as a 500 via `CatchAllMiddleware`."""
+    try:
+        return await tmdb_rating.get_rating(tmdb_id)
+    except httpx.HTTPError as exc:
+        logger.warning("TMDB rating lookup failed for tmdb_id=%s: %s", tmdb_id, exc)
         raise HTTPException(status_code=502, detail="Could not reach TMDB") from exc

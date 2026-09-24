@@ -70,6 +70,10 @@ class FilmEnrichment(BaseModel):
     """Name of the film's director, from `credits.crew` — `None` when TMDB
     has no crew entry with `job == "Director"`."""
 
+    actors: list[str] = Field(default_factory=list)
+    """Up to 5 main cast names, from `credits.cast`, billing order — empty
+    when TMDB has no cast entry."""
+
 
 class EnrichedFilm(BaseModel):
     """A scraped film merged with its (optional) TMDB enrichment.
@@ -90,6 +94,7 @@ class EnrichedFilm(BaseModel):
     origin_country: list[str] = Field(default_factory=list)
     overview: str | None = None
     director: str | None = None
+    actors: list[str] = Field(default_factory=list)
 
 
 class WatchlistFilm(BaseModel):
@@ -111,15 +116,16 @@ class WatchlistFilm(BaseModel):
     origin_country: list[str] = Field(default_factory=list)
     overview: str | None = None
     director: str | None = None
+    actors: list[str] = Field(default_factory=list)
     added_at: datetime
     """When this film was added to the user's watchlist."""
 
-    @field_validator("genres", "origin_country", mode="before")
+    @field_validator("genres", "origin_country", "actors", mode="before")
     @classmethod
     def _null_array_to_empty(cls, value: object) -> object:
-        """`films.genres`/`origin_country` are nullable: PostgREST writes an
-        explicit NULL for unenriched films in a mixed upsert batch (see
-        backend/db/schema.sql and test_upsert_films_mixed_batch_against_real_db)."""
+        """`films.genres`/`origin_country`/`actors` are nullable: PostgREST
+        writes an explicit NULL for unenriched films in a mixed upsert batch
+        (see backend/db/schema.sql and test_upsert_films_mixed_batch_against_real_db)."""
         return [] if value is None else value
 
 

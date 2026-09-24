@@ -182,6 +182,7 @@ describe("getRecommendation", () => {
           genres: ["35"],
           origin_country: ["FR"],
           director: null,
+          actors: [],
           rank: 1,
           match_score: 87,
           critique: "Bon choix",

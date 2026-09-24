@@ -47,7 +47,8 @@ erDiagram
         int4 runtime "peut etre 0 ou null sur TMDB : traiter comme non-filtrable plutot qu'exclu du filtre duree"
         text overview
         text_array origin_country "pays de production, PAS la langue - piege : un film UK a origin_country=GB mais original_language=en, filtrer sur la langue confond UK et US. NULLABLE (obligatoire malgre le default '{}') : un sync qui melange films enrichis et non-enrichis dans le meme upsert PostgREST envoie une valeur explicite NULL pour les lignes qui omettent la colonne des qu'une autre ligne du meme batch la fournit - une contrainte NOT NULL fait planter tout le sync (voir migration films_origin_country_nullable, backend/tests/test_watchlist_repository.py::test_upsert_films_mixed_batch_against_real_db)"
-        text director "nom du realisateur, depuis TMDB credits.crew - nullable, meme regle d'ecriture best-effort que les quatre autres colonnes d'enrichissement"
+        text director "nom du realisateur, depuis TMDB credits.crew - nullable, meme regle d'ecriture best-effort que les autres colonnes d'enrichissement"
+        array actors "jusqu'a 5 noms d'acteurs principaux, depuis TMDB credits.cast (ordre de billing) - nullable, meme regle d'ecriture best-effort et meme piege NULL-en-batch-mixte que genres/origin_country"
         timestamptz created_at
     }
     USER_WATCHLIST_ITEMS {
@@ -77,7 +78,7 @@ Trois données existent dans le produit mais n'ont **aucune colonne** — décis
 | --------------------------------------- | --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
 | `providers` (dispo streaming)           | Résultat, détail Historique             | Refetch TMDB à chaque affichage — donnée trop volatile pour qu'un cache serve à quelque chose                           |
 | `trailer_url`                           | Résultat (prévu, pas encore implémenté) | Même traitement que `providers`, jamais lu depuis une colonne                                                           |
-| Note TMDB (`vote_average`/`vote_count`) | Nulle part actuellement                 | Envisagée puis retirée : jamais affichée sur Résultat, toujours refetchée ailleurs — une colonne écrite mais jamais lue |
+| Note TMDB (`vote_average`)              | Résultat, détail Historique ([CIN-104](https://linear.app/maximdubreil/issue/CIN-104)) | Même traitement que `providers` : une note change trop souvent pour être persistée durablement, toujours en fetch live |
 
 **Règle générale à appliquer avant d'ajouter une colonne** : une donnée ne mérite une colonne que si elle est lue quelque part sans repasser par un appel API externe. Si la réponse est "on la refetch de toute façon à chaque fois qu'on l'affiche", pas de colonne.
 
@@ -95,5 +96,5 @@ Si tu modifies ce schéma ou le code qui l'utilise, vérifie que :
 4. `watch_history.decision` n'accepte que `'proposed'`/`'accepted'`/`'skipped'` (contrainte `CHECK` existante) — pas `'declined'` ni d'autre variante. `/recommend` insère les lignes en `'proposed'` ; `/recommend/decision` les fait passer à `'accepted'`/`'skipped'`, ce qui vérifie que le film a réellement été proposé avant d'accepter une décision dessus
 5. Aucune table de session n'est ajoutée pour stocker l'état du flow Questions → Résultat — ça doit rester du state front
 6. La table `watch_history` a désormais une policy RLS `UPDATE` (en plus d'insert/select), nécessaire pour que `/recommend/decision` puisse faire transitionner une ligne `'proposed'`
-7. `films.tmdb_id`, `genres`, `runtime`, `origin_country` restent tous les quatre NULLABLE — ne jamais remettre de contrainte `NOT NULL` dessus (voir le commentaire sur `origin_country` ci-dessus pour le pourquoi)
-8. `repositories/watchlist.py::upsert_films` n'écrit ces quatre colonnes que si le film a été enrichi (`tmdb_id is not None`) — un échec d'enrichissement TMDB ne doit jamais écraser une valeur déjà connue dans ce cache partagé entre tous les users
+7. `films.tmdb_id`, `genres`, `runtime`, `origin_country`, `director`, `actors` restent tous NULLABLE — ne jamais remettre de contrainte `NOT NULL` dessus (voir le commentaire sur `origin_country` ci-dessus pour le pourquoi)
+8. `repositories/watchlist.py::upsert_films` (`_ENRICHMENT_FIELDS`) n'écrit ces colonnes que si le film a été enrichi (`tmdb_id is not None`) — un échec d'enrichissement TMDB ne doit jamais écraser une valeur déjà connue dans ce cache partagé entre tous les users

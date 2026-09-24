@@ -49,6 +49,7 @@ export function FilmDetailModal({ entry, onOpenChange }: FilmDetailModalProps) {
                 overview: entry.overview,
                 genres: entry.genreIds,
                 director: entry.director,
+                actors: entry.actors,
                 match_score: entry.matchScore,
                 critique: entry.aiSummary,
               }}

@@ -22,13 +22,13 @@ Appelé à la soumission du formulaire dans la modale Letterboxd (avant le bouto
 
 ### `POST /letterboxd/sync`
 
-Déclenché par le bouton "Synchroniser" (Profil / bannière Home). Nécessite un token utilisateur (`Authorization: Bearer`). Scrape la watchlist Letterboxd (toutes les pages), upsert les films dans `films` (dédupliqué par `letterboxd_slug`), applique l'enrichissement TMDB (`genres`, `runtime`, `origin_country`, `overview`, `director`), reconcilie `user_watchlist_items` via la fonction SQL `sync_user_watchlist` (nouveaux films ajoutés, `removed_at` renseigné sur les films disparus — soft delete, une seule transaction).
+Déclenché par le bouton "Synchroniser" (Profil / bannière Home). Nécessite un token utilisateur (`Authorization: Bearer`). Scrape la watchlist Letterboxd (toutes les pages), upsert les films dans `films` (dédupliqué par `letterboxd_slug`), applique l'enrichissement TMDB (`genres`, `runtime`, `origin_country`, `overview`, `director`, `actors`), reconcilie `user_watchlist_items` via la fonction SQL `sync_user_watchlist` (nouveaux films ajoutés, `removed_at` renseigné sur les films disparus — soft delete, une seule transaction).
 
 - **Enrichissement best-effort** : un échec TMDB sur un film (pas de match, timeout, réponse
   malformée) n'annule jamais tout le sync — le film reste juste non enrichi. Un échec
   n'écrase **jamais** une valeur déjà connue dans `films` (cache partagé entre tous les users) :
-  `repositories/watchlist.py::upsert_films` n'écrit `tmdb_id`/`genres`/`runtime`/`origin_country`
-  que si l'enrichissement a réussi pour ce film sur ce sync.
+  `repositories/watchlist.py::upsert_films` n'écrit `tmdb_id`/`genres`/`runtime`/`origin_country`/
+  `director`/`actors` que si l'enrichissement a réussi pour ce film sur ce sync.
 - **Piège PostgREST** : ces colonnes doivent rester `NULLABLE` en base, sinon un batch qui mélange
   films enrichis et non-enrichis fait planter le sync entier (voir `docs/db-schema.md`).
 
@@ -68,7 +68,7 @@ Un nouvel appel à `/recommend` (même body, mêmes films déjà proposés exclu
 | --------------- | ------------------------------------------------------------------------------------------------------------------------ |
 | Auth            | Requis                                                                                                                    |
 | Body            | 9 champs du questionnaire — voir `RecommendRequest` dans `backend/models.py` et [Specs Questions](./questions.md)         |
-| Réponse         | `{ candidates: [{ film_id, tmdb_id, title, poster_url, year, runtime, overview, genres, origin_country, director, rank, match_score, critique }], meta: { candidates_considered }, recommendation_session_id }` |
+| Réponse         | `{ candidates: [{ film_id, tmdb_id, title, poster_url, year, runtime, overview, genres, origin_country, director, actors, rank, match_score, critique }], meta: { candidates_considered }, recommendation_session_id }` |
 | Erreurs typées  | `422 empty_watchlist` / `422 no_candidates` / `502 ai_error`                                                              |
 | Appels externes | Gemini, dès qu'au moins 1 candidat reste après filtrage                                                                   |
 | Détail complet  | [Specs AI](./ai.md)                                                                                                       |
@@ -122,6 +122,20 @@ Distinction volontaire entre "pas de film disponible" et "TMDB injoignable" : un
 | Auth            | Requis                                                                                                                    |
 | Réponse         | `{ providers: [{ provider_id, name, logo_url, category: "free" \| "subscription" \| "rent_buy", ads: boolean }], link: string \| null }` |
 | Erreurs typées  | `502` — TMDB injoignable ou en erreur                                                                                     |
+
+### `GET /films/{tmdb_id}/rating`
+
+Note TMDB d'un film ([CIN-104](https://linear.app/maximdubreil/issue/CIN-104), étape 1 — TMDB seul, la multi-plateforme viendra ensuite). Appelle `GET /movie/{tmdb_id}` de TMDB et lit `vote_average`/`vote_count`, sans recalcul ni pondération : la note brute TMDB, juste formatée côté front (1 décimale, virgule FR).
+
+Même pattern que `/films/{tmdb_id}/watch-providers` : aucun stockage en base (une note change trop souvent pour être persistée durablement, voir [docs/db-schema.md](../db-schema.md)), mise en cache **en mémoire process** via le même `TTLCache` générique (`backend/tmdb_rating.py`, TTL 6h), seuls les résultats réussis sont cachés.
+
+`vote_average` vaut `null` quand TMDB n'a encore aucun vote pour ce film (`vote_count == 0`) — distingué d'une vraie note de 0/10 — ou quand le lookup a échoué côté front (même comportement masqué que les watch providers).
+
+|                 |                                                        |
+| --------------- | ------------------------------------------------------ |
+| Auth            | Requis                                                  |
+| Réponse         | `{ vote_average: number \| null }`                      |
+| Erreurs typées  | `502` — TMDB injoignable ou en erreur                   |
 | Appels externes | TMDB, si le film n'est pas déjà en cache (TTL 6h)                                                                         |
 
 Région FR uniquement pour l'instant (l'app est 100% francophone) — voir [CIN-112](https://linear.app/maximdubreil/issue/CIN-112) pour la détection de région quand l'app passera à l'international.

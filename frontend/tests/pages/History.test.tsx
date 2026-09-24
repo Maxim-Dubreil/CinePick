@@ -24,6 +24,7 @@ const entry: HistoryEntry = {
   genreIds: ["12"],
   runtime: 117,
   director: null,
+  actors: [],
   matchScore: null,
   decision: "accepted",
   decidedAt: "2026-09-18T12:00:00.000Z",

@@ -61,6 +61,7 @@ create table films (
   origin_country text[] default '{}'::text[],
   overview text,
   director text,
+  actors text[],
   created_at timestamptz default now()
 );
 

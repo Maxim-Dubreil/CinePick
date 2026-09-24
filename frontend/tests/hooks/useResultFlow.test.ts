@@ -51,6 +51,7 @@ function film(overrides: Partial<RecommendedFilm> = {}): RecommendedFilm {
     genres: [],
     origin_country: [],
     director: null,
+    actors: [],
     rank: 1,
     match_score: null,
     critique: null,

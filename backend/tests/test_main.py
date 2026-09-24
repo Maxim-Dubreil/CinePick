@@ -8,11 +8,13 @@ import main as main_module
 import reco_ai
 import scraper
 import tmdb
+import tmdb_rating
 import watch_providers
 from main import app
 from models import Film, RankedCandidate, WatchlistFilm
 from repositories import watch_history as watch_history_repo
 from repositories import watchlist as watchlist_repo
+from tmdb_rating import RatingResponse
 from watch_providers import WatchProvider, WatchProvidersResponse
 
 client = TestClient(app)
@@ -278,6 +280,7 @@ def test_recommend_current_returns_pending_candidates(monkeypatch):
                 "genres": ["35"],
                 "origin_country": ["US"],
                 "director": None,
+                "actors": None,
             },
         }
     ]
@@ -303,6 +306,7 @@ def test_recommend_current_returns_pending_candidates(monkeypatch):
             "genres": ["35"],
             "origin_country": ["US"],
             "director": None,
+            "actors": [],
             "rank": 1,
             "match_score": 88,
             "critique": "Belle pioche.",
@@ -332,6 +336,7 @@ def test_recommend_calls_ai_even_with_two_candidates(monkeypatch):
             "genres": ["35"],
             "origin_country": ["US"],
             "director": None,
+            "actors": [],
             "rank": 1,
             "match_score": 88,
             "critique": "Belle pioche.",
@@ -544,5 +549,66 @@ def test_films_watch_providers_requires_auth(monkeypatch):
     )
 
     response = client.get("/films/238/watch-providers")
+
+    assert response.status_code == 401
+
+
+def test_films_rating_nominal(monkeypatch):
+    async def fake(tmdb_id, **kwargs):
+        assert tmdb_id == 238
+        return RatingResponse(vote_average=8.7)
+
+    monkeypatch.setattr(tmdb_rating, "get_rating", fake)
+
+    response = client.get("/films/238/rating", headers=AUTH_HEADERS)
+
+    assert response.status_code == 200
+    assert response.json() == {"vote_average": 8.7}
+
+
+def test_films_rating_no_votes_is_200(monkeypatch):
+    async def fake(tmdb_id, **kwargs):
+        return RatingResponse(vote_average=None)
+
+    monkeypatch.setattr(tmdb_rating, "get_rating", fake)
+
+    response = client.get("/films/999/rating", headers=AUTH_HEADERS)
+
+    assert response.status_code == 200
+    assert response.json() == {"vote_average": None}
+
+
+def test_films_rating_tmdb_failure_is_502(monkeypatch):
+    async def fake(tmdb_id, **kwargs):
+        raise httpx.ConnectTimeout("timed out")
+
+    monkeypatch.setattr(tmdb_rating, "get_rating", fake)
+
+    response = client.get("/films/238/rating", headers=AUTH_HEADERS)
+
+    assert response.status_code == 502
+
+
+def test_films_rating_internal_bug_is_500_not_502(monkeypatch):
+    """A bug inside `get_rating` itself (not a TMDB/network issue) must not
+    be mislabeled as "TMDB is down" — it should surface as a plain 500 via
+    `CatchAllMiddleware`, so it's visible in logs as a real bug."""
+
+    async def fake(tmdb_id, **kwargs):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(tmdb_rating, "get_rating", fake)
+
+    response = client.get("/films/238/rating", headers=AUTH_HEADERS)
+
+    assert response.status_code == 500
+
+
+def test_films_rating_requires_auth(monkeypatch):
+    monkeypatch.setattr(
+        tmdb_rating, "get_rating", lambda *a, **k: RatingResponse(vote_average=8.7)
+    )
+
+    response = client.get("/films/238/rating")
 
     assert response.status_code == 401

@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
+import { Star } from "lucide-react";
 import { Badge, Skeleton } from "@/components/ui";
 import { FilmPoster } from "@/components/FilmPoster";
 import { WatchProvidersBlock } from "@/components/WatchProvidersBlock";
@@ -6,12 +7,18 @@ import { genreLabels } from "@/lib/genres";
 import { cn } from "@/lib/utils";
 import type { RecommendedFilm } from "@/lib/backend/api";
 import { useAuth } from "@/hooks/useAuth";
+import { useRating } from "@/hooks/useRating";
 import { useWatchProviders } from "@/hooks/useWatchProviders";
 
-/** How long the card holds itself back waiting for watch providers before
- * showing anyway (the streaming block then keeps its own skeleton until TMDB
- * answers). */
+/** How long the card holds itself back waiting for watch providers/rating
+ * before showing anyway (each block then keeps its own skeleton, or hides
+ * itself, until TMDB answers). */
 const PROVIDERS_MAX_WAIT_MS = 1000;
+
+/** `vote_average` out of 10, French locale (comma, 1 decimal) — e.g. 8.7 -> "8,7/10". */
+function formatRating(voteAverage: number): string {
+  return `${voteAverage.toFixed(1).replace(".", ",")}/10`;
+}
 
 // Same box treatment as ui/dialog.tsx DialogContent (rounded-xl, bg-popover,
 // ring-foreground/10) — deliberately not the translucent --glass-bg Card
@@ -32,6 +39,7 @@ export type FilmCardFilm = Pick<
   | "overview"
   | "genres"
   | "director"
+  | "actors"
   | "match_score"
   | "critique"
 >;
@@ -52,6 +60,23 @@ function SectionLabel({ children }: { children: string }) {
     <h3 className="text-xs font-medium uppercase tracking-wide text-[var(--text-tertiary)]">
       {children}
     </h3>
+  );
+}
+
+/** Same label treatment as `MetaField`, but the value stands out (amber
+ * star, bold) — a rating reads differently from plain facts like year or
+ * runtime. */
+function RatingField({ voteAverage }: { voteAverage: number }) {
+  return (
+    <div className="flex flex-col gap-0.5">
+      <span className="text-xs font-medium uppercase tracking-wide text-[var(--text-tertiary)]">
+        Note TMDB
+      </span>
+      <span className="flex items-center gap-1 text-sm font-semibold text-[var(--warning)]">
+        <Star className="size-3.5 fill-current" />
+        {formatRating(voteAverage)}
+      </span>
+    </div>
   );
 }
 
@@ -101,6 +126,7 @@ export function FilmCard({ film, status, className, onReadyChange }: FilmCardPro
   const genres = genreLabels(film.genres);
   const { session } = useAuth();
   const watchProviders = useWatchProviders(film.tmdb_id, session?.access_token ?? null);
+  const rating = useRating(film.tmdb_id, session?.access_token ?? null);
 
   // Tagged with the film it fired for, so moving to another film (Result's
   // "Passer", reopening the history popup) starts a fresh wait.
@@ -112,7 +138,7 @@ export function FilmCard({ film, status, className, onReadyChange }: FilmCardPro
     return () => clearTimeout(timer);
   }, [film.tmdb_id]);
 
-  const ready = !watchProviders.loading || timedOutFor === film.tmdb_id;
+  const ready = (!watchProviders.loading && !rating.loading) || timedOutFor === film.tmdb_id;
   useEffect(() => {
     onReadyChange?.(ready);
   }, [ready, onReadyChange]);
@@ -151,10 +177,29 @@ export function FilmCard({ film, status, className, onReadyChange }: FilmCardPro
           </div>
         )}
 
+        {film.actors.length > 0 && (
+          <div className="flex flex-col gap-0.5">
+            <span className="text-xs font-medium uppercase tracking-wide text-[var(--text-tertiary)]">
+              Avec
+            </span>
+            <p className="text-sm text-[var(--text-secondary)]">{film.actors.join(", ")}</p>
+          </div>
+        )}
+
         <div className="flex flex-wrap gap-x-8 gap-y-3">
           {film.year !== null && <MetaField label="Année" value={String(film.year)} />}
           {genres.length > 0 && <MetaField label="Genre" value={genres.join(", ")} />}
           {film.runtime !== null && <MetaField label="Durée" value={`${film.runtime} min`} />}
+          {rating.loading ? (
+            <div className="flex flex-col gap-0.5">
+              <span className="text-xs font-medium uppercase tracking-wide text-[var(--text-tertiary)]">
+                Note TMDB
+              </span>
+              <Skeleton className="h-5 w-12" />
+            </div>
+          ) : (
+            rating.voteAverage !== null && <RatingField voteAverage={rating.voteAverage} />
+          )}
         </div>
 
         {film.overview !== null && (

@@ -20,6 +20,7 @@ export interface HistoryEntry {
   genreIds: string[];
   runtime: number | null;
   director: string | null;
+  actors: string[];
   matchScore: number | null;
   decision: HistoryDecision;
   decidedAt: string;
@@ -41,6 +42,7 @@ interface WatchHistoryRow {
     year: number | null;
     runtime: number | null;
     director: string | null;
+    actors: string[] | null;
     genres: string[] | null;
     overview: string | null;
   } | null;
@@ -59,6 +61,7 @@ function rowToEntry(row: WatchHistoryRow): HistoryEntry {
     genreIds: film?.genres ?? [],
     runtime: film?.runtime ?? null,
     director: film?.director ?? null,
+    actors: film?.actors ?? [],
     matchScore: row.match_score,
     decision: row.decision,
     decidedAt: row.decided_at,
@@ -107,7 +110,7 @@ export function useHistory(
     supabase
       .from("watch_history")
       .select(
-        "id, film_id, decision, decided_at, ai_critique, match_score, films(tmdb_id, title, poster_url, year, runtime, director, genres, overview)",
+        "id, film_id, decision, decided_at, ai_critique, match_score, films(tmdb_id, title, poster_url, year, runtime, director, actors, genres, overview)",
         { count: "exact" },
       )
       .eq("user_id", userId)

@@ -3,13 +3,14 @@ import { act, render, screen } from "@testing-library/react";
 import { FilmCard } from "@/components/result/FilmCard";
 import type { RecommendedFilm } from "@/lib/backend/api";
 
-const { getWatchProvidersMock } = vi.hoisted(() => ({
+const { getWatchProvidersMock, getRatingMock } = vi.hoisted(() => ({
   getWatchProvidersMock: vi.fn(),
+  getRatingMock: vi.fn(),
 }));
 
 vi.mock("@/lib/backend/api", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/backend/api")>();
-  return { ...actual, getWatchProviders: getWatchProvidersMock };
+  return { ...actual, getWatchProviders: getWatchProvidersMock, getRating: getRatingMock };
 });
 
 vi.mock("@/hooks/useAuth", () => ({
@@ -27,6 +28,7 @@ const baseFilm: RecommendedFilm = {
   genres: ["878"],
   origin_country: ["US"],
   director: "Ridley Scott",
+  actors: [],
   rank: 1,
   match_score: null,
   critique: null,
@@ -68,6 +70,7 @@ describe("FilmCard watch providers gate", () => {
 
   beforeEach(() => {
     getWatchProvidersMock.mockReset();
+    getRatingMock.mockReset();
   });
 
   afterEach(() => {
@@ -76,6 +79,7 @@ describe("FilmCard watch providers gate", () => {
 
   it("shows a skeleton, not the card, while watch providers load", () => {
     getWatchProvidersMock.mockReturnValue(new Promise(() => {}));
+    getRatingMock.mockReturnValue(new Promise(() => {}));
     const onReadyChange = vi.fn();
     render(<FilmCard film={enrichedFilm} onReadyChange={onReadyChange} />);
 
@@ -85,6 +89,7 @@ describe("FilmCard watch providers gate", () => {
 
   it("shows the whole card at once when watch providers resolve", async () => {
     getWatchProvidersMock.mockResolvedValue({ providers: [], link: null });
+    getRatingMock.mockResolvedValue({ vote_average: null });
     const onReadyChange = vi.fn();
     render(<FilmCard film={enrichedFilm} onReadyChange={onReadyChange} />);
 
@@ -96,6 +101,7 @@ describe("FilmCard watch providers gate", () => {
   it("shows the card after the max wait even if TMDB never answers", () => {
     vi.useFakeTimers();
     getWatchProvidersMock.mockReturnValue(new Promise(() => {}));
+    getRatingMock.mockReturnValue(new Promise(() => {}));
     const onReadyChange = vi.fn();
     render(<FilmCard film={enrichedFilm} onReadyChange={onReadyChange} />);
 
