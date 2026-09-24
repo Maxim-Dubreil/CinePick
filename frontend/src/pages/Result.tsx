@@ -111,8 +111,12 @@ function ResumeCheck({ authLoading, token, onAccepted }: ResumeCheckProps) {
 
   if (pending === "checking") {
     return (
+      // `justify-[safe_center]` (not `justify-center`): plain center alignment
+      // makes content taller than the viewport un-scrollable past its top —
+      // `safe` falls back to start-alignment instead of centering into
+      // negative, unreachable space.
       <div
-        className="relative flex h-full flex-col items-center justify-center gap-6 px-6"
+        className="relative flex h-full flex-col items-center justify-[safe_center] gap-6 px-6 py-6"
         aria-live="polite"
       >
         <LoadingSteps />
@@ -156,8 +160,11 @@ function ResultFlowScreen({ start, onAccepted }: ResultFlowScreenProps) {
   }, [onAccepted]);
 
   return (
+    // `justify-[safe_center]`: the film card can be taller than the
+    // viewport (15" laptops especially) — plain `justify-center` would
+    // center it into space above the fold that the scrollbar can't reach.
     <div
-      className="relative flex h-full flex-col items-center justify-center gap-6 px-6"
+      className="relative flex h-full flex-col items-center justify-[safe_center] gap-6 px-6 py-6"
       aria-live="polite"
     >
       {flow.phase === "loading" && <LoadingSteps />}
