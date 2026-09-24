@@ -66,10 +66,13 @@ one `pageLoading = a || b || c` and pass that single flag down to every section 
 section's own hook loading. All sections mount already in their skeleton state and swap to real
 content together, in one paint, once everything is ready — never section-by-section as each hook
 happens to resolve, which reads as the page "jumping" repeatedly. See
-[Profile.tsx](src/pages/Profile.tsx) for the pattern. Exception: a secondary/enrichment block
-backed by a slower or less reliable external API (e.g. TMDB watch providers via
-`useWatchProviders`) stays outside the page gate and keeps its own independent skeleton — waiting
-on it would hold the whole page hostage to a third-party API's latency.
+[Profile.tsx](src/pages/Profile.tsx) for the pattern.
+
+A secondary/enrichment block backed by a slower or less reliable external API (e.g. TMDB watch
+providers via `useWatchProviders`) may join the gate, but only with a **bounded wait**: past a max
+delay, reveal the rest anyway and let that block fall back to its own skeleton — an unbounded wait
+would hold the whole view hostage to a third-party API's latency. See
+[FilmCard.tsx](src/components/result/FilmCard.tsx) (`PROVIDERS_MAX_WAIT_MS`).
 
 ## Quality
 

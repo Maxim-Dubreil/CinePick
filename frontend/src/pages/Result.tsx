@@ -144,6 +144,7 @@ function ResultFlowScreen({ start, onAccepted }: ResultFlowScreenProps) {
     session?.access_token ?? null,
     !authLoading,
   );
+  const [cardReady, setCardReady] = useState(false);
 
   // The "accepted" screen can be left through several exits (this button,
   // the topbar logo, "Aujourd'hui") — not just onBackHome below — so the
@@ -171,11 +172,11 @@ function ResultFlowScreen({ start, onAccepted }: ResultFlowScreenProps) {
 
       {flow.phase === "card" && flow.currentFilm && (
         <>
-          <FilmCard film={flow.currentFilm} />
+          <FilmCard film={flow.currentFilm} onReadyChange={setCardReady} />
           <DecisionButtons
             onAccept={flow.onAccept}
             onSkip={flow.onSkip}
-            disabled={flow.deciding}
+            disabled={flow.deciding || !cardReady}
           />
           {flow.resumed && (
             <button

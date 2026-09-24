@@ -1,7 +1,16 @@
-import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { act, render, screen } from "@testing-library/react";
 import { FilmCard } from "@/components/result/FilmCard";
 import type { RecommendedFilm } from "@/lib/backend/api";
+
+const { getWatchProvidersMock } = vi.hoisted(() => ({
+  getWatchProvidersMock: vi.fn(),
+}));
+
+vi.mock("@/lib/backend/api", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/backend/api")>();
+  return { ...actual, getWatchProviders: getWatchProvidersMock };
+});
 
 vi.mock("@/hooks/useAuth", () => ({
   useAuth: () => ({ session: null }),
@@ -51,5 +60,67 @@ describe("FilmCard", () => {
     expect(
       screen.getByText("Un choix parfait pour ce soir."),
     ).toBeInTheDocument();
+  });
+});
+
+describe("FilmCard watch providers gate", () => {
+  const enrichedFilm: RecommendedFilm = { ...baseFilm, tmdb_id: 78 };
+
+  beforeEach(() => {
+    getWatchProvidersMock.mockReset();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("shows a skeleton, not the card, while watch providers load", () => {
+    getWatchProvidersMock.mockReturnValue(new Promise(() => {}));
+    const onReadyChange = vi.fn();
+    render(<FilmCard film={enrichedFilm} onReadyChange={onReadyChange} />);
+
+    expect(screen.queryByText("Blade Runner")).not.toBeInTheDocument();
+    expect(onReadyChange).toHaveBeenLastCalledWith(false);
+  });
+
+  it("shows the whole card at once when watch providers resolve", async () => {
+    getWatchProvidersMock.mockResolvedValue({ providers: [], link: null });
+    const onReadyChange = vi.fn();
+    render(<FilmCard film={enrichedFilm} onReadyChange={onReadyChange} />);
+
+    expect(await screen.findByText("Blade Runner")).toBeInTheDocument();
+    expect(screen.getByText("Pas disponible en streaming en France")).toBeInTheDocument();
+    expect(onReadyChange).toHaveBeenLastCalledWith(true);
+  });
+
+  it("shows the card after the max wait even if TMDB never answers", () => {
+    vi.useFakeTimers();
+    getWatchProvidersMock.mockReturnValue(new Promise(() => {}));
+    const onReadyChange = vi.fn();
+    render(<FilmCard film={enrichedFilm} onReadyChange={onReadyChange} />);
+
+    act(() => {
+      vi.advanceTimersByTime(999);
+    });
+    expect(screen.queryByText("Blade Runner")).not.toBeInTheDocument();
+
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
+    expect(screen.getByText("Blade Runner")).toBeInTheDocument();
+    // The streaming block itself is still loading: no result text yet.
+    expect(
+      screen.queryByText("Pas disponible en streaming en France"),
+    ).not.toBeInTheDocument();
+    expect(onReadyChange).toHaveBeenLastCalledWith(true);
+  });
+
+  it("never waits for a film that was not TMDB-enriched", () => {
+    const onReadyChange = vi.fn();
+    render(<FilmCard film={baseFilm} onReadyChange={onReadyChange} />);
+
+    expect(screen.getByText("Blade Runner")).toBeInTheDocument();
+    expect(getWatchProvidersMock).not.toHaveBeenCalled();
+    expect(onReadyChange).toHaveBeenLastCalledWith(true);
   });
 });

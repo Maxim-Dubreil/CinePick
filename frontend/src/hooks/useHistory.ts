@@ -16,7 +16,11 @@ export interface HistoryEntry {
   year: number | null;
   posterUrl: string | null;
   genres: string[];
+  /** Raw TMDB genre ids behind `genres`, for `FilmCard` which maps them itself. */
+  genreIds: string[];
   runtime: number | null;
+  director: string | null;
+  matchScore: number | null;
   decision: HistoryDecision;
   decidedAt: string;
   aiSummary: string | null;
@@ -29,12 +33,14 @@ interface WatchHistoryRow {
   decision: HistoryDecision;
   decided_at: string;
   ai_critique: string | null;
+  match_score: number | null;
   films: {
     tmdb_id: number | null;
     title: string;
     poster_url: string | null;
     year: number | null;
     runtime: number | null;
+    director: string | null;
     genres: string[] | null;
     overview: string | null;
   } | null;
@@ -50,7 +56,10 @@ function rowToEntry(row: WatchHistoryRow): HistoryEntry {
     year: film?.year ?? null,
     posterUrl: film?.poster_url ?? null,
     genres: genreLabels(film?.genres ?? []),
+    genreIds: film?.genres ?? [],
     runtime: film?.runtime ?? null,
+    director: film?.director ?? null,
+    matchScore: row.match_score,
     decision: row.decision,
     decidedAt: row.decided_at,
     aiSummary: row.ai_critique,
@@ -98,7 +107,7 @@ export function useHistory(
     supabase
       .from("watch_history")
       .select(
-        "id, film_id, decision, decided_at, ai_critique, films(tmdb_id, title, poster_url, year, runtime, genres, overview)",
+        "id, film_id, decision, decided_at, ai_critique, match_score, films(tmdb_id, title, poster_url, year, runtime, director, genres, overview)",
         { count: "exact" },
       )
       .eq("user_id", userId)

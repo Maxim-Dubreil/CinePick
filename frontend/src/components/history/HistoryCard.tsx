@@ -52,15 +52,11 @@ export function HistoryCard({ entry, onOpen, onDelete }: HistoryCardProps) {
 
           <p className="text-xs text-[var(--text-secondary)] truncate">{metaLine}</p>
 
-          <p
-            className={`text-sm truncate ${
-              entry.aiSummary
-                ? "italic text-[var(--text-secondary)]"
-                : "italic text-[var(--text-tertiary)]"
-            }`}
-          >
-            {entry.aiSummary ?? "Résumé IA — bientôt disponible"}
-          </p>
+          {entry.aiSummary && (
+            <p className="text-sm italic truncate text-[var(--text-secondary)]">
+              {entry.aiSummary}
+            </p>
+          )}
         </div>
       </button>
 

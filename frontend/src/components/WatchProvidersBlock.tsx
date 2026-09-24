@@ -2,11 +2,13 @@ import { Skeleton } from "@/components/ui";
 import { WatchProviderIcon } from "@/components/WatchProviderIcon";
 import { WatchProvidersAttribution } from "@/components/WatchProvidersAttribution";
 import { groupWatchProvidersByCategory } from "@/lib/watchProviders";
-import { useAuth } from "@/hooks/useAuth";
-import { useWatchProviders } from "@/hooks/useWatchProviders";
+import type { UseWatchProvidersResult } from "@/hooks/useWatchProviders";
 
 interface WatchProvidersBlockProps {
   tmdbId: number | null;
+  /** Fetched by the caller (`FilmCard`), which gates its own render on them
+   * so the whole card appears at once. */
+  watchProviders: UseWatchProvidersResult;
 }
 
 /** "Où regarder" block: 3 columns (Gratuit/Abonnement/Location-achat), one
@@ -14,12 +16,8 @@ interface WatchProvidersBlockProps {
  * layouts are otherwise identical at this granularity. Home's compact
  * variant (capped icons + "+N") stays separate in `LastFilmPanel`, it's
  * genuinely different, not the same layout squeezed into a smaller box. */
-export function WatchProvidersBlock({ tmdbId }: WatchProvidersBlockProps) {
-  const { session } = useAuth();
-  const { providers, link, loading } = useWatchProviders(
-    tmdbId,
-    session?.access_token ?? null,
-  );
+export function WatchProvidersBlock({ tmdbId, watchProviders }: WatchProvidersBlockProps) {
+  const { providers, link, loading } = watchProviders;
 
   // TMDB error: hide the block entirely rather than showing a broken one.
   if (tmdbId !== null && !loading && providers === null) return null;
@@ -42,7 +40,9 @@ export function WatchProvidersBlock({ tmdbId }: WatchProvidersBlockProps) {
           <Skeleton className="size-10" />
         </div>
       ) : providers && providers.length === 0 ? (
-        <p className="text-sm text-[var(--text-secondary)]">
+        // min-h-10 matches the loading skeleton's row, so swapping skeleton ->
+        // text doesn't shift the layout.
+        <p className="flex min-h-10 items-center text-sm text-[var(--text-secondary)]">
           Pas disponible en streaming en France
         </p>
       ) : (
