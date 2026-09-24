@@ -5,11 +5,12 @@ import { useAuth } from "@/hooks/useAuth";
 import { useHistory, HISTORY_PAGE_SIZE } from "@/hooks/useHistory";
 import {
   HistoryCard,
+  HistoryCardSkeleton,
   HistoryPagination,
   FilmDetailModal,
   DeleteHistoryModal,
 } from "@/components/history";
-import { Button, Spinner } from "@/components/ui";
+import { Button } from "@/components/ui";
 import type { HistoryEntry } from "@/hooks/useHistory";
 
 export function History() {
@@ -51,8 +52,10 @@ export function History() {
       </div>
 
       {loading && entries.length === 0 ? (
-        <div className="flex justify-center py-10">
-          <Spinner className="size-6 text-cp-accent" />
+        <div className="flex flex-col gap-3">
+          {Array.from({ length: HISTORY_PAGE_SIZE }).map((_, i) => (
+            <HistoryCardSkeleton key={i} />
+          ))}
         </div>
       ) : totalCount === 0 ? (
         <div className="flex flex-col items-center gap-4 py-14 text-center">

@@ -1,17 +1,21 @@
 import { useNavigate } from 'react-router-dom'
-import { Button } from '@/components/ui'
+import { Button, Skeleton } from '@/components/ui'
 import { FilmPoster } from '@/components/FilmPoster'
-import { useHistory } from '@/hooks/useHistory'
+import type { HistoryEntry } from '@/hooks/useHistory'
 
-const RECENT_COUNT = 4
+export const RECENT_COUNT = 4
 
 interface ProfileHistoryProps {
-  userId: string | null
+  entries: HistoryEntry[]
+  loading: boolean
 }
 
-export function ProfileHistory({ userId }: ProfileHistoryProps) {
+/** Takes `entries`/`loading` as props rather than calling `useHistory` itself — the page
+ * aggregates every section's loading into one `pageLoading` so the whole profile reveals
+ * in a single paint instead of section-by-section (see frontend/CLAUDE.md "Page-level
+ * reveal"). */
+export function ProfileHistory({ entries, loading }: ProfileHistoryProps) {
   const navigate = useNavigate()
-  const { entries, loading } = useHistory(userId, 1, RECENT_COUNT)
 
   return (
     <div className="rounded-[var(--radius-xl)] bg-[var(--glass-bg)] border border-[var(--glass-border)] shadow-[var(--shadow-glass)] p-6 flex flex-col gap-4">
@@ -24,7 +28,13 @@ export function ProfileHistory({ userId }: ProfileHistoryProps) {
         </Button>
       </div>
 
-      {!loading && entries.length === 0 ? (
+      {loading ? (
+        <div className="grid grid-cols-4 gap-3">
+          {Array.from({ length: RECENT_COUNT }).map((_, i) => (
+            <Skeleton key={i} className="aspect-[2/3] w-full rounded-[var(--radius-lg)]" />
+          ))}
+        </div>
+      ) : entries.length === 0 ? (
         <p className="text-sm text-[var(--text-tertiary)] text-center py-4">
           Vos recommandations apparaîtront ici
         </p>

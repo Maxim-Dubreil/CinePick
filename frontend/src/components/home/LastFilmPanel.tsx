@@ -92,8 +92,16 @@ export function LastFilmPanel({ film, loading }: LastFilmPanelProps) {
       </p>
 
       {loading ? (
-        <div className="flex-1 flex items-center justify-center">
-          <span className="text-xs text-[var(--text-tertiary)]">Chargement…</span>
+        <div className="flex items-start gap-6 min-h-0">
+          <Skeleton className="h-[300px] w-[200px] shrink-0 rounded-[var(--radius-lg)]" />
+          <div className="flex-1 flex flex-col gap-3 min-w-0">
+            <Skeleton className="h-7 w-3/4" />
+            <div className="flex flex-col gap-2">
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-2/3" />
+            </div>
+          </div>
         </div>
       ) : film ? (
         <div className="flex items-start gap-6 min-h-0">

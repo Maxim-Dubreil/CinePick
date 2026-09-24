@@ -1,10 +1,11 @@
 import type { ReactNode } from 'react'
 import { RefreshCw, Link } from 'lucide-react'
-import { Badge, Button } from '@/components/ui'
+import { Badge, Button, Skeleton } from '@/components/ui'
 import type { UserProfile } from '@/hooks/useProfile'
 
 interface ProfileSyncProps {
   profile: UserProfile | null
+  loading: boolean
   isSyncing: boolean
   onResync: () => void
   onOpenModal: () => void
@@ -41,7 +42,7 @@ const syncAgeColor: Record<SyncAge, string> = {
   critical: 'text-[var(--danger)]',
 }
 
-export function ProfileSync({ profile, isSyncing, onResync, onOpenModal }: ProfileSyncProps) {
+export function ProfileSync({ profile, loading, isSyncing, onResync, onOpenModal }: ProfileSyncProps) {
   const hasLetterboxd = Boolean(profile?.letterboxd_username)
   const age = getSyncAge(profile?.last_sync ?? null)
 
@@ -51,12 +52,18 @@ export function ProfileSync({ profile, isSyncing, onResync, onOpenModal }: Profi
         <h2 className="font-heading font-medium italic text-[22px] text-[var(--text-primary)]">
           Synchronisation
         </h2>
-        {hasLetterboxd && (
+        {!loading && hasLetterboxd && (
           <Badge variant="warning">{formatRelativeTime(profile?.last_sync ?? null)}</Badge>
         )}
       </div>
 
-      {!hasLetterboxd ? (
+      {loading ? (
+        <div className="flex flex-col gap-0">
+          <Skeleton className="h-9 w-full mb-2.5" />
+          <Skeleton className="h-9 w-full mb-2.5" />
+          <Skeleton className="h-9 w-full" />
+        </div>
+      ) : !hasLetterboxd ? (
         <div className="flex flex-col gap-4">
           <p className="text-sm text-[var(--text-secondary)]">
             Aucun compte Letterboxd configuré.

@@ -21,6 +21,7 @@ describe('ProfileSync', () => {
     render(
       <ProfileSync
         profile={profileWithoutLB}
+        loading={false}
         isSyncing={false}
         onResync={vi.fn()}
         onOpenModal={vi.fn()}
@@ -34,6 +35,7 @@ describe('ProfileSync', () => {
     render(
       <ProfileSync
         profile={null}
+        loading={false}
         isSyncing={false}
         onResync={vi.fn()}
         onOpenModal={vi.fn()}
@@ -46,6 +48,7 @@ describe('ProfileSync', () => {
     render(
       <ProfileSync
         profile={profileWithLB}
+        loading={false}
         isSyncing={false}
         onResync={vi.fn()}
         onOpenModal={vi.fn()}
@@ -61,6 +64,7 @@ describe('ProfileSync', () => {
     render(
       <ProfileSync
         profile={profileWithoutLB}
+        loading={false}
         isSyncing={false}
         onResync={vi.fn()}
         onOpenModal={onOpenModal}
@@ -75,6 +79,7 @@ describe('ProfileSync', () => {
     render(
       <ProfileSync
         profile={profileWithLB}
+        loading={false}
         isSyncing={false}
         onResync={onResync}
         onOpenModal={vi.fn()}
@@ -88,6 +93,7 @@ describe('ProfileSync', () => {
     render(
       <ProfileSync
         profile={profileWithLB}
+        loading={false}
         isSyncing={true}
         onResync={vi.fn()}
         onOpenModal={vi.fn()}

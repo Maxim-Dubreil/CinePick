@@ -1,4 +1,5 @@
 import type { RecommendationStats } from '@/hooks/useRecommendationStats'
+import { Skeleton } from '@/components/ui'
 
 interface ProfileTasteProps {
   stats: RecommendationStats
@@ -6,7 +7,7 @@ interface ProfileTasteProps {
 }
 
 export function ProfileTaste({ stats, loading }: ProfileTasteProps) {
-  const hasData = !loading && stats.acceptedCount > 0
+  const hasData = stats.acceptedCount > 0
   const hasExtras = stats.topDirector !== null || stats.averageRuntime !== null
 
   return (
@@ -15,7 +16,14 @@ export function ProfileTaste({ stats, loading }: ProfileTasteProps) {
         Tes goûts cinéphiles
       </h2>
 
-      {!hasData ? (
+      {loading ? (
+        <div className="flex flex-col gap-3">
+          <Skeleton className="h-3 w-32" />
+          <Skeleton className="h-5 w-full" />
+          <Skeleton className="h-5 w-full" />
+          <Skeleton className="h-5 w-full" />
+        </div>
+      ) : !hasData ? (
         <p className="text-sm text-[var(--text-tertiary)] text-center py-2">
           Disponible après vos premières recommandations
         </p>

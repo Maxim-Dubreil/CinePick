@@ -19,10 +19,9 @@ describe('ProfileStats', () => {
     expect(screen.getByText('248')).toBeInTheDocument()
   })
 
-  it('renders "—" for pending stats', () => {
-    render(<ProfileStats filmCount={0} stats={stats} loading />)
-    const dashes = screen.getAllByText('—')
-    expect(dashes).toHaveLength(3)
+  it('renders skeletons for pending stats', () => {
+    const { container } = render(<ProfileStats filmCount={0} stats={stats} loading />)
+    expect(container.querySelectorAll('[data-slot="skeleton"]')).toHaveLength(3)
   })
 
   it('renders all 4 stat labels', () => {

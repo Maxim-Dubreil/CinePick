@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
 import { useRecommendationStats } from "@/hooks/useRecommendationStats";
+import { useHistory } from "@/hooks/useHistory";
 import { syncWatchlist, unlinkLetterboxdAccount } from "@/lib/backend/api";
 import { signOut } from "@/lib/auth";
 import { LetterboxdConfigModal } from "@/components/home";
@@ -14,11 +15,21 @@ import {
   ProfileHistory,
   UnlinkLetterboxdModal,
 } from "@/components/profile";
+import { RECENT_COUNT } from "@/components/profile/ProfileHistory";
 
 export function Profile() {
   const { user, session } = useAuth();
-  const { profile, refetch } = useProfile();
+  const { profile, loading: profileLoading, refetch } = useProfile();
   const { stats, loading: statsLoading } = useRecommendationStats(user?.id ?? null);
+  const { entries: recentEntries, loading: historyLoading } = useHistory(
+    user?.id ?? null,
+    1,
+    RECENT_COUNT,
+  );
+  // Single gate for the whole page's sections — everyone stays on their skeleton
+  // until every hook is ready, then the page reveals in one paint. See
+  // frontend/CLAUDE.md "Page-level reveal".
+  const pageLoading = profileLoading || statsLoading || historyLoading;
   const [modalOpen, setModalOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [unlinkModalOpen, setUnlinkModalOpen] = useState(false);
@@ -74,18 +85,19 @@ export function Profile() {
         <ProfileStats
           filmCount={profile?.film_count ?? 0}
           stats={stats}
-          loading={statsLoading}
+          loading={pageLoading}
         />
 
         <div className="grid grid-cols-[1.55fr_1fr] items-start gap-4">
           <div className="flex flex-col gap-4">
-            <ProfileTaste stats={stats} loading={statsLoading} />
-            <ProfileHistory userId={user?.id ?? null} />
+            <ProfileTaste stats={stats} loading={pageLoading} />
+            <ProfileHistory entries={recentEntries} loading={pageLoading} />
           </div>
 
           <div className="flex flex-col gap-4">
             <ProfileSync
               profile={profile}
+              loading={pageLoading}
               isSyncing={isSyncing}
               onResync={() => void handleResync()}
               onOpenModal={() => setModalOpen(true)}
