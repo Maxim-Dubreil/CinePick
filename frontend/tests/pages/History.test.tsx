@@ -47,6 +47,7 @@ vi.mock("@/hooks/useHistory", async (importOriginal) => {
       totalCount: 1,
       loading: false,
       removeEntry,
+      clearHistory: vi.fn().mockResolvedValue(undefined),
     }),
   };
 });

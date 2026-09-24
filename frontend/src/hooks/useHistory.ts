@@ -82,6 +82,9 @@ export interface UseHistoryResult {
   totalCount: number;
   loading: boolean;
   removeEntry: (id: string) => Promise<void>;
+  /** Deletes every accepted/skipped entry (in-flight `proposed` rows of an
+   * open session are left alone). */
+  clearHistory: () => Promise<void>;
 }
 
 /** One page of the user's recommendation history (accepted/skipped films
@@ -158,6 +161,20 @@ export function useHistory(
     setRefetchKey((k) => k + 1);
   };
 
+  const clearHistory = async () => {
+    if (!userId) return;
+    const { error } = await supabase
+      .from("watch_history")
+      .delete()
+      .eq("user_id", userId)
+      .in("decision", ["accepted", "skipped"]);
+    if (error) {
+      console.error("useHistory: failed to clear history", error);
+      return;
+    }
+    setRefetchKey((k) => k + 1);
+  };
+
   const queryIsLoaded =
     loadedQuery?.userId === userId && loadedQuery.page === page;
   return {
@@ -165,5 +182,6 @@ export function useHistory(
     totalCount: queryIsLoaded ? totalCount : 0,
     loading: userId ? (queryIsLoaded ? loading : true) : false,
     removeEntry,
+    clearHistory,
   };
 }

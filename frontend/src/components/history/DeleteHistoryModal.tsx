@@ -9,33 +9,34 @@ import {
 import { Button } from "@/components/ui";
 
 interface DeleteHistoryModalProps {
-  filmTitle: string | null;
+  open: boolean;
+  title: string;
+  description: string;
   onOpenChange: (open: boolean) => void;
   onConfirm: () => void;
   isDeleting: boolean;
 }
 
+/** Confirmation before a permanent history deletion — one film or the whole
+ * history, worded by the caller. */
 export function DeleteHistoryModal({
-  filmTitle,
+  open,
+  title,
+  description,
   onOpenChange,
   onConfirm,
   isDeleting,
 }: DeleteHistoryModalProps) {
   return (
-    <Dialog open={filmTitle !== null} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className="sm:max-w-sm gap-5 p-6 rounded-[var(--radius-xl)] ring-1 ring-foreground/10 shadow-[var(--shadow-glass)]"
         overlayClassName="bg-black/20 backdrop-blur-[2px]"
         disableAnimation
       >
         <DialogHeader>
-          <DialogTitle className="text-xl font-semibold">
-            Supprimer {filmTitle} de l&apos;historique ?
-          </DialogTitle>
-          <DialogDescription>
-            Suppression définitive : le film pourra à nouveau t&apos;être proposé dans de
-            futures recommandations.
-          </DialogDescription>
+          <DialogTitle className="text-xl font-semibold">{title}</DialogTitle>
+          <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
 
         <div className="flex gap-3">
