@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
+import { useSync } from "@/hooks/useSync";
 import { useRecommendationStats } from "@/hooks/useRecommendationStats";
 import { useHistory } from "@/hooks/useHistory";
 import { syncWatchlist, unlinkLetterboxdAccount } from "@/lib/backend/api";
@@ -31,14 +32,14 @@ export function Profile() {
   // frontend/CLAUDE.md "Page-level reveal".
   const pageLoading = profileLoading || statsLoading || historyLoading;
   const [modalOpen, setModalOpen] = useState(false);
-  const [isSyncing, setIsSyncing] = useState(false);
+  const { isSyncing, setSyncing } = useSync();
   const [unlinkModalOpen, setUnlinkModalOpen] = useState(false);
   const [isUnlinking, setIsUnlinking] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
   const handleResync = async () => {
     if (!profile?.letterboxd_username || !session?.access_token) return;
-    setIsSyncing(true);
+    setSyncing(true);
     setActionError(null);
     try {
       await syncWatchlist(profile.letterboxd_username, session.access_token);
@@ -47,7 +48,7 @@ export function Profile() {
       console.error("Profile watchlist sync failed", error);
       setActionError("La synchronisation a échoué. Réessaie dans un instant.");
     } finally {
-      setIsSyncing(false);
+      setSyncing(false);
     }
   };
 
@@ -125,7 +126,7 @@ export function Profile() {
           mode={profile?.letterboxd_username ? "change" : "link"}
           onOpenChange={setModalOpen}
           onSuccess={() => void refetch()}
-          onSyncingChange={setIsSyncing}
+          onSyncingChange={setSyncing}
           token={session?.access_token ?? null}
         />
 

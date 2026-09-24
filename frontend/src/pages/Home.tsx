@@ -14,6 +14,7 @@ import { Question } from "./Question";
 import { Result } from "./Result";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
+import { useSync } from "@/hooks/useSync";
 import { useLastAcceptedFilm } from "@/hooks/useLastAcceptedFilm";
 import { syncWatchlist } from "@/lib/backend/api";
 import { Toast } from "@/components/ui";
@@ -27,7 +28,7 @@ export function Home() {
     refetch: refetchLastAcceptedFilm,
   } = useLastAcceptedFilm(user?.id ?? null);
   const [modalOpen, setModalOpen] = useState(false);
-  const [isSyncing, setIsSyncing] = useState(false);
+  const { isSyncing, setSyncing } = useSync();
   const [syncError, setSyncError] = useState<string | null>(null);
 
   // letterboxdUsername: prioritise profile from API, fallback to null
@@ -35,7 +36,7 @@ export function Home() {
 
   const handleResync = async () => {
     if (!letterboxdUsername || !session?.access_token) return;
-    setIsSyncing(true);
+    setSyncing(true);
     setSyncError(null);
     try {
       await syncWatchlist(letterboxdUsername, session.access_token);
@@ -44,7 +45,7 @@ export function Home() {
       console.error("Home watchlist sync failed", error);
       setSyncError("La synchronisation a échoué. Réessaie dans un instant.");
     } finally {
-      setIsSyncing(false);
+      setSyncing(false);
     }
   };
 
@@ -97,7 +98,7 @@ export function Home() {
                   open={modalOpen}
                   onOpenChange={setModalOpen}
                   onSuccess={() => void refetch()}
-                  onSyncingChange={setIsSyncing}
+                  onSyncingChange={setSyncing}
                   token={session?.access_token ?? null}
                 />
               </>
