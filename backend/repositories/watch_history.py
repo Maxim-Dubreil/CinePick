@@ -11,7 +11,9 @@ client.
 `decided_at` doubles as "last touched": it's set at proposal time (column
 default) and overwritten again at decision time. The two-layer exclusion in
 `filtering.py` only needs "was this film touched, and how recently" — not a
-separate proposal/decision timestamp.
+separate proposal/decision timestamp. A `"proposed"` row the user never
+swipes to isn't a decision at all: `abandon_session` deletes it outright
+rather than giving it a status, so it never counts as "touched".
 """
 
 from datetime import UTC, datetime
@@ -124,16 +126,16 @@ def get_pending_session(user_id: str) -> tuple[str, list[PendingCandidateRow]] |
 
 
 def abandon_session(user_id: str, recommendation_session_id: str) -> None:
-    """Mark every still-"proposed" row of this session as "skipped" —
-    the explicit "Recommencer" action, so `get_pending_session` stops
-    returning it. A no-op if nothing there is still "proposed" (already
-    decided, wrong session, or nothing to abandon) — not an error."""
-    supabase.table(_WATCH_HISTORY_TABLE).update(
-        {
-            "decision": "skipped",
-            "decided_at": datetime.now(UTC).isoformat(),
-        }
-    ).eq("user_id", user_id).eq(
+    """Delete every still-"proposed" row of this session — the explicit
+    "Recommencer" action, or a session cut short by an "accepted" decision,
+    so `get_pending_session` stops returning it. These candidates were never
+    actually swiped to, so there's no decision to record: deleting the row
+    (rather than giving it a status like "skipped") keeps them from reading
+    as a rejection in Historique or counting as "seen" for future
+    recommendations — as if never proposed. A no-op if nothing there is
+    still "proposed" (already decided, wrong session, or nothing to
+    abandon) — not an error."""
+    supabase.table(_WATCH_HISTORY_TABLE).delete().eq("user_id", user_id).eq(
         "recommendation_session_id", recommendation_session_id
     ).eq("decision", "proposed").execute()
 

@@ -83,6 +83,9 @@ create table watch_history (
   -- the user swipes; /recommend/decision updates that row to 'accepted' or
   -- 'skipped'. A decision with no matching 'proposed' row is rejected —
   -- that's how we verify a film was actually shown, not just claimed.
+  -- A lower-ranked candidate the session ends before the user ever swipes
+  -- to (accept, or explicit "Recommencer") isn't a decision at all — its
+  -- row is deleted by abandon_session() rather than given a status.
   decision text check (decision in ('proposed', 'accepted', 'skipped')) not null,
   questions_context jsonb,
   ai_critique text,

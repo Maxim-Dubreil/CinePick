@@ -221,23 +221,21 @@ def test_record_decision_no_matching_proposal_returns_false(supabase_mock):
     )
 
 
-def test_abandon_session_marks_remaining_proposed_as_skipped(supabase_mock):
+def test_abandon_session_deletes_remaining_proposed_rows(supabase_mock):
     table = _table_mock(supabase_mock, "watch_history")
-    chain = table.update.return_value.eq.return_value.eq.return_value.eq.return_value
+    chain = table.delete.return_value.eq.return_value.eq.return_value.eq.return_value
     chain.execute.return_value = MagicMock(data=[{"id": "row-1"}, {"id": "row-2"}])
 
     watch_history.abandon_session("user-1", "session-1")
 
-    update_payload = table.update.call_args[0][0]
-    assert update_payload["decision"] == "skipped"
-    assert "decided_at" in update_payload
+    table.delete.assert_called_once_with()
     # Verify the three .eq() filters in correct order
-    assert table.update.return_value.eq.call_args[0] == ("user_id", "user-1")
-    assert table.update.return_value.eq.return_value.eq.call_args[0] == (
+    assert table.delete.return_value.eq.call_args[0] == ("user_id", "user-1")
+    assert table.delete.return_value.eq.return_value.eq.call_args[0] == (
         "recommendation_session_id",
         "session-1",
     )
-    assert table.update.return_value.eq.return_value.eq.return_value.eq.call_args[0] == (
+    assert table.delete.return_value.eq.return_value.eq.return_value.eq.call_args[0] == (
         "decision",
         "proposed",
     )
