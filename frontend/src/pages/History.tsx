@@ -10,6 +10,7 @@ import {
   FilmDetailModal,
   DeleteHistoryModal,
 } from "@/components/history";
+import { EmptyState } from "@/components/EmptyState";
 import { Button } from "@/components/ui";
 import type { HistoryEntry } from "@/hooks/useHistory";
 
@@ -40,10 +41,7 @@ export function History() {
   return (
     <div className="max-w-3xl mx-auto px-10 py-11 pb-20 flex flex-col gap-6">
       <div className="flex flex-col gap-1">
-        <h1
-          className="text-2xl font-medium italic text-[var(--text-primary)]"
-          style={{ fontFamily: "var(--font-heading)" }}
-        >
+        <h1 className="font-heading text-2xl font-medium italic text-[var(--text-primary)]">
           Votre historique
         </h1>
         <p className="text-sm text-[var(--text-secondary)]">
@@ -58,32 +56,23 @@ export function History() {
           ))}
         </div>
       ) : totalCount === 0 ? (
-        <div className="flex flex-col items-center gap-4 py-14 text-center">
-          <div className="relative flex size-16 items-center justify-center rounded-full bg-[var(--cp-accent)]/10">
-            <div className="absolute inset-0 rounded-full bg-[var(--cp-accent)]/20 blur-lg" />
-            <Clapperboard
-              size={28}
-              strokeWidth={1.5}
-              className="relative text-[var(--cp-accent)]"
-            />
-          </div>
-          <div className="flex flex-col gap-0.5">
-            <p className="text-sm font-medium text-[var(--text-primary)]">
-              Pas encore de films
-            </p>
-            <p className="text-xs text-[var(--text-tertiary)]">
-              Lance ta première reco pour commencer ton historique
-            </p>
-          </div>
-          <Button
-            variant="glass-primary"
-            size="sm"
-            className="mt-1 gap-2 rounded-[var(--radius-xl)]"
-            onClick={() => navigate("/home/question")}
-          >
-            <Clapperboard size={14} />
-            Lancer un pick
-          </Button>
+        <div className="py-14">
+          <EmptyState
+            icon={Clapperboard}
+            title="Pas encore de films"
+            description="Lance ta première reco pour commencer ton historique"
+            action={
+              <Button
+                variant="glass-primary"
+                size="sm"
+                className="mt-1 gap-2 rounded-[var(--radius-xl)]"
+                onClick={() => navigate("/home/question")}
+              >
+                <Clapperboard size={14} />
+                Lancer un pick
+              </Button>
+            }
+          />
         </div>
       ) : (
         <>

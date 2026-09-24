@@ -4,6 +4,7 @@ import { Badge, Skeleton } from "@/components/ui";
 import { FilmPoster } from "@/components/FilmPoster";
 import { WatchProvidersBlock } from "@/components/WatchProvidersBlock";
 import { genreLabels } from "@/lib/genres";
+import { formatRating } from "@/lib/rating";
 import { cn } from "@/lib/utils";
 import type { RecommendedFilm } from "@/lib/backend/api";
 import { useAuth } from "@/hooks/useAuth";
@@ -14,11 +15,6 @@ import { useWatchProviders } from "@/hooks/useWatchProviders";
  * before showing anyway (each block then keeps its own skeleton, or hides
  * itself, until TMDB answers). */
 const PROVIDERS_MAX_WAIT_MS = 1000;
-
-/** `vote_average` out of 10, French locale (comma, 1 decimal) — e.g. 8.7 -> "8,7/10". */
-function formatRating(voteAverage: number): string {
-  return `${voteAverage.toFixed(1).replace(".", ",")}/10`;
-}
 
 // Same box treatment as ui/dialog.tsx DialogContent (rounded-xl, bg-popover,
 // ring-foreground/10) — deliberately not the translucent --glass-bg Card
@@ -74,7 +70,7 @@ function RatingField({ voteAverage }: { voteAverage: number }) {
       </span>
       <span className="flex items-center gap-1 text-sm font-semibold text-[var(--warning)]">
         <Star className="size-3.5 fill-current" />
-        {formatRating(voteAverage)}
+        {formatRating(voteAverage)}/10
       </span>
     </div>
   );

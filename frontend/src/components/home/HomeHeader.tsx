@@ -73,8 +73,7 @@ export function HomeHeader() {
       </div>
 
       <h1
-        className="text-[52px] font-medium leading-[1.1] tracking-[-0.5px] max-w-155"
-        style={{ fontFamily: "var(--font-heading)" }}
+        className="font-heading text-[52px] font-medium leading-[1.1] tracking-[-0.5px] max-w-155"
       >
         <span className="text-text-primary block">
           {greeting}, {firstName}.

@@ -54,17 +54,15 @@ export function Topbar({ variant = "landing" }: TopbarProps) {
             to="/home"
             aria-disabled={isSyncing}
             className={cn(
-              "text-[22px] font-medium tracking-[0.04em] text-text-primary hover:opacity-80 transition-opacity",
+              "font-heading text-[22px] font-medium tracking-[0.04em] text-text-primary hover:opacity-80 transition-opacity",
               isSyncing && NAV_LINK_DISABLED_CLASSES,
             )}
-            style={{ fontFamily: "var(--font-heading)" }}
           >
             CinePick
           </Link>
         ) : (
           <span
-            className="text-[22px] font-medium tracking-[0.04em] text-text-primary"
-            style={{ fontFamily: "var(--font-heading)" }}
+            className="font-heading text-[22px] font-medium tracking-[0.04em] text-text-primary"
           >
             CinePick
           </span>

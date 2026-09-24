@@ -1,42 +1,12 @@
 import { RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui";
 import type { UserProfile } from "@/hooks/useProfile";
+import { formatRelativeTime, getSyncAge, syncAgeColor } from "@/lib/syncAge";
 
 interface WatchlistPanelProps {
   profile: UserProfile;
   isSyncing: boolean;
   onResync: () => void;
-}
-
-type SyncAge = "fresh" | "stale" | "old" | "critical";
-
-function getSyncAge(lastSync: string | null): SyncAge {
-  if (!lastSync) return "critical";
-  const diffHours = (Date.now() - new Date(lastSync).getTime()) / 3_600_000;
-  if (diffHours < 48) return "fresh";
-  if (diffHours < 168) return "stale"; // 2–7 j
-  if (diffHours < 720) return "old"; // 7–30 j
-  return "critical";
-}
-
-const syncAgeColor: Record<SyncAge, string> = {
-  fresh: "text-[var(--success)]",
-  stale: "text-[var(--warning)]",
-  old: "text-orange-500",
-  critical: "text-[var(--danger)]",
-};
-
-function formatRelativeTime(lastSync: string | null): string {
-  if (!lastSync) return "Jamais synchronisé";
-  const diffMs = Date.now() - new Date(lastSync).getTime();
-  const minutes = Math.floor(diffMs / 60_000);
-  if (minutes < 60) return `il y a ${minutes} min`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `il y a ${hours} h`;
-  const days = Math.floor(hours / 24);
-  if (days < 30) return `il y a ${days} j`;
-  const months = Math.floor(days / 30);
-  return `il y a ${months} mois`;
 }
 
 export function WatchlistPanel({
@@ -59,10 +29,7 @@ export function WatchlistPanel({
       )}
 
       <div className="flex flex-col gap-0.5">
-        <span
-          className="text-5xl font-medium leading-none text-[var(--cp-accent)]"
-          style={{ fontFamily: "var(--font-heading)" }}
-        >
+        <span className="font-heading text-5xl font-medium leading-none text-[var(--cp-accent)]">
           {profile.film_count}
         </span>
         <span className="text-[11px] tracking-widest text-[var(--text-secondary)] uppercase mt-1">
