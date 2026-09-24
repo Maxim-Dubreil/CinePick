@@ -48,7 +48,7 @@ export function ProfileHistory({ entries, loading }: ProfileHistoryProps) {
                 className="w-full transition-transform hover:scale-[1.03]"
               />
               <span
-                className={`absolute top-1.5 right-1.5 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white backdrop-blur-sm ${
+                className={`absolute top-1.5 right-1.5 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white ${
                   entry.decision === 'accepted' ? 'bg-[var(--success)]/85' : 'bg-[var(--danger)]/85'
                 }`}
               >
