@@ -8,6 +8,7 @@ import { Home } from "@/pages/Home";
 import { Profile } from "@/pages/Profile";
 import { History } from "@/pages/History";
 import { NotFound } from "@/pages/NotFound";
+import { About } from "@/pages/About";
 import { AppLayout, AppLoader, ThemeToggle } from "@/components/layout";
 
 function AppContent() {
@@ -59,6 +60,7 @@ function AppContent() {
             )
           }
         />
+        <Route path="/about" element={<About />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
       <ThemeToggle />
