@@ -3,7 +3,7 @@
 > Source de vérité : ce fichier (versionné avec le code qu'il décrit). Miroir en lecture sur [Linear](https://linear.app/maximdubreil/document/ecrans-and-navigation-3801798532e9) — modifie ici, pas là-bas.
 > Wireframes basse fidélité réalisés sur Figma. Home détaille la **bannière warning « watchlist non connectée »** + le **bloc stats compte**.
 
-## Inventaire V1 — 6 écrans + 1 modale
+## Inventaire V1 — 7 écrans + 1 modale
 
 ```sh
 Landing (public)
@@ -12,6 +12,8 @@ Home (privé)
   ├─ → Questions → Résultat (carte film)
   ├─ → Historique
   └─ → Profil → [modale] Connexion Letterboxd
+
+About (public) ← lien footer (Landing, Profil, Historique)
 ```
 
 Les états (loading / erreur / succès) sont des états d'un écran existant, pas des écrans séparés.
@@ -74,6 +76,25 @@ Privé. Avatar Google + email, username Letterboxd + bouton « Modifier » (→ 
 
 Déclencheur : bouton « Modifier » (Profil) **ou** bannière Home « Configurer ». Input préfixe `letterboxd.com/`, instructions (rendre le profil public + lien externe), bouton « Charger ma watchlist → ». États : loading (compteur « X films trouvés… ») / succès (« X films prêts ! ») / erreur typée (profil introuvable / privé / réseau). Fermable via ✕.
 
+## 7. About — `/about`
+
+**Public, sans garde d'auth** : la route ne dépend ni de `user` ni de `authLoading`, elle s'affiche à l'identique connecté ou non. Les gardes des écrans privés sont inchangés — taper `/history` depuis `/about` sans session redirige toujours vers `/`.
+
+**Volontairement discret** : hors du parcours principal. Seul point d'entrée : un item **« À PROPOS »** en fin de footer, même style que les autres items (texte secondaire, 11px), hover par opacité. Donc accessible depuis Landing, Profil et Historique ; **pas depuis Home**, qui masque le footer — assumé.
+
+**Contenu** (une carte centrée, pas de topbar) :
+
+- Bouton « ← Retour » → `/` (qui redirige déjà vers `/home` si connecté).
+- Nom de l'app + pitch en une phrase.
+- Bouton « Voir le code sur GitHub ↗ » → `https://github.com/Maxim-Dubreil/CinePick`, nouvel onglet (`target="_blank" rel="noopener noreferrer"`).
+- **Crédits** :
+  - Données films : logo TMDB + mention obligatoire **en anglais, mot pour mot** (conditions d'utilisation de l'API TMDB) : _« This product uses the TMDB API but is not endorsed or certified by TMDB. »_
+  - Watchlist : Letterboxd (non affilié).
+  - Recommandations : Gemini (Google).
+- Auteur : « Fait par Maxim Dubreil » + contact `mailto:maxim.dubreil@epitech.eu`.
+
+**Hors scope** : stack technique, numéro de version, formulaire de contact.
+
 ## Récap navigation
 
 | Depuis    | Vers              | Déclencheur                                                                           |
@@ -85,6 +106,8 @@ Déclencheur : bouton « Modifier » (Profil) **ou** bannière Home « Configure
 | Questions | Résultat          | Dernière réponse (Q9), avec ou sans appel IA selon la taille du sous-ensemble         |
 | Résultat  | Home              | Accept                                                                                |
 | Résultat  | Questions         | Échec des 2 tentatives IA, ou tous les candidats skip en mode sans-IA (reset complet) |
+| Footer    | About             | Lien « À PROPOS » (visible sur Landing, Profil, Historique)                           |
+| About     | Landing / Home    | « ← Retour » (vers `/`, redirect `/home` si connecté)                                 |
 
 ## Maquettes (Figma)
 
