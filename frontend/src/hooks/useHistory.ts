@@ -28,7 +28,13 @@ export interface HistoryEntry {
   overview: string | null;
 }
 
-interface WatchHistoryRow {
+/** Columns `rowToEntry` reads — shared with useLastAcceptedFilm so both
+ * build the same `HistoryEntry`. */
+export const HISTORY_ENTRY_SELECT =
+  "id, film_id, decision, decided_at, ai_critique, match_score, films(tmdb_id, title, poster_url, year, runtime, director, actors, genres, overview)";
+
+/** Raw `watch_history` row joined with `films`, as selected by `HISTORY_ENTRY_SELECT`. */
+export interface WatchHistoryRow {
   id: string;
   film_id: string;
   decision: HistoryDecision;
@@ -48,7 +54,8 @@ interface WatchHistoryRow {
   } | null;
 }
 
-function rowToEntry(row: WatchHistoryRow): HistoryEntry {
+/** Maps a joined `watch_history` row to the UI's `HistoryEntry`. */
+export function rowToEntry(row: WatchHistoryRow): HistoryEntry {
   const film = row.films;
   return {
     id: row.id,
@@ -109,10 +116,7 @@ export function useHistory(
 
     supabase
       .from("watch_history")
-      .select(
-        "id, film_id, decision, decided_at, ai_critique, match_score, films(tmdb_id, title, poster_url, year, runtime, director, actors, genres, overview)",
-        { count: "exact" },
-      )
+      .select(HISTORY_ENTRY_SELECT, { count: "exact" })
       .eq("user_id", userId)
       .in("decision", ["accepted", "skipped"])
       .order("decided_at", { ascending: false })
