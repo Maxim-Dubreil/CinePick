@@ -30,7 +30,32 @@ function errorToDeadEndReason(error: unknown, attempt: number): DeadEndReason {
     // by the backend's 15-min session window), not that the filters are off.
     return attempt > 1 ? "exhausted" : "no_match";
   }
+  if (error instanceof ApiError && errorType(error) === "ai_overloaded") {
+    return "overloaded";
+  }
   return "technical";
+}
+
+// Reads the backend's typed error (`{"detail": {"type": ...}}`) from the raw
+// body ApiError carries — `null` when the body isn't that shape.
+function errorType(error: ApiError): string | null {
+  try {
+    const body: unknown = JSON.parse(error.message);
+    if (
+      typeof body === "object" &&
+      body !== null &&
+      "detail" in body &&
+      typeof body.detail === "object" &&
+      body.detail !== null &&
+      "type" in body.detail &&
+      typeof body.detail.type === "string"
+    ) {
+      return body.detail.type;
+    }
+  } catch {
+    // Non-JSON body (e.g. a proxy's HTML error page) — not a typed error.
+  }
+  return null;
 }
 
 function errorToDevDetail(error: unknown): string | null {

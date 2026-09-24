@@ -91,6 +91,11 @@ JSON malformé, id hors liste, rangs incohérents) lève `AIProviderError`, que 
 `502 ai_error`. Reproposer un film hors du sous-ensemble filtré violerait le principe #2 du North
 Star.
 
+Cas particulier : si le fallback répond lui aussi `503` (surcharge Google confirmée sur les deux
+modèles), `AIOverloadedError` (sous-classe d'`AIProviderError`) devient `503 ai_overloaded`. Le
+front affiche alors « L'IA est surchargée en ce moment. Réessaie dans quelques minutes. », sans
+retry automatique.
+
 ## "Retry" après swipes — pas un 2ᵉ prompt, un 2ᵉ appel indépendant
 
 Il n'y a pas de continuation de conversation. Quand le front épuise les candidats reçus (tous skip),

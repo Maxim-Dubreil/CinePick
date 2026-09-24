@@ -69,7 +69,7 @@ Un nouvel appel à `/recommend` (même body, mêmes films déjà proposés exclu
 | Auth            | Requis                                                                                                                    |
 | Body            | 9 champs du questionnaire — voir `RecommendRequest` dans `backend/models.py` et [Specs Questions](./questions.md)         |
 | Réponse         | `{ candidates: [{ film_id, tmdb_id, title, poster_url, year, runtime, overview, genres, origin_country, director, actors, rank, match_score, critique }], meta: { candidates_considered }, recommendation_session_id }` |
-| Erreurs typées  | `422 empty_watchlist` / `422 no_candidates` / `502 ai_error`                                                              |
+| Erreurs typées  | `422 empty_watchlist` / `422 no_candidates` / `503 ai_overloaded` (primary and fallback models both 503) / `502 ai_error`                                                              |
 | Appels externes | Gemini, dès qu'au moins 1 candidat reste après filtrage                                                                   |
 | Détail complet  | [Specs AI](./ai.md)                                                                                                       |
 

@@ -63,6 +63,12 @@ class AIProviderError(Exception):
     the candidate set."""
 
 
+class AIOverloadedError(AIProviderError):
+    """Raised when the fallback model also answers 503 (Google-side
+    overload) — both models confirmed unavailable, so the caller can tell the
+    user to retry later instead of reporting a generic failure."""
+
+
 def _soft_signals(answers: RecommendRequest) -> str:
     """Render the soft signals (emotion/ambiance/withWho/subtitles) as a
     natural-language clause for the prompt, omitting any that carry a
@@ -169,6 +175,15 @@ async def pick_candidates(
             )
             for c in parsed
         ]
+    except errors.ServerError as exc:
+        # Only the fallback's error can escape `_call_gemini` (the primary's
+        # ServerError triggers the fallback), so a 503 here means both models
+        # are overloaded.
+        if exc.code == 503:
+            logger.warning("Gemini overloaded on both %s and %s", _MODEL, _FALLBACK_MODEL)
+            raise AIOverloadedError("Both AI models are overloaded") from exc
+        logger.exception("Gemini fallback model failed")
+        raise AIProviderError("AI call failed or returned an unparseable response") from exc
     except Exception as exc:
         logger.exception("Gemini call failed or returned an unparseable response")
         raise AIProviderError("AI call failed or returned an unparseable response") from exc

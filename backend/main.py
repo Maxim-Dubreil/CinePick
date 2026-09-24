@@ -389,6 +389,11 @@ async def recommend(
 
     try:
         ranked = await reco_ai.pick_candidates(candidates, body)
+    except reco_ai.AIOverloadedError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail={"type": "ai_overloaded", "message": "The AI provider is overloaded"},
+        ) from exc
     except reco_ai.AIProviderError as exc:
         raise HTTPException(
             status_code=502,
