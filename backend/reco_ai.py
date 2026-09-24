@@ -82,19 +82,36 @@ def _soft_signals(answers: RecommendRequest) -> str:
     return ", ".join(parts) if parts else "has no specific preference"
 
 
+def _saga_tag(film: WatchlistFilm) -> str:
+    """`" | [Saga: <name> — <order>/<total>]"` when the film belongs to a
+    TMDB collection, `""` otherwise. `order`/`total` are release order, not a
+    curated viewing order (see docs/specs/ai.md) — omitted from the tag when
+    TMDB's collection listing didn't resolve them, leaving just the name."""
+    if not film.collection_name:
+        return ""
+    if film.collection_order and film.collection_total:
+        return (
+            f" | [Saga: {film.collection_name} — "
+            f"{film.collection_order}/{film.collection_total}]"
+        )
+    return f" | [Saga: {film.collection_name}]"
+
+
 def _build_prompt(candidates: list[WatchlistFilm], answers: RecommendRequest) -> str:
     films_block = "\n".join(
         f"- id={f.id} | {f.title} ({f.year or '?'}) | "
-        f"{(f.overview or 'no synopsis')[:_OVERVIEW_MAX_CHARS]}"
+        f"{(f.overview or 'no synopsis')[:_OVERVIEW_MAX_CHARS]}{_saga_tag(f)}"
         for f in candidates
     )
     return (
         f"Pick up to {_MAX_CANDIDATES} films from this list, ranked best first, "
         f"for someone who {_soft_signals(answers)}. For each, give a match_score "
         "(0-100) and a 1-2 sentence critique, written in French, referencing at "
-        "least one of their preferences. Reply with ONLY a JSON object like "
-        '{"candidates": [{"film_id": "<id>", "rank": 1, "match_score": 90, '
-        '"critique": "..."}]}, using only ids from the list below, nothing else.'
+        "least one of their preferences. When a film has a [Saga: ...] tag, you "
+        "may mention its place in the saga if relevant. Reply with ONLY a JSON "
+        'object like {"candidates": [{"film_id": "<id>", "rank": 1, '
+        '"match_score": 90, "critique": "..."}]}, using only ids from the list '
+        "below, nothing else."
         f"\n\n{films_block}"
     )
 

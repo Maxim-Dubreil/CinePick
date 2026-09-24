@@ -309,13 +309,152 @@ async def test_search_and_enrich_missing_cast_is_empty():
     assert result.actors == []
 
 
+async def test_search_and_enrich_captures_saga_position():
+    def handler(request: httpx.Request) -> httpx.Response:
+        url = str(request.url)
+        if "/search/movie" in url:
+            return httpx.Response(200, json={"results": [{"id": 42}]})
+        if "/credits" in url:
+            return httpx.Response(200, json={})
+        if "/collection/7" in url:
+            return httpx.Response(
+                200,
+                json={
+                    "parts": [
+                        {"id": 42, "release_date": "2021-03-04"},
+                        {"id": 43, "release_date": "2010-01-01"},
+                        {"id": 44, "release_date": "2030-01-01"},
+                    ]
+                },
+            )
+        if "/movie/42" in url:
+            return httpx.Response(
+                200,
+                json={
+                    "genres": [],
+                    "belongs_to_collection": {"id": 7, "name": "The Saga"},
+                },
+            )
+        return httpx.Response(404)
+
+    async with _client(handler) as client:
+        result = await search_and_enrich("Some Film", 2021, client=client)
+
+    assert result is not None
+    assert result.collection_name == "The Saga"
+    # Sorted by release_date: 43 (2010), 42 (2021), 44 (2030) -> id 42 is 2nd of 3.
+    assert result.collection_order == 2
+    assert result.collection_total == 3
+
+
+async def test_search_and_enrich_no_collection_leaves_saga_fields_none():
+    def handler(request: httpx.Request) -> httpx.Response:
+        url = str(request.url)
+        if "/search/movie" in url:
+            return httpx.Response(200, json={"results": [{"id": 42}]})
+        if "/credits" in url:
+            return httpx.Response(200, json={})
+        if "/collection/" in url:
+            raise AssertionError("must not call /collection when there's no saga")
+        if "/movie/42" in url:
+            return httpx.Response(200, json={"genres": []})
+        return httpx.Response(404)
+
+    async with _client(handler) as client:
+        result = await search_and_enrich("Some Film", 2021, client=client)
+
+    assert result is not None
+    assert result.collection_name is None
+    assert result.collection_order is None
+    assert result.collection_total is None
+
+
+async def test_search_and_enrich_saga_missing_from_own_collection_is_none():
+    """TMDB's collection listing can omit the very film that points to it
+    (deleted/unmatched entry) — order/total must degrade to None rather than
+    raising, name is still kept."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        url = str(request.url)
+        if "/search/movie" in url:
+            return httpx.Response(200, json={"results": [{"id": 42}]})
+        if "/credits" in url:
+            return httpx.Response(200, json={})
+        if "/collection/7" in url:
+            return httpx.Response(200, json={"parts": [{"id": 99, "release_date": "2020-01-01"}]})
+        if "/movie/42" in url:
+            return httpx.Response(
+                200,
+                json={"genres": [], "belongs_to_collection": {"id": 7, "name": "The Saga"}},
+            )
+        return httpx.Response(404)
+
+    async with _client(handler) as client:
+        result = await search_and_enrich("Some Film", 2021, client=client)
+
+    assert result is not None
+    assert result.collection_name == "The Saga"
+    assert result.collection_order is None
+    assert result.collection_total is None
+
+
+async def test_enrich_many_shares_collection_cache_across_same_saga(monkeypatch):
+    """Two watchlist films from the same collection must trigger only one
+    `/collection/{id}` call between them (see `_fetch_collection`)."""
+    films = [
+        Film(slug="film-a", title="Film A", year=2020, poster_url=None),
+        Film(slug="film-b", title="Film B", year=2021, poster_url=None),
+    ]
+    collection_calls = 0
+    movie_id_by_title = {"Film A": 42, "Film B": 43}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal collection_calls
+        url = str(request.url)
+        if "/search/movie" in url:
+            movie_id = movie_id_by_title[request.url.params["query"]]
+            return httpx.Response(200, json={"results": [{"id": movie_id}]})
+        if "/credits" in url:
+            return httpx.Response(200, json={})
+        if "/collection/7" in url:
+            collection_calls += 1
+            return httpx.Response(
+                200,
+                json={
+                    "parts": [
+                        {"id": 42, "release_date": "2020-01-01"},
+                        {"id": 43, "release_date": "2021-01-01"},
+                    ]
+                },
+            )
+        if "/movie/" in url:
+            return httpx.Response(
+                200, json={"genres": [], "belongs_to_collection": {"id": 7, "name": "Saga"}}
+            )
+        return httpx.Response(404)
+
+    original_async_client = httpx.AsyncClient
+
+    def patched_client(*args, **kwargs):
+        kwargs["transport"] = httpx.MockTransport(handler)
+        return original_async_client(*args, **kwargs)
+
+    monkeypatch.setattr(tmdb.httpx, "AsyncClient", patched_client)
+
+    result = await enrich_many(films, concurrency=1)
+
+    assert result["film-a"].collection_order == 1
+    assert result["film-b"].collection_order == 2
+    assert collection_calls == 1
+
+
 async def test_enrich_many_maps_by_slug(monkeypatch):
     films = [
         Film(slug="film-a", title="Film A", year=2020, poster_url=None),
         Film(slug="film-b", title="Film B", year=2021, poster_url=None),
     ]
 
-    async def fake_search_and_enrich(title, year, *, client=None):
+    async def fake_search_and_enrich(title, year, *, client=None, collection_cache=None):
         return None
 
     monkeypatch.setattr(tmdb, "search_and_enrich", fake_search_and_enrich)

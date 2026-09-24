@@ -32,6 +32,9 @@ _ENRICHMENT_FIELDS = (
     "overview",
     "director",
     "actors",
+    "collection_name",
+    "collection_order",
+    "collection_total",
 )
 """TMDB-derived columns on `films`, refreshed together — omitted entirely
 from the upsert record when a film has no enrichment (see `upsert_films`)."""
@@ -63,6 +66,9 @@ def merge_enrichment(film: Film, enrichment: FilmEnrichment | None) -> EnrichedF
         overview=enrichment.overview,
         director=enrichment.director,
         actors=enrichment.actors,
+        collection_name=enrichment.collection_name,
+        collection_order=enrichment.collection_order,
+        collection_total=enrichment.collection_total,
     )
 
 

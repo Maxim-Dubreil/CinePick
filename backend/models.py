@@ -74,6 +74,19 @@ class FilmEnrichment(BaseModel):
     """Up to 5 main cast names, from `credits.cast`, billing order — empty
     when TMDB has no cast entry."""
 
+    collection_name: str | None = None
+    """TMDB saga/collection name (`belongs_to_collection.name`), `None` when
+    the film isn't part of one."""
+
+    collection_order: int | None = None
+    """This film's 1-based rank by release date within its collection.
+    `None` when there's no collection, or TMDB's collection listing doesn't
+    include this film. Release order, not a curated "recommended viewing
+    order" — see docs/specs/ai.md."""
+
+    collection_total: int | None = None
+    """Number of films in the collection, alongside `collection_order`."""
+
 
 class EnrichedFilm(BaseModel):
     """A scraped film merged with its (optional) TMDB enrichment.
@@ -95,6 +108,9 @@ class EnrichedFilm(BaseModel):
     overview: str | None = None
     director: str | None = None
     actors: list[str] = Field(default_factory=list)
+    collection_name: str | None = None
+    collection_order: int | None = None
+    collection_total: int | None = None
 
 
 class WatchlistFilm(BaseModel):
@@ -117,6 +133,9 @@ class WatchlistFilm(BaseModel):
     overview: str | None = None
     director: str | None = None
     actors: list[str] = Field(default_factory=list)
+    collection_name: str | None = None
+    collection_order: int | None = None
+    collection_total: int | None = None
     added_at: datetime
     """When this film was added to the user's watchlist."""
 

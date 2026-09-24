@@ -40,6 +40,29 @@ def test_build_prompt_instructs_a_french_critique():
     assert "french" in prompt.lower()
 
 
+def test_build_prompt_tags_saga_with_order_and_total():
+    film = _film("a", collection_name="The Saga", collection_order=2, collection_total=4)
+
+    prompt = reco_ai._build_prompt([film], _answers())
+
+    assert "[Saga: The Saga — 2/4]" in prompt
+
+
+def test_build_prompt_tags_saga_name_only_when_order_unknown():
+    film = _film("a", collection_name="The Saga")
+
+    prompt = reco_ai._build_prompt([film], _answers())
+
+    assert "[Saga: The Saga]" in prompt
+    assert "—" not in prompt
+
+
+def test_build_prompt_has_no_saga_tag_when_film_has_none():
+    prompt = reco_ai._build_prompt([_film("a")], _answers())
+
+    assert prompt.endswith("- id=a | Film a (2020) | no synopsis")
+
+
 async def test_pick_candidates_returns_ranked_matching_candidates(monkeypatch):
     candidates = [_film("a"), _film("b"), _film("c")]
 
