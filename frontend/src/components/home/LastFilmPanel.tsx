@@ -46,7 +46,7 @@ function LastFilmEmpty() {
  * an empty state before the first one. */
 export function LastFilmPanel({ film, loading }: LastFilmPanelProps) {
   return (
-    <div className="rounded-[var(--radius-xl)] border border-[var(--accent-border)] bg-[var(--accent-subtle)] p-6 flex flex-col gap-4 min-h-48">
+    <div className="h-full rounded-[var(--radius-xl)] border border-[var(--accent-border)] bg-[var(--accent-subtle)] p-6 flex flex-col gap-4 min-h-48">
       <p className="text-[10px] font-semibold tracking-widest text-[var(--cp-accent)] uppercase">
         Dernier film
       </p>
