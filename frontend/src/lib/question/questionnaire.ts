@@ -17,6 +17,8 @@ export const EMOTIONS = [
   "Épique",
 ] as const;
 
+// "Guerre" et "Fantastique" sont volontairement absents : déjà couverts par
+// la question Genre, les redemander ici duplique le signal.
 export const AMBIANCES = [
   "Spatial",
   "Futuriste",
@@ -25,8 +27,6 @@ export const AMBIANCES = [
   "Rural",
   "Film noir",
   "Nature",
-  "Guerre",
-  "Fantastique",
   "Conte",
   "Surréaliste",
   "Post-apocalyptique",
@@ -91,44 +91,105 @@ export function resolveCountryCode(value: string): string | null {
   return COUNTRY_NAME_TO_CODE[normalized] ?? null;
 }
 
-function withExtraOption(
+// Le choix "je m'en fous" est toujours en tête de liste : c'est le chemin
+// rapide pour qui ne veut pas se prononcer sur ce critère, il doit se voir
+// et se trouver en premier, pas se noyer parmi les autres options.
+function withNoPreferenceFirst(
+  noPreference: QuestionOption,
   options: QuestionOption[],
-  extra: QuestionOption,
 ): QuestionOption[] {
-  return [...options, extra];
+  return [noPreference, ...options];
 }
 
 export function getQuestions(): Question[] {
-  const genreOptions = withExtraOption([...GENRES], {
-    id: "none",
-    label: "Pas de préférence",
-  });
-  const emotionOptions = withExtraOption(
-    EMOTIONS.map((e) => ({ id: e, label: e })),
-    { id: "none", label: "Peu m'importe" },
-  );
-  const ambianceOptions = withExtraOption(
-    AMBIANCES.map((a) => ({ id: a, label: a })),
+  const genreOptions = withNoPreferenceFirst(
     { id: "none", label: "Pas de préférence" },
+    [...GENRES],
+  );
+  const emotionOptions = withNoPreferenceFirst(
+    { id: "none", label: "Peu m'importe" },
+    EMOTIONS.map((e) => ({ id: e, label: e })),
+  );
+  const ambianceOptions = withNoPreferenceFirst(
+    { id: "none", label: "Pas de préférence" },
+    AMBIANCES.map((a) => ({ id: a, label: a })),
   );
   const regionOptions: QuestionOption[] = [
-    ...REGIONS,
     { id: "none", label: "Pas de préférence" },
-    { id: "other", label: "Autre région" },
+    ...REGIONS,
+    { id: "other", label: "Autre pays" },
   ];
 
   return [
     {
+      id: "duration",
+      label: "Tu as combien de temps devant toi ?",
+      phase: "Contexte",
+      hard: true,
+      multi: false,
+      exclusiveId: "any",
+      options: [
+        { id: "any", label: "Peu importe" },
+        { id: "lt90", label: "Moins d'1h30" },
+        { id: "90-120", label: "1h30–2h" },
+        { id: "120-150", label: "2h–2h30" },
+        { id: "150plus", label: "2h30+" },
+      ],
+    },
+    {
+      id: "withWho",
+      label: "Tu regardes avec qui ?",
+      phase: "Contexte",
+      hard: false,
+      multi: false,
+      exclusiveId: "any",
+      options: [
+        { id: "any", label: "Pas de préférence" },
+        { id: "seul", label: "Seul" },
+        { id: "amis", label: "Entre amis" },
+        { id: "couple", label: "En couple" },
+        { id: "famille", label: "En famille" },
+      ],
+    },
+    {
       id: "genre",
-      label: "Quel genre te tente ce soir ?",
+      label: "Quel genre te tente ?",
+      phase: "Contenu",
       hard: true,
       multi: true,
       exclusiveId: "none",
       options: genreOptions,
     },
     {
+      id: "era",
+      label: "Une époque en tête ?",
+      phase: "Contenu",
+      hard: true,
+      multi: false,
+      exclusiveId: "any",
+      options: [
+        { id: "any", label: "Pas de préférence" },
+        { id: "silent", label: "Muet & Noir/Blanc (avant 1930)" },
+        { id: "golden", label: "Âge d'or Hollywood (1930–1959)" },
+        { id: "newwave", label: "Nouvelle Vague & Westerns (1960–1979)" },
+        { id: "blockbuster", label: "Blockbusters & Indie (1980–1999)" },
+        { id: "2000s", label: "2000–2014" },
+        { id: "recent", label: "Récent (2015+)" },
+      ],
+    },
+    {
+      id: "region",
+      label: "Produit dans quel pays ?",
+      phase: "Contenu",
+      hard: true,
+      multi: true,
+      exclusiveId: "none",
+      options: regionOptions,
+    },
+    {
       id: "emotion",
       label: "Tu as envie de ressentir quoi ?",
+      phase: "Ambiance",
       hard: false,
       multi: true,
       exclusiveId: "none",
@@ -137,79 +198,22 @@ export function getQuestions(): Question[] {
     {
       id: "ambiance",
       label: "Quelle ambiance tu cherches ?",
+      phase: "Ambiance",
       hard: false,
       multi: true,
       exclusiveId: "none",
       options: ambianceOptions,
     },
     {
-      id: "withWho",
-      label: "Tu regardes avec qui ?",
-      hard: false,
-      multi: false,
-      options: [
-        { id: "seul", label: "Seul" },
-        { id: "amis", label: "Entre amis" },
-        { id: "couple", label: "En couple" },
-        { id: "famille", label: "En famille" },
-        { id: "any", label: "Pas de préférence" },
-      ],
-    },
-    {
-      id: "duration",
-      label: "Tu as combien de temps devant toi ?",
-      hard: true,
-      multi: false,
-      options: [
-        { id: "lt90", label: "Moins d'1h30" },
-        { id: "90-120", label: "1h30–2h" },
-        { id: "120-150", label: "2h–2h30" },
-        { id: "150plus", label: "2h30+" },
-        { id: "any", label: "Peu importe" },
-      ],
-    },
-    {
-      id: "era",
-      label: "Une époque en tête ?",
-      hard: true,
-      multi: false,
-      options: [
-        { id: "silent", label: "Muet & Noir/Blanc (avant 1930)" },
-        { id: "golden", label: "Âge d'or Hollywood (1930–1959)" },
-        { id: "newwave", label: "Nouvelle Vague & Westerns (1960–1979)" },
-        { id: "blockbuster", label: "Blockbusters & Indie (1980–1999)" },
-        { id: "2000s", label: "2000–2014" },
-        { id: "recent", label: "Récent (2015+)" },
-        { id: "any", label: "Pas de préférence" },
-      ],
-    },
-    {
-      id: "region",
-      label: "Une région du monde qui t'attire ?",
-      hard: true,
-      multi: true,
-      exclusiveId: "none",
-      options: regionOptions,
-    },
-    {
-      id: "subtitles",
-      label: "Sous-titres ou pas ?",
-      hard: false,
-      multi: false,
-      options: [
-        { id: "with", label: "Avec sous-titres" },
-        { id: "without", label: "Sans sous-titre" },
-        { id: "any", label: "Pas de préférence" },
-      ],
-    },
-    {
       id: "seen",
       label: "Tu veux du jamais-vu ?",
+      phase: "Verrou",
       hard: true,
       multi: false,
+      exclusiveId: "any",
       options: [
-        { id: "nouveau", label: "Non, je veux du nouveau" },
         { id: "any", label: "Peu importe" },
+        { id: "nouveau", label: "Non, je veux du nouveau" },
       ],
     },
   ];

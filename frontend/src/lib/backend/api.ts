@@ -82,6 +82,7 @@ export interface RecommendRequest {
 
 export interface RecommendedFilm {
   film_id: string;
+  tmdb_id: number | null;
   title: string;
   poster_url: string | null;
   year: number | null;
@@ -90,6 +91,7 @@ export interface RecommendedFilm {
   genres: string[];
   origin_country: string[];
   director: string | null;
+  actors: string[];
   rank: number;
   match_score: number | null;
   critique: string | null;
@@ -101,14 +103,18 @@ export interface RecommendResponse {
   recommendation_session_id: string;
 }
 
+export interface RecommendCurrentResponse extends RecommendResponse {
+  /** The answers that produced this session — lets the front retry with a
+   * fresh /recommend call if every resumed candidate gets skipped. */
+  answers: RecommendRequest;
+}
+
 export type RecommendDecision = "accepted" | "skipped";
 
 export interface RecommendDecisionRequest {
   recommendation_session_id: string;
   film_id: string;
   decision: RecommendDecision;
-  match_score: number | null;
-  critique: string | null;
 }
 
 export interface WatchlistFilterFilm {
@@ -166,5 +172,79 @@ export async function recordDecision(
       ...(token !== null ? { Authorization: `Bearer ${token}` } : {}),
     },
     body: JSON.stringify(body),
+  });
+}
+
+/** `null` means nothing is awaiting a decision (backend 404) — not an error. */
+export async function getCurrentRecommendation(
+  token: string | null,
+): Promise<RecommendCurrentResponse | null> {
+  try {
+    return await apiFetch<RecommendCurrentResponse>("/recommend/current", {
+      headers: {
+        ...(token !== null ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) return null;
+    throw error;
+  }
+}
+
+export type WatchProviderCategory = "free" | "subscription" | "rent_buy";
+
+export interface WatchProvider {
+  provider_id: number;
+  name: string;
+  logo_url: string;
+  category: WatchProviderCategory;
+  /** True when this platform only offers the film ad-supported — show an
+   * "avec pub" mention for it. */
+  ads: boolean;
+}
+
+export interface WatchProvidersResponse {
+  providers: WatchProvider[];
+  /** TMDB's "where to watch" page for this film, shared by every provider
+   * (TMDB doesn't expose a per-platform deep link). */
+  link: string | null;
+}
+
+export async function getWatchProviders(
+  tmdbId: number,
+  token: string | null,
+): Promise<WatchProvidersResponse> {
+  return apiFetch(`/films/${tmdbId}/watch-providers`, {
+    headers: {
+      ...(token !== null ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+}
+
+export interface RatingResponse {
+  /** TMDB's average vote out of 10, or `null` when it has no votes yet for
+   * this film. */
+  vote_average: number | null;
+}
+
+export async function getRating(tmdbId: number, token: string | null): Promise<RatingResponse> {
+  return apiFetch(`/films/${tmdbId}/rating`, {
+    headers: {
+      ...(token !== null ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+}
+
+export async function abandonCurrentRecommendation(
+  recommendationSessionId: string,
+  token: string | null,
+): Promise<void> {
+  await apiFetch("/recommend/current/abandon", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token !== null ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ recommendation_session_id: recommendationSessionId }),
   });
 }

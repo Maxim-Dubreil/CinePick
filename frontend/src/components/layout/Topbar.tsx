@@ -12,14 +12,23 @@ import {
 import { signInWithGoogle, signOut } from "@/lib/auth";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
+import { useSync } from "@/hooks/useSync";
+import { cn } from "@/lib/utils";
+import { getDisplayName, getAvatarUrl } from "@/lib/profile";
 
 interface TopbarProps {
   variant?: "landing" | "app";
 }
 
+/** Classes appended to a nav `Link` to make it inert while a sync is in
+ * flight — `pointer-events-none` blocks the click, `aria-disabled` (set by
+ * the caller) tells assistive tech, the dimming makes it visible. */
+const NAV_LINK_DISABLED_CLASSES = "pointer-events-none opacity-50";
+
 export function Topbar({ variant = "landing" }: TopbarProps) {
   const { user, loading } = useAuth();
   const { profile } = useProfile();
+  const { isSyncing } = useSync();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -43,15 +52,17 @@ export function Topbar({ variant = "landing" }: TopbarProps) {
         {variant === "app" ? (
           <Link
             to="/home"
-            className="text-[22px] font-medium tracking-[0.04em] text-text-primary hover:opacity-80 transition-opacity"
-            style={{ fontFamily: "var(--font-heading)" }}
+            aria-disabled={isSyncing}
+            className={cn(
+              "font-heading text-[22px] font-medium tracking-[0.04em] text-text-primary hover:opacity-80 transition-opacity",
+              isSyncing && NAV_LINK_DISABLED_CLASSES,
+            )}
           >
             CinePick
           </Link>
         ) : (
           <span
-            className="text-[22px] font-medium tracking-[0.04em] text-text-primary"
-            style={{ fontFamily: "var(--font-heading)" }}
+            className="font-heading text-[22px] font-medium tracking-[0.04em] text-text-primary"
           >
             CinePick
           </span>
@@ -66,9 +77,13 @@ export function Topbar({ variant = "landing" }: TopbarProps) {
             }}
           >
             <TabsList variant="line">
-              <TabsTrigger value="Aujourd'hui">Aujourd'hui</TabsTrigger>
+              <TabsTrigger value="Aujourd'hui" disabled={isSyncing}>
+                Aujourd'hui
+              </TabsTrigger>
               {/* <TabsTrigger value="watchlist">Watchlist</TabsTrigger> */}
-              <TabsTrigger value="historique">Historique</TabsTrigger>
+              <TabsTrigger value="historique" disabled={isSyncing}>
+                Historique
+              </TabsTrigger>
             </TabsList>
           </Tabs>
         )}
@@ -77,7 +92,11 @@ export function Topbar({ variant = "landing" }: TopbarProps) {
       {variant === "app" && user && profile?.letterboxd_username && (
         <Link
           to="/profile"
-          className="absolute left-1/2 -translate-x-1/2 hover:opacity-70 transition-opacity"
+          aria-disabled={isSyncing}
+          className={cn(
+            "absolute left-1/2 -translate-x-1/2 hover:opacity-70 transition-opacity",
+            isSyncing && NAV_LINK_DISABLED_CLASSES,
+          )}
         >
           <Badge variant="letterboxd">
             <LetterboxdDots />@{profile.letterboxd_username}
@@ -101,19 +120,23 @@ export function Topbar({ variant = "landing" }: TopbarProps) {
         {variant === "app" && user && (
           <Link
             to="/profile"
-            className="flex items-center gap-2 hover:opacity-70 transition-opacity"
+            aria-disabled={isSyncing}
+            className={cn(
+              "flex items-center gap-2 hover:opacity-70 transition-opacity",
+              isSyncing && NAV_LINK_DISABLED_CLASSES,
+            )}
           >
             <span className="text-sm font-medium text-text-primary">
-              {user.user_metadata?.full_name?.split(" ")[0]}
+              {getDisplayName(user, profile).split(" ")[0]}
             </span>
             <Avatar size="default">
               <AvatarImage
-                src={user.user_metadata?.picture}
-                alt={user.user_metadata?.full_name ?? "Avatar"}
+                src={getAvatarUrl(user, profile)}
+                alt={getDisplayName(user, profile)}
               />
               <AvatarFallback className="bg-accent-subtle text-cp-accent font-semibold">
-                {user.user_metadata?.full_name
-                  ?.split(" ")[0]?.[0]
+                {getDisplayName(user, profile)
+                  .split(" ")[0]?.[0]
                   ?.toUpperCase()}
               </AvatarFallback>
             </Avatar>

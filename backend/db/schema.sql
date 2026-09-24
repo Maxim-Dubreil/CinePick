@@ -61,6 +61,7 @@ create table films (
   origin_country text[] default '{}'::text[],
   overview text,
   director text,
+  actors text[],
   created_at timestamptz default now()
 );
 
@@ -83,10 +84,17 @@ create table watch_history (
   -- the user swipes; /recommend/decision updates that row to 'accepted' or
   -- 'skipped'. A decision with no matching 'proposed' row is rejected —
   -- that's how we verify a film was actually shown, not just claimed.
+  -- A lower-ranked candidate the session ends before the user ever swipes
+  -- to (accept, or explicit "Recommencer") isn't a decision at all — its
+  -- row is deleted by abandon_session() rather than given a status.
   decision text check (decision in ('proposed', 'accepted', 'skipped')) not null,
   questions_context jsonb,
   ai_critique text,
   match_score integer,
+  -- Not recoverable from id (UUID, no natural order) or decided_at (tied
+  -- across one batch's insert). Written at proposal time alongside
+  -- ai_critique/match_score, needed to replay candidates in AI order.
+  rank smallint,
   decided_at timestamptz default now()
 );
 
@@ -178,3 +186,35 @@ create policy "Users can update own history"
   on watch_history for update
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
+
+-- Storage: public bucket for user-uploaded profile avatars (CIN-107).
+-- Path convention: "{user_id}/avatar.<ext>" — fixed filename per user (upsert on
+-- re-upload) so switching avatars doesn't accumulate orphaned files.
+insert into storage.buckets (id, name, public)
+values ('avatars', 'avatars', true)
+on conflict (id) do nothing;
+
+create policy "Avatar images are publicly accessible"
+  on storage.objects for select
+  using (bucket_id = 'avatars');
+
+create policy "Users can upload own avatar"
+  on storage.objects for insert
+  with check (
+    bucket_id = 'avatars'
+    and auth.uid()::text = (storage.foldername(name))[1]
+  );
+
+create policy "Users can update own avatar"
+  on storage.objects for update
+  using (
+    bucket_id = 'avatars'
+    and auth.uid()::text = (storage.foldername(name))[1]
+  );
+
+create policy "Users can delete own avatar"
+  on storage.objects for delete
+  using (
+    bucket_id = 'avatars'
+    and auth.uid()::text = (storage.foldername(name))[1]
+  );

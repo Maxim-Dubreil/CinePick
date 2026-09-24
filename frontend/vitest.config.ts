@@ -7,7 +7,7 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "./src"),
+      "@": path.resolve(import.meta.dirname, "./src"),
     },
   },
   test: {
@@ -15,5 +15,11 @@ export default defineConfig({
     environment: "jsdom",
     setupFiles: "./tests/setup.ts",
     include: ["tests/**/*.{test,spec}.{ts,tsx}"],
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "lcov"],
+      include: ["src/**/*.{ts,tsx}"],
+      exclude: ["src/components/ui/**", "src/**/*.d.ts", "src/main.tsx"],
+    },
   },
 });

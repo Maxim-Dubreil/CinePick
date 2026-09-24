@@ -1,7 +1,9 @@
 import { useState, useEffect, useMemo } from "react";
 import { Clock } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useProfile } from "@/hooks/useProfile";
 import { type TimeOfDay, getTimeOfDay, formatTime } from "@/lib/timeOfDay";
+import { getDisplayName } from "@/lib/profile";
 
 const periodLabel: Record<TimeOfDay, string> = {
   morning: "CE MATIN",
@@ -40,6 +42,7 @@ function pickRandom<T>(arr: T[]): T {
 
 export function HomeHeader() {
   const { user } = useAuth();
+  const { profile } = useProfile();
   const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
@@ -47,7 +50,9 @@ export function HomeHeader() {
     return () => clearInterval(id);
   }, []);
 
-  const firstName = user?.user_metadata?.full_name?.split(" ")[0] ?? "toi";
+  const firstName = user
+    ? getDisplayName(user, profile).split(" ")[0]
+    : "toi";
   const timeOfDay = getTimeOfDay(now.getHours());
 
   const { greeting, subtitle } = useMemo(
@@ -59,7 +64,7 @@ export function HomeHeader() {
   );
 
   return (
-    <section className="flex flex-col items-center text-center px-10 pt-16 pb-8">
+    <section className="flex flex-col items-center text-center px-10 pt-10 pb-6">
       <div className="flex items-center gap-2 text-xs font-medium tracking-widest text-text-primary uppercase mb-6">
         <span>{periodLabel[timeOfDay]}</span>
         <span>•</span>
@@ -68,8 +73,7 @@ export function HomeHeader() {
       </div>
 
       <h1
-        className="text-[52px] font-medium leading-[1.1] tracking-[-0.5px] max-w-155"
-        style={{ fontFamily: "var(--font-heading)" }}
+        className="font-heading text-[52px] font-medium leading-[1.1] tracking-[-0.5px] max-w-155"
       >
         <span className="text-text-primary block">
           {greeting}, {firstName}.

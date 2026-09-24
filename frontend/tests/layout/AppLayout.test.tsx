@@ -10,6 +10,10 @@ vi.mock("@/hooks/useProfile", () => ({
   useProfile: () => ({ profile: null, loading: false, refetch: () => {} }),
 }));
 
+vi.mock("@/hooks/useSync", () => ({
+  useSync: () => ({ isSyncing: false, setSyncing: () => {} }),
+}));
+
 const renderInRouter = (ui: React.ReactNode) =>
   render(<MemoryRouter>{ui}</MemoryRouter>);
 

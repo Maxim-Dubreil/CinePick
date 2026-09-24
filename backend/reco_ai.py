@@ -5,11 +5,13 @@ this file's internals, never its callers. `_call_gemini` is the sole
 function talking to the real SDK, isolated for testability (same pattern as
 `tmdb.py`'s `_search_movie_id`/`_fetch_details`).
 
-Never retries and never falls back to a random pick: any failure — a
-network/API error, a malformed response, or a response naming a film outside
-`candidates` — raises `AIProviderError` and lets the caller decide (see
-`main.py`, which turns this into a 502). Reproposing a film outside the
-already-filtered watchlist would violate the North Star's principle #2.
+Only retry: a 5xx from the primary model switches once to a fallback model
+(same prompt, same validation). Never falls back to a random pick: any other
+failure — a network/API error, a malformed response, or a response naming a
+film outside `candidates` — raises `AIProviderError` and lets the caller
+decide (see `main.py`, which turns this into a 502). Reproposing a film
+outside the already-filtered watchlist would violate the North Star's
+principle #2.
 """
 
 import json
@@ -17,14 +19,19 @@ import logging
 import os
 
 from google import genai
-from google.genai import types
+from google.genai import errors, types
 
 from models import RankedCandidate, RecommendRequest, WatchlistFilm
 
 logger = logging.getLogger(__name__)
 
-_MODEL = "gemini-3.6-flash"
-_REQUEST_TIMEOUT = 10.0
+_MODEL = "gemini-3.1-flash-lite"
+# Used only when _MODEL answers a 5xx (Google overload). Thinking is kept at
+# "minimal": at the default level it takes 20s+ on this prompt, close to
+# _REQUEST_TIMEOUT. A "-preview" model can be retired by Google — see CIN-94
+# in docs/specs/ai.md before swapping it.
+_FALLBACK_MODEL = "gemini-3-flash-preview"
+_REQUEST_TIMEOUT = 30.0
 _OVERVIEW_MAX_CHARS = 200
 _MAX_CANDIDATES = 3
 _RESPONSE_SCHEMA = {
@@ -56,6 +63,12 @@ class AIProviderError(Exception):
     the candidate set."""
 
 
+class AIOverloadedError(AIProviderError):
+    """Raised when the fallback model also answers 503 (Google-side
+    overload) — both models confirmed unavailable, so the caller can tell the
+    user to retry later instead of reporting a generic failure."""
+
+
 def _soft_signals(answers: RecommendRequest) -> str:
     """Render the soft signals (emotion/ambiance/withWho/subtitles) as a
     natural-language clause for the prompt, omitting any that carry a
@@ -75,19 +88,36 @@ def _soft_signals(answers: RecommendRequest) -> str:
     return ", ".join(parts) if parts else "has no specific preference"
 
 
+def _saga_tag(film: WatchlistFilm) -> str:
+    """`" | [Saga: <name> — <order>/<total>]"` when the film belongs to a
+    TMDB collection, `""` otherwise. `order`/`total` are release order, not a
+    curated viewing order (see docs/specs/ai.md) — omitted from the tag when
+    TMDB's collection listing didn't resolve them, leaving just the name."""
+    if not film.collection_name:
+        return ""
+    if film.collection_order and film.collection_total:
+        return (
+            f" | [Saga: {film.collection_name} — "
+            f"{film.collection_order}/{film.collection_total}]"
+        )
+    return f" | [Saga: {film.collection_name}]"
+
+
 def _build_prompt(candidates: list[WatchlistFilm], answers: RecommendRequest) -> str:
     films_block = "\n".join(
         f"- id={f.id} | {f.title} ({f.year or '?'}) | "
-        f"{(f.overview or 'no synopsis')[:_OVERVIEW_MAX_CHARS]}"
+        f"{(f.overview or 'no synopsis')[:_OVERVIEW_MAX_CHARS]}{_saga_tag(f)}"
         for f in candidates
     )
     return (
         f"Pick up to {_MAX_CANDIDATES} films from this list, ranked best first, "
         f"for someone who {_soft_signals(answers)}. For each, give a match_score "
         "(0-100) and a 1-2 sentence critique, written in French, referencing at "
-        "least one of their preferences. Reply with ONLY a JSON object like "
-        '{"candidates": [{"film_id": "<id>", "rank": 1, "match_score": 90, '
-        '"critique": "..."}]}, using only ids from the list below, nothing else.'
+        "least one of their preferences. When a film has a [Saga: ...] tag, you "
+        "may mention its place in the saga if relevant. Reply with ONLY a JSON "
+        'object like {"candidates": [{"film_id": "<id>", "rank": 1, '
+        '"match_score": 90, "critique": "..."}]}, using only ids from the list '
+        "below, nothing else."
         f"\n\n{films_block}"
     )
 
@@ -98,14 +128,20 @@ async def _call_gemini(prompt: str) -> str:
         api_key=os.environ["GEMINI_API_KEY"],
         http_options=types.HttpOptions(timeout=int(_REQUEST_TIMEOUT * 1000)),
     )
-    response = await client.aio.models.generate_content(
-        model=_MODEL,
-        contents=prompt,
-        config={
-            "response_mime_type": "application/json",
-            "response_schema": _RESPONSE_SCHEMA,
-        },
+    config = types.GenerateContentConfig(
+        response_mime_type="application/json",
+        response_schema=_RESPONSE_SCHEMA,
     )
+    try:
+        response = await client.aio.models.generate_content(
+            model=_MODEL, contents=prompt, config=config
+        )
+    except errors.ServerError:
+        logger.warning("Gemini %s unavailable, falling back to %s", _MODEL, _FALLBACK_MODEL)
+        config.thinking_config = types.ThinkingConfig(thinking_level=types.ThinkingLevel.MINIMAL)
+        response = await client.aio.models.generate_content(
+            model=_FALLBACK_MODEL, contents=prompt, config=config
+        )
     if response.text is None:
         raise ValueError("Gemini response has no text content")
     return response.text
@@ -139,6 +175,15 @@ async def pick_candidates(
             )
             for c in parsed
         ]
+    except errors.ServerError as exc:
+        # Only the fallback's error can escape `_call_gemini` (the primary's
+        # ServerError triggers the fallback), so a 503 here means both models
+        # are overloaded.
+        if exc.code == 503:
+            logger.warning("Gemini overloaded on both %s and %s", _MODEL, _FALLBACK_MODEL)
+            raise AIOverloadedError("Both AI models are overloaded") from exc
+        logger.exception("Gemini fallback model failed")
+        raise AIProviderError("AI call failed or returned an unparseable response") from exc
     except Exception as exc:
         logger.exception("Gemini call failed or returned an unparseable response")
         raise AIProviderError("AI call failed or returned an unparseable response") from exc

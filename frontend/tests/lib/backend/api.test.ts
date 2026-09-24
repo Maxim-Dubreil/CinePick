@@ -173,6 +173,7 @@ describe("getRecommendation", () => {
       candidates: [
         {
           film_id: "f1",
+          tmdb_id: null,
           title: "Film 1",
           poster_url: null,
           year: 2020,
@@ -181,6 +182,7 @@ describe("getRecommendation", () => {
           genres: ["35"],
           origin_country: ["FR"],
           director: null,
+          actors: [],
           rank: 1,
           match_score: 87,
           critique: "Bon choix",
@@ -263,8 +265,6 @@ describe("recordDecision", () => {
     recommendation_session_id: "session-1",
     film_id: "f1",
     decision: "skipped",
-    match_score: 87,
-    critique: "Bon choix",
   };
 
   it("sends the decision as JSON body with Authorization header", async () => {

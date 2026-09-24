@@ -83,3 +83,38 @@ def test_user_cannot_reassign_watchlist_item_to_another_user(
         assert response.count in (None, 0)
     finally:
         admin.table("films").delete().eq("id", film["id"]).execute()
+
+
+def test_user_can_update_own_profile(rls_clients: tuple[Client, Client, Client, str, str]):
+    admin, first_client, _, first_user_id, _ = rls_clients
+
+    first_client.table("users").update(
+        {"full_name": "Edited name", "avatar_url": "https://example.com/avatar.png"}
+    ).eq("id", first_user_id).execute()
+
+    row = admin.table("users").select("full_name, avatar_url").eq("id", first_user_id).execute()
+    assert row.data == [
+        {"full_name": "Edited name", "avatar_url": "https://example.com/avatar.png"}
+    ]
+
+
+def test_user_cannot_update_another_users_profile(
+    rls_clients: tuple[Client, Client, Client, str, str]
+):
+    admin, first_client, _, _, second_user_id = rls_clients
+    before = (
+        admin.table("users").select("full_name, avatar_url").eq("id", second_user_id).execute()
+    )
+
+    # The update policy's USING clause hides the other user's row, so the
+    # update silently matches nothing rather than raising.
+    response = (
+        first_client.table("users")
+        .update({"full_name": "Hijacked", "avatar_url": "https://example.com/evil.png"})
+        .eq("id", second_user_id)
+        .execute()
+    )
+
+    assert response.data == []
+    after = admin.table("users").select("full_name, avatar_url").eq("id", second_user_id).execute()
+    assert after.data == before.data

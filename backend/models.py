@@ -70,6 +70,23 @@ class FilmEnrichment(BaseModel):
     """Name of the film's director, from `credits.crew` — `None` when TMDB
     has no crew entry with `job == "Director"`."""
 
+    actors: list[str] = Field(default_factory=list)
+    """Up to 5 main cast names, from `credits.cast`, billing order — empty
+    when TMDB has no cast entry."""
+
+    collection_name: str | None = None
+    """TMDB saga/collection name (`belongs_to_collection.name`), `None` when
+    the film isn't part of one."""
+
+    collection_order: int | None = None
+    """This film's 1-based rank by release date within its collection.
+    `None` when there's no collection, or TMDB's collection listing doesn't
+    include this film. Release order, not a curated "recommended viewing
+    order" — see docs/specs/ai.md."""
+
+    collection_total: int | None = None
+    """Number of films in the collection, alongside `collection_order`."""
+
 
 class EnrichedFilm(BaseModel):
     """A scraped film merged with its (optional) TMDB enrichment.
@@ -90,6 +107,10 @@ class EnrichedFilm(BaseModel):
     origin_country: list[str] = Field(default_factory=list)
     overview: str | None = None
     director: str | None = None
+    actors: list[str] = Field(default_factory=list)
+    collection_name: str | None = None
+    collection_order: int | None = None
+    collection_total: int | None = None
 
 
 class WatchlistFilm(BaseModel):
@@ -105,21 +126,25 @@ class WatchlistFilm(BaseModel):
     title: str
     year: int | None
     poster_url: str | None
+    tmdb_id: int | None = None
     genres: list[str] = Field(default_factory=list)
     runtime: int | None = None
     origin_country: list[str] = Field(default_factory=list)
     overview: str | None = None
     director: str | None = None
+    actors: list[str] = Field(default_factory=list)
+    collection_name: str | None = None
+    collection_order: int | None = None
+    collection_total: int | None = None
     added_at: datetime
-    """When this film was added to the user's watchlist — used to sort the
-    no-AI short-circuit path deterministically (oldest first)."""
+    """When this film was added to the user's watchlist."""
 
-    @field_validator("genres", "origin_country", mode="before")
+    @field_validator("genres", "origin_country", "actors", mode="before")
     @classmethod
     def _null_array_to_empty(cls, value: object) -> object:
-        """`films.genres`/`origin_country` are nullable: PostgREST writes an
-        explicit NULL for unenriched films in a mixed upsert batch (see
-        backend/db/schema.sql and test_upsert_films_mixed_batch_against_real_db)."""
+        """`films.genres`/`origin_country`/`actors` are nullable: PostgREST
+        writes an explicit NULL for unenriched films in a mixed upsert batch
+        (see backend/db/schema.sql and test_upsert_films_mixed_batch_against_real_db)."""
         return [] if value is None else value
 
 
@@ -186,5 +211,9 @@ class RecommendDecisionRequest(BaseModel):
     recommendation_session_id: str
     film_id: str
     decision: Literal["accepted", "skipped"]
-    match_score: int | None = Field(default=None, ge=0, le=100)
-    critique: str | None = Field(default=None, max_length=1000)
+
+
+class AbandonSessionRequest(BaseModel):
+    """Body of POST /recommend/current/abandon — the explicit "Recommencer"."""
+
+    recommendation_session_id: str

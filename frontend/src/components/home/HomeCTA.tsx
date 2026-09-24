@@ -11,11 +11,7 @@ const ctaLabel: Record<TimeOfDay, string> = {
   night: "Lancer le pick de cette nuit",
 };
 
-interface HomeCTAProps {
-  letterboxdUsername: string | null;
-}
-
-export function HomeCTA({ letterboxdUsername }: HomeCTAProps) {
+export function HomeCTA() {
   const navigate = useNavigate();
   const [now, setNow] = useState(() => new Date());
 
@@ -27,14 +23,13 @@ export function HomeCTA({ letterboxdUsername }: HomeCTAProps) {
   const timeOfDay = getTimeOfDay(now.getHours());
 
   return (
-    <section className="flex flex-col items-center px-4 pt-8 pb-6">
+    <section className="flex flex-col items-center px-4 pt-4 pb-6">
       <Button
         variant="glass-primary"
         size="lg"
         className="h-12 px-8 text-[15px] gap-3"
         style={{ borderRadius: "var(--radius-xl)" }}
         onClick={() => navigate("/home/question")}
-        disabled={!letterboxdUsername}
       >
         <Clapperboard size={18} />
         {ctaLabel[timeOfDay]}

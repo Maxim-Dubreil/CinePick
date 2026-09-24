@@ -1,5 +1,8 @@
 # CinePick
 
+[![backend coverage](https://img.shields.io/codecov/c/github/Maxim-Dubreil/CinePick/develop?flag=backend&label=backend%20coverage)](https://app.codecov.io/gh/Maxim-Dubreil/CinePick?flags%5B0%5D=backend)
+[![frontend coverage](https://img.shields.io/codecov/c/github/Maxim-Dubreil/CinePick/develop?flag=frontend&label=frontend%20coverage)](https://app.codecov.io/gh/Maxim-Dubreil/CinePick?flags%5B0%5D=frontend)
+
 A web app that analyzes a Letterboxd watchlist to recommend a movie through a question flow and AI.
 
 ## Stack
@@ -15,8 +18,9 @@ A web app that analyzes a Letterboxd watchlist to recommend a movie through a qu
 
 ### Prerequisites
 
-- Node.js 22
-- Python 3.12
+- Node.js 24
+- pnpm 11.27.1
+- Python 3.13
 - Docker / Docker Desktop
 
 ### Environment variables
@@ -49,26 +53,6 @@ docker compose up --build
 
 Frontend available at: `http://localhost:5173` Backend available at: `http://localhost:8000`
 
-### Local validation
-
-To enable the repository git hooks once on a new clone:
-
-```sh
-make install-hooks
-```
-
-Two gates, different speed:
-
-- **pre-commit** (`make verify-commit`): whitespace check on the staged diff + `make verify-db`
-  (Supabase migrations dry-run pushed against the linked project, schema lint — fails if local and
-  remote migration history don't match). Fast, runs on every commit.
-- **pre-push** (`make verify-push`, i.e. `make verify`): rebuilds the Docker images, then runs
-  backend and frontend tests, linting, type checking, and the production frontend build. Slower,
-  runs once per push.
-
-Run either target manually at any time with `make verify-commit` / `make verify-push`. V1
-readiness (test backlog, remaining quality/infra work) is tracked in Linear, not in this repo.
-
 ### API reference (Swagger UI)
 
 FastAPI generates interactive API docs automatically — no setup needed. With the backend running,
@@ -92,24 +76,11 @@ CinePick/
 └── README.md
 ```
 
-## Conventions
+## Contributing
 
-### Branches
+See [CONTRIBUTING.md](.github/CONTRIBUTING.md) for the workflow, local validation hooks, and commit
+conventions.
 
-Solo developer: commit directly to `develop` (default branch). `main` is the protected production
-branch (merges only).
+## License
 
-### Commits
-
-```sh
-type: [CIN-XX] description
-```
-
-| Type    | Usage                        |
-| ------- | ---------------------------- |
-| `feat`  | New feature                  |
-| `fix`   | Bug fix                      |
-| `chore` | Config, setup, refactor      |
-| `docs`  | Documentation                |
-| `test`  | Add or update tests          |
-| `style` | Formatting, no logic changes |
+All rights reserved — see [LICENSE](LICENSE).

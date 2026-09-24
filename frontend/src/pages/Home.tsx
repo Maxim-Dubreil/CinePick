@@ -4,7 +4,7 @@ import { AppLayout } from "@/components/layout";
 import {
   HomeHeader,
   HomeCTA,
-  WatchlistBanner,
+  WatchlistOnboarding,
   WatchlistPanel,
   LastFilmPanel,
   LetterboxdConfigModal,
@@ -14,6 +14,7 @@ import { Question } from "./Question";
 import { Result } from "./Result";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
+import { useSync } from "@/hooks/useSync";
 import { useLastAcceptedFilm } from "@/hooks/useLastAcceptedFilm";
 import { syncWatchlist } from "@/lib/backend/api";
 import { Toast } from "@/components/ui";
@@ -21,10 +22,13 @@ import { Toast } from "@/components/ui";
 export function Home() {
   const { session, user } = useAuth();
   const { profile, loading: profileLoading, refetch } = useProfile();
-  const { film: lastAcceptedFilm, loading: lastAcceptedFilmLoading } =
-    useLastAcceptedFilm(user?.id ?? null);
+  const {
+    film: lastAcceptedFilm,
+    loading: lastAcceptedFilmLoading,
+    refetch: refetchLastAcceptedFilm,
+  } = useLastAcceptedFilm(user?.id ?? null);
   const [modalOpen, setModalOpen] = useState(false);
-  const [isSyncing, setIsSyncing] = useState(false);
+  const { isSyncing, setSyncing } = useSync();
   const [syncError, setSyncError] = useState<string | null>(null);
 
   // letterboxdUsername: prioritise profile from API, fallback to null
@@ -32,7 +36,7 @@ export function Home() {
 
   const handleResync = async () => {
     if (!letterboxdUsername || !session?.access_token) return;
-    setIsSyncing(true);
+    setSyncing(true);
     setSyncError(null);
     try {
       await syncWatchlist(letterboxdUsername, session.access_token);
@@ -41,7 +45,7 @@ export function Home() {
       console.error("Home watchlist sync failed", error);
       setSyncError("La synchronisation a échoué. Réessaie dans un instant.");
     } finally {
-      setIsSyncing(false);
+      setSyncing(false);
     }
   };
 
@@ -59,17 +63,20 @@ export function Home() {
             element={
               <>
                 <SyncOverlay visible={isSyncing} />
-                {!profileLoading && !letterboxdUsername && (
-                  <div className="flex justify-end px-4 pt-3">
-                    <WatchlistBanner onOpenModal={() => setModalOpen(true)} />
-                  </div>
-                )}
                 <HomeHeader />
-                <HomeCTA letterboxdUsername={letterboxdUsername} />
+                {letterboxdUsername ? (
+                  <HomeCTA />
+                ) : (
+                  !profileLoading && (
+                    <WatchlistOnboarding
+                      onOpenModal={() => setModalOpen(true)}
+                    />
+                  )
+                )}
 
                 {profile?.letterboxd_username && (
-                  <div className="flex justify-center px-6 pb-10 pt-[100px]">
-                    <div className="flex gap-4 w-full max-w-3xl">
+                  <div className="flex justify-center px-6 pt-10 pb-10">
+                    <div className="flex items-stretch gap-4 w-full max-w-5xl">
                       <div className="flex-1">
                         <LastFilmPanel
                           film={lastAcceptedFilm}
@@ -91,13 +98,16 @@ export function Home() {
                   open={modalOpen}
                   onOpenChange={setModalOpen}
                   onSuccess={() => void refetch()}
-                  onSyncingChange={setIsSyncing}
+                  onSyncingChange={setSyncing}
                   token={session?.access_token ?? null}
                 />
               </>
             }
           />
-          <Route path="result" element={<Result />} />
+          <Route
+            path="result"
+            element={<Result onAccepted={refetchLastAcceptedFilm} />}
+          />
         </Route>
         <Route
           path="question"

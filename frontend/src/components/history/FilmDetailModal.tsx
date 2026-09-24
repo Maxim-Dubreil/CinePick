@@ -1,13 +1,11 @@
-import { Images, Tv } from "lucide-react";
 import {
   Badge,
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogHeader,
   DialogTitle,
 } from "@/components/ui";
-import { FilmPoster } from "@/components/FilmPoster";
+import { FilmCard } from "@/components/result/FilmCard";
 import { formatDaysAgo } from "@/lib/dates";
 import type { HistoryEntry } from "@/hooks/useHistory";
 
@@ -16,89 +14,62 @@ interface FilmDetailModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
-/** Full film overview opened from a history card. `overview` (the real
- * synopsis) is already part of the `films` schema, but streaming providers
- * and alternate posters aren't modeled anywhere yet — shown as static
- * "bientôt disponible" sections rather than left out, so the page's final
- * shape is visible ahead of the backend work. */
+/** Full film overview opened from a history card — the Result screen's
+ * `FilmCard`, plus the decision badge and when it was made. */
 export function FilmDetailModal({ entry, onOpenChange }: FilmDetailModalProps) {
   return (
     <Dialog open={entry !== null} onOpenChange={onOpenChange}>
+      {/* The dialog box itself is invisible: FilmCard already draws the same
+          rounded popover box. max-h + overflow-y-auto keeps it reachable on
+          short viewports. No backdrop-blur on the overlay: a full-viewport
+          backdrop-filter made the open visibly stutter. */}
       <DialogContent
-        className="max-h-[calc(100vh-2rem)] min-h-[32rem] overflow-y-auto p-5 sm:min-h-[36rem] sm:max-w-3xl sm:p-8"
-        overlayClassName="bg-black/20 backdrop-blur-[2px]"
+        className="max-h-[calc(100dvh-2rem)] overflow-y-auto bg-transparent p-0 ring-0 sm:max-w-5xl"
+        overlayClassName="bg-black/40"
         disableAnimation
       >
         {entry && (
           <>
-            <DialogHeader>
-              <div className="flex gap-6">
-                <FilmPoster
-                  posterUrl={entry.posterUrl}
-                  alt={entry.title}
-                  className="w-36 shrink-0 sm:w-44"
-                />
-                <div className="flex min-w-0 flex-col justify-center gap-3">
-                  <DialogTitle className="text-xl sm:text-2xl">
-                    {entry.year !== null
-                      ? `${entry.title} (${entry.year})`
-                      : entry.title}
-                  </DialogTitle>
-                  <DialogDescription>
-                    {[
-                      ...entry.genres,
-                      entry.runtime !== null ? `${entry.runtime} min` : null,
-                    ]
-                      .filter(Boolean)
-                      .join(" · ")}
-                  </DialogDescription>
-                  <div className="flex items-center gap-2">
-                    {entry.decision === "accepted" ? (
-                      <Badge className="border-[var(--success)]/30 bg-[var(--success)]/10 text-[var(--success)]">
-                        Validé
-                      </Badge>
-                    ) : (
-                      <Badge className="border-[var(--danger)]/30 bg-[var(--danger)]/10 text-[var(--danger)]">
-                        Passé
-                      </Badge>
-                    )}
-                    <span className="text-xs text-[var(--text-tertiary)]">
-                      {formatDaysAgo(entry.decidedAt)}
-                    </span>
-                  </div>
+            {/* FilmCard renders the visible title; Radix still needs these
+                for the dialog's accessible name/description. */}
+            <DialogTitle className="sr-only">{entry.title}</DialogTitle>
+            <DialogDescription className="sr-only">
+              Détails du film {entry.title}
+            </DialogDescription>
+            <FilmCard
+              // Top padding leaves room for the dialog's close button, which
+              // would otherwise sit on the title / match badge.
+              className="pt-12 sm:pt-12"
+              film={{
+                tmdb_id: entry.tmdbId,
+                title: entry.title,
+                poster_url: entry.posterUrl,
+                year: entry.year,
+                runtime: entry.runtime,
+                overview: entry.overview,
+                genres: entry.genreIds,
+                director: entry.director,
+                actors: entry.actors,
+                match_score: entry.matchScore,
+                critique: entry.aiSummary,
+              }}
+              status={
+                <div className="flex items-center gap-2">
+                  {entry.decision === "accepted" ? (
+                    <Badge className="border-[var(--success)]/30 bg-[var(--success)]/10 text-[var(--success)]">
+                      Validé
+                    </Badge>
+                  ) : (
+                    <Badge className="border-[var(--danger)]/30 bg-[var(--danger)]/10 text-[var(--danger)]">
+                      Passé
+                    </Badge>
+                  )}
+                  <span className="text-xs text-[var(--text-tertiary)]">
+                    {formatDaysAgo(entry.decidedAt)}
+                  </span>
                 </div>
-              </div>
-            </DialogHeader>
-
-            <div className="flex flex-col gap-6 text-sm">
-              <section>
-                <h3 className="text-xs font-medium uppercase tracking-wide text-[var(--text-tertiary)] mb-1">
-                  Synopsis
-                </h3>
-                <p className="text-[var(--text-secondary)]">
-                  {entry.overview ?? "Synopsis — bientôt disponible"}
-                </p>
-              </section>
-
-              <section>
-                <h3 className="text-xs font-medium uppercase tracking-wide text-[var(--text-tertiary)] mb-1">
-                  Résumé IA
-                </h3>
-                <p className="italic text-[var(--text-secondary)]">
-                  {entry.aiSummary ?? "Résumé IA — bientôt disponible"}
-                </p>
-              </section>
-
-              <section className="flex items-center gap-2 opacity-50">
-                <Tv size={16} />
-                <span>Plateformes de streaming — bientôt disponible</span>
-              </section>
-
-              <section className="flex items-center gap-2 opacity-50">
-                <Images size={16} />
-                <span>Autres affiches — bientôt disponible</span>
-              </section>
-            </div>
+              }
+            />
           </>
         )}
       </DialogContent>

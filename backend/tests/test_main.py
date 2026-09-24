@@ -1,16 +1,22 @@
 from datetime import UTC, datetime
 
+import httpx
 import pytest
 from fastapi.testclient import TestClient
+from supabase_auth.errors import AuthApiError
 
 import main as main_module
 import reco_ai
 import scraper
 import tmdb
+import tmdb_rating
+import watch_providers
 from main import app
 from models import Film, RankedCandidate, WatchlistFilm
 from repositories import watch_history as watch_history_repo
 from repositories import watchlist as watchlist_repo
+from tmdb_rating import RatingResponse
+from watch_providers import WatchProvider, WatchProvidersResponse
 
 client = TestClient(app)
 
@@ -232,8 +238,8 @@ def _patch_recommend(monkeypatch, *, films=None, history=None, ranked=None, ai_r
     monkeypatch.setattr(
         watch_history_repo,
         "record_proposals",
-        lambda user_id, session_id, film_ids, ctx: recorded.append(
-            (user_id, session_id, film_ids, ctx)
+        lambda user_id, session_id, ranked, ctx: recorded.append(
+            (user_id, session_id, ranked, ctx)
         ),
     )
 
@@ -248,22 +254,97 @@ def _patch_recommend(monkeypatch, *, films=None, history=None, ranked=None, ai_r
     return recorded
 
 
-def test_recommend_short_circuits_with_three_or_fewer_candidates(monkeypatch):
-    films = [
-        _film("a", added_at=datetime(2026, 1, 2, tzinfo=UTC)),
-        _film("b", added_at=datetime(2026, 1, 1, tzinfo=UTC)),
+def test_recommend_current_returns_404_when_nothing_pending(monkeypatch):
+    monkeypatch.setattr(watch_history_repo, "get_pending_session", lambda user_id: None)
+
+    response = client.get("/recommend/current", headers=AUTH_HEADERS)
+
+    assert response.status_code == 404
+    assert response.json()["detail"]["type"] == "no_pending_session"
+
+
+def test_recommend_current_returns_pending_candidates(monkeypatch):
+    rows = [
+        {
+            "film_id": "b",
+            "rank": 1,
+            "match_score": 88,
+            "ai_critique": "Belle pioche.",
+            "questions_context": RECOMMEND_BODY,
+            "films": {
+                "tmdb_id": 238,
+                "title": "Film b",
+                "poster_url": "http://x/p.jpg",
+                "year": 2020,
+                "runtime": 100,
+                "overview": "A synopsis.",
+                "genres": ["35"],
+                "origin_country": ["US"],
+                "director": None,
+                "actors": None,
+            },
+        }
     ]
-    recorded = _patch_recommend(monkeypatch, films=films)
+    monkeypatch.setattr(
+        watch_history_repo, "get_pending_session", lambda user_id: ("session-1", rows)
+    )
+
+    response = client.get("/recommend/current", headers=AUTH_HEADERS)
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["recommendation_session_id"] == "session-1"
+    assert data["meta"]["candidates_considered"] == 1
+    assert data["candidates"] == [
+        {
+            "film_id": "b",
+            "tmdb_id": 238,
+            "title": "Film b",
+            "poster_url": "http://x/p.jpg",
+            "year": 2020,
+            "runtime": 100,
+            "overview": "A synopsis.",
+            "genres": ["35"],
+            "origin_country": ["US"],
+            "director": None,
+            "actors": [],
+            "rank": 1,
+            "match_score": 88,
+            "critique": "Belle pioche.",
+        }
+    ]
+    assert data["answers"] == RECOMMEND_BODY
+
+
+def test_recommend_calls_ai_even_with_two_candidates(monkeypatch):
+    films = [_film("a"), _film("b")]
+    chosen = RankedCandidate(film=films[1], rank=1, match_score=88, critique="Belle pioche.")
+    recorded = _patch_recommend(monkeypatch, films=films, ranked=[chosen])
 
     response = client.post("/recommend", json=RECOMMEND_BODY, headers=AUTH_HEADERS)
 
     assert response.status_code == 200
     data = response.json()
-    assert [c["title"] for c in data["candidates"]] == ["Film b", "Film a"]  # oldest first
-    assert all(c["match_score"] is None and c["critique"] is None for c in data["candidates"])
+    assert data["candidates"] == [
+        {
+            "film_id": "b",
+            "tmdb_id": None,
+            "title": "Film b",
+            "poster_url": "http://x/p.jpg",
+            "year": 2020,
+            "runtime": 100,
+            "overview": "A synopsis.",
+            "genres": ["35"],
+            "origin_country": ["US"],
+            "director": None,
+            "actors": [],
+            "rank": 1,
+            "match_score": 88,
+            "critique": "Belle pioche.",
+        }
+    ]
     assert data["meta"]["candidates_considered"] == 2
-    assert recorded[0][2] == ["b", "a"]  # proposals recorded in the order returned
-    assert [c["film_id"] for c in data["candidates"]] == recorded[0][2]
+    assert [r.film.id for r in recorded[0][2]] == ["b"]
     assert data["recommendation_session_id"] == recorded[0][1]
 
 
@@ -279,7 +360,7 @@ def test_recommend_calls_ai_with_more_than_three_candidates(monkeypatch):
     assert len(data["candidates"]) == 1
     assert data["candidates"][0]["match_score"] == 95
     assert data["candidates"][0]["critique"] == "Top pick."
-    assert recorded[0][2] == ["2"]  # the AI-chosen film's id, matching what was returned
+    assert [r.film.id for r in recorded[0][2]] == ["2"]  # matches what was returned
 
 
 def test_recommend_empty_watchlist(monkeypatch):
@@ -365,3 +446,197 @@ def test_recommend_decision_null_score_and_critique_allowed(monkeypatch):
     response = client.post("/recommend/decision", json=body, headers=AUTH_HEADERS)
 
     assert response.status_code == 200
+
+
+def test_recommend_current_abandon_marks_remaining_as_skipped(monkeypatch):
+    calls = []
+    monkeypatch.setattr(
+        watch_history_repo,
+        "abandon_session",
+        lambda user_id, session_id: calls.append((user_id, session_id)),
+    )
+
+    response = client.post(
+        "/recommend/current/abandon",
+        json={"recommendation_session_id": "session-1"},
+        headers=AUTH_HEADERS,
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}
+    assert len(calls) == 1
+    assert calls[0][1] == "session-1"
+
+
+def test_recommend_current_abandon_requires_auth(monkeypatch):
+    monkeypatch.setattr(watch_history_repo, "abandon_session", lambda *a, **k: None)
+
+    response = client.post(
+        "/recommend/current/abandon", json={"recommendation_session_id": "session-1"}
+    )
+
+    assert response.status_code == 401
+
+
+def test_films_watch_providers_nominal(monkeypatch):
+    async def fake(tmdb_id, **kwargs):
+        assert tmdb_id == 238
+        return WatchProvidersResponse(
+            providers=[
+                WatchProvider(
+                    provider_id=8,
+                    name="Netflix",
+                    logo_url="https://image.tmdb.org/t/p/w92/x.png",
+                    category="subscription",
+                    ads=False,
+                )
+            ],
+            link="https://www.themoviedb.org/movie/238-the-godfather/watch?locale=FR",
+        )
+
+    monkeypatch.setattr(watch_providers, "get_watch_providers", fake)
+
+    response = client.get("/films/238/watch-providers", headers=AUTH_HEADERS)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["providers"][0]["name"] == "Netflix"
+    assert body["link"].endswith("locale=FR")
+
+
+def test_films_watch_providers_empty_is_200(monkeypatch):
+    async def fake(tmdb_id, **kwargs):
+        return WatchProvidersResponse(providers=[], link=None)
+
+    monkeypatch.setattr(watch_providers, "get_watch_providers", fake)
+
+    response = client.get("/films/999/watch-providers", headers=AUTH_HEADERS)
+
+    assert response.status_code == 200
+    assert response.json() == {"providers": [], "link": None}
+
+
+def test_films_watch_providers_tmdb_failure_is_502(monkeypatch):
+    async def fake(tmdb_id, **kwargs):
+        raise httpx.ConnectTimeout("timed out")
+
+    monkeypatch.setattr(watch_providers, "get_watch_providers", fake)
+
+    response = client.get("/films/238/watch-providers", headers=AUTH_HEADERS)
+
+    assert response.status_code == 502
+
+
+def test_films_watch_providers_internal_bug_is_500_not_502(monkeypatch):
+    """A bug inside `get_watch_providers` itself (not a TMDB/network issue)
+    must not be mislabeled as "TMDB is down" — it should surface as a plain
+    500 via `CatchAllMiddleware`, so it's visible in logs as a real bug."""
+
+    async def fake(tmdb_id, **kwargs):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(watch_providers, "get_watch_providers", fake)
+
+    response = client.get("/films/238/watch-providers", headers=AUTH_HEADERS)
+
+    assert response.status_code == 500
+
+
+def test_films_watch_providers_requires_auth(monkeypatch):
+    monkeypatch.setattr(
+        watch_providers, "get_watch_providers", lambda *a, **k: WatchProvidersResponse(
+            providers=[], link=None
+        )
+    )
+
+    response = client.get("/films/238/watch-providers")
+
+    assert response.status_code == 401
+
+
+def test_films_rating_nominal(monkeypatch):
+    async def fake(tmdb_id, **kwargs):
+        assert tmdb_id == 238
+        return RatingResponse(vote_average=8.7)
+
+    monkeypatch.setattr(tmdb_rating, "get_rating", fake)
+
+    response = client.get("/films/238/rating", headers=AUTH_HEADERS)
+
+    assert response.status_code == 200
+    assert response.json() == {"vote_average": 8.7}
+
+
+def test_films_rating_no_votes_is_200(monkeypatch):
+    async def fake(tmdb_id, **kwargs):
+        return RatingResponse(vote_average=None)
+
+    monkeypatch.setattr(tmdb_rating, "get_rating", fake)
+
+    response = client.get("/films/999/rating", headers=AUTH_HEADERS)
+
+    assert response.status_code == 200
+    assert response.json() == {"vote_average": None}
+
+
+def test_films_rating_tmdb_failure_is_502(monkeypatch):
+    async def fake(tmdb_id, **kwargs):
+        raise httpx.ConnectTimeout("timed out")
+
+    monkeypatch.setattr(tmdb_rating, "get_rating", fake)
+
+    response = client.get("/films/238/rating", headers=AUTH_HEADERS)
+
+    assert response.status_code == 502
+
+
+def test_films_rating_internal_bug_is_500_not_502(monkeypatch):
+    """A bug inside `get_rating` itself (not a TMDB/network issue) must not
+    be mislabeled as "TMDB is down" — it should surface as a plain 500 via
+    `CatchAllMiddleware`, so it's visible in logs as a real bug."""
+
+    async def fake(tmdb_id, **kwargs):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(tmdb_rating, "get_rating", fake)
+
+    response = client.get("/films/238/rating", headers=AUTH_HEADERS)
+
+    assert response.status_code == 500
+
+
+def test_films_rating_requires_auth(monkeypatch):
+    monkeypatch.setattr(
+        tmdb_rating, "get_rating", lambda *a, **k: RatingResponse(vote_average=8.7)
+    )
+
+    response = client.get("/films/238/rating")
+
+    assert response.status_code == 401
+
+
+def test_auth_unreachable_returns_503(monkeypatch):
+    """A network failure reaching Supabase auth says nothing about the token —
+    it must not surface as 401 "Invalid token" (CIN-125)."""
+
+    def fake_get_user(jwt):
+        raise httpx.ReadTimeout("The read operation timed out")
+
+    monkeypatch.setattr(main_module.supabase.auth, "get_user", fake_get_user)
+
+    response = client.get("/watchlist", headers=AUTH_HEADERS)
+
+    assert response.status_code == 503
+    assert response.json()["detail"] == "Auth service unavailable"
+
+
+def test_auth_rejected_token_returns_401(monkeypatch):
+    def fake_get_user(jwt):
+        raise AuthApiError("invalid JWT", 403, "bad_jwt")
+
+    monkeypatch.setattr(main_module.supabase.auth, "get_user", fake_get_user)
+
+    response = client.get("/watchlist", headers=AUTH_HEADERS)
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Invalid token"

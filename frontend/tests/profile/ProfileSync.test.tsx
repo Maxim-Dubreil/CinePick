@@ -5,12 +5,16 @@ import type { UserProfile } from '@/hooks/useProfile'
 import { ProfileSync } from '@/components/profile/ProfileSync'
 
 const profileWithLB: UserProfile = {
+  full_name: null,
+  avatar_url: null,
   letterboxd_username: 'camdevaux',
   last_sync: new Date(Date.now() - 1000 * 60 * 60).toISOString(), // 1h ago
   film_count: 248,
 }
 
 const profileWithoutLB: UserProfile = {
+  full_name: null,
+  avatar_url: null,
   letterboxd_username: null,
   last_sync: null,
   film_count: 0,
@@ -21,6 +25,7 @@ describe('ProfileSync', () => {
     render(
       <ProfileSync
         profile={profileWithoutLB}
+        loading={false}
         isSyncing={false}
         onResync={vi.fn()}
         onOpenModal={vi.fn()}
@@ -34,6 +39,7 @@ describe('ProfileSync', () => {
     render(
       <ProfileSync
         profile={null}
+        loading={false}
         isSyncing={false}
         onResync={vi.fn()}
         onOpenModal={vi.fn()}
@@ -46,6 +52,7 @@ describe('ProfileSync', () => {
     render(
       <ProfileSync
         profile={profileWithLB}
+        loading={false}
         isSyncing={false}
         onResync={vi.fn()}
         onOpenModal={vi.fn()}
@@ -61,6 +68,7 @@ describe('ProfileSync', () => {
     render(
       <ProfileSync
         profile={profileWithoutLB}
+        loading={false}
         isSyncing={false}
         onResync={vi.fn()}
         onOpenModal={onOpenModal}
@@ -75,6 +83,7 @@ describe('ProfileSync', () => {
     render(
       <ProfileSync
         profile={profileWithLB}
+        loading={false}
         isSyncing={false}
         onResync={onResync}
         onOpenModal={vi.fn()}
@@ -88,6 +97,7 @@ describe('ProfileSync', () => {
     render(
       <ProfileSync
         profile={profileWithLB}
+        loading={false}
         isSyncing={true}
         onResync={vi.fn()}
         onOpenModal={vi.fn()}

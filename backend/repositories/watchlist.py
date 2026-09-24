@@ -24,7 +24,18 @@ class FilmRow(TypedDict):
 _FILMS_TABLE = "films"
 _WATCHLIST_TABLE = "user_watchlist_items"
 
-_ENRICHMENT_FIELDS = ("tmdb_id", "genres", "runtime", "origin_country", "overview", "director")
+_ENRICHMENT_FIELDS = (
+    "tmdb_id",
+    "genres",
+    "runtime",
+    "origin_country",
+    "overview",
+    "director",
+    "actors",
+    "collection_name",
+    "collection_order",
+    "collection_total",
+)
 """TMDB-derived columns on `films`, refreshed together — omitted entirely
 from the upsert record when a film has no enrichment (see `upsert_films`)."""
 
@@ -54,6 +65,10 @@ def merge_enrichment(film: Film, enrichment: FilmEnrichment | None) -> EnrichedF
         origin_country=enrichment.origin_country,
         overview=enrichment.overview,
         director=enrichment.director,
+        actors=enrichment.actors,
+        collection_name=enrichment.collection_name,
+        collection_order=enrichment.collection_order,
+        collection_total=enrichment.collection_total,
     )
 
 

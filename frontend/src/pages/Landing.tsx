@@ -17,8 +17,7 @@ export function Landing({ onLoaded }: LandingProps) {
       <main className="relative z-10 flex flex-col items-center justify-center text-center flex-1 px-10 pb-20">
         {/* Main title */}
         <h1
-          className="text-[58px] font-medium leading-[1.05] tracking-[-0.5px] text-(--text-primary) mb-4"
-          style={{ fontFamily: "var(--font-heading)" }}
+          className="font-heading text-[58px] font-medium leading-[1.05] tracking-[-0.5px] text-(--text-primary) mb-4"
         >
           Ce soir, tu trouves
           <br />

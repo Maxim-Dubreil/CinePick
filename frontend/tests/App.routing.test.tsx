@@ -45,6 +45,11 @@ vi.mock("@/contexts/ProfileContext", () => ({
   ProfileProvider: ({ children }: { children: ReactNode }) => children,
 }));
 
+// Stub Home: its API calls are irrelevant here, we only assert the route lands on it
+vi.mock("@/pages/Home", () => ({
+  Home: () => <div>Home Page</div>,
+}));
+
 describe("App Routing", () => {
   beforeEach(() => {
     // Default: authenticated user
@@ -60,13 +65,22 @@ describe("App Routing", () => {
     );
   };
 
-  it("should display Landing page at /", () => {
+  it("should display Landing page at / when not authenticated", () => {
+    authMock.user = null;
     renderWithRouter("/");
     // Check for Landing page specific content - the main heading
     const heading = screen.getByRole("heading", {
       name: /Ce soir, tu trouves/i,
     });
     expect(heading).toBeInTheDocument();
+  });
+
+  it("should redirect / to /home when authenticated", () => {
+    renderWithRouter("/");
+    expect(screen.getByText("Home Page")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: /Ce soir, tu trouves/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("should display NotFound page at /invalid", () => {

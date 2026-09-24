@@ -1,10 +1,16 @@
 # Schéma DB — CinePick
 
-> Rendu automatiquement par GitHub dans les blocs `mermaid`. Les commentaires entre guillemets sur chaque colonne expliquent le "pourquoi", pas juste le "quoi" — pensés pour qu'un outil ou une personne qui découvre le schéma comprenne les contraintes sans redécouvrir chaque décision. Détails complets et raisonnement long-form : [Specs DB (Linear)](https://linear.app/maximdubreil/document/specs-db-09a3daa57241).
+> Rendu automatiquement par GitHub dans les blocs `mermaid`. Les commentaires entre guillemets sur
+> chaque colonne expliquent le "pourquoi", pas juste le "quoi" — pensés pour qu'un outil ou une
+> personne qui découvre le schéma comprenne les contraintes sans redécouvrir chaque décision.
+> Détails complets et raisonnement long-form :
+> [Specs DB (Linear)](https://linear.app/maximdubreil/document/specs-db-09a3daa57241).
 
 ## Relations (vue simplifiée)
 
-Deux tables cœur (`users`, `films`, sources de vérité), reliées chacune aux deux tables de liaison (`many-to-many`, relation où une ligne d'un côté peut correspondre à plusieurs lignes de l'autre et inversement).
+Deux tables cœur (`users`, `films`, sources de vérité), reliées chacune aux deux tables de liaison
+(`many-to-many`, relation où une ligne d'un côté peut correspondre à plusieurs lignes de l'autre et
+inversement).
 
 ```mermaid
 erDiagram
@@ -14,7 +20,10 @@ erDiagram
     FILMS ||--o{ WATCH_HISTORY : concerne
 ```
 
-`user_watchlist_items` = "quels films sont dans la watchlist de quel utilisateur, en ce moment". `watch_history` = "quelle décision un utilisateur a prise sur un film qui lui a été proposé". Un film peut être dans l'un sans l'autre — c'est pour ça qu'il faut deux tables plutôt qu'un simple statut sur une seule.
+`user_watchlist_items` = "quels films sont dans la watchlist de quel utilisateur, en ce moment".
+`watch_history` = "quelle décision un utilisateur a prise sur un film qui lui a été proposé". Un
+film peut être dans l'un sans l'autre — c'est pour ça qu'il faut deux tables plutôt qu'un simple
+statut sur une seule.
 
 ## Schéma complet annoté
 
@@ -47,7 +56,11 @@ erDiagram
         int4 runtime "peut etre 0 ou null sur TMDB : traiter comme non-filtrable plutot qu'exclu du filtre duree"
         text overview
         text_array origin_country "pays de production, PAS la langue - piege : un film UK a origin_country=GB mais original_language=en, filtrer sur la langue confond UK et US. NULLABLE (obligatoire malgre le default '{}') : un sync qui melange films enrichis et non-enrichis dans le meme upsert PostgREST envoie une valeur explicite NULL pour les lignes qui omettent la colonne des qu'une autre ligne du meme batch la fournit - une contrainte NOT NULL fait planter tout le sync (voir migration films_origin_country_nullable, backend/tests/test_watchlist_repository.py::test_upsert_films_mixed_batch_against_real_db)"
-        text director "nom du realisateur, depuis TMDB credits.crew - nullable, meme regle d'ecriture best-effort que les quatre autres colonnes d'enrichissement"
+        text director "nom du realisateur, depuis TMDB credits.crew - nullable, meme regle d'ecriture best-effort que les autres colonnes d'enrichissement"
+        array actors "jusqu'a 5 noms d'acteurs principaux, depuis TMDB credits.cast (ordre de billing) - nullable, meme regle d'ecriture best-effort et meme piege NULL-en-batch-mixte que genres/origin_country"
+        text collection_name "nom de la saga/collection TMDB (belongs_to_collection.name), nullable si le film n'appartient a aucune"
+        int2 collection_order "rang de ce film par date de sortie dans sa collection - PAS un ordre de visionnage canonique (ex: Evangelion Rebuild vs serie originale), nullable si pas de collection ou position introuvable cote TMDB"
+        int2 collection_total "nombre de films dans la collection TMDB, a cote de collection_order"
         timestamptz created_at
     }
     USER_WATCHLIST_ITEMS {
@@ -71,29 +84,46 @@ erDiagram
 
 ## Ce qui n'est volontairement PAS dans ce schéma
 
-Trois données existent dans le produit mais n'ont **aucune colonne** — décision volontaire, pas un oubli :
+Trois données existent dans le produit mais n'ont **aucune colonne** — décision volontaire, pas un
+oubli :
 
-| Donnée                                  | Où elle apparaît                        | Pourquoi pas de colonne                                                                                                 |
-| --------------------------------------- | --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `providers` (dispo streaming)           | Résultat, détail Historique             | Refetch TMDB à chaque affichage — donnée trop volatile pour qu'un cache serve à quelque chose                           |
-| `trailer_url`                           | Résultat (prévu, pas encore implémenté) | Même traitement que `providers`, jamais lu depuis une colonne                                                           |
-| Note TMDB (`vote_average`/`vote_count`) | Nulle part actuellement                 | Envisagée puis retirée : jamais affichée sur Résultat, toujours refetchée ailleurs — une colonne écrite mais jamais lue |
+| Donnée                        | Où elle apparaît                                                                       | Pourquoi pas de colonne                                                                                                |
+| ----------------------------- | -------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `providers` (dispo streaming) | Résultat, détail Historique                                                            | Refetch TMDB à chaque affichage — donnée trop volatile pour qu'un cache serve à quelque chose                          |
+| `trailer_url`                 | Résultat (prévu, pas encore implémenté)                                                | Même traitement que `providers`, jamais lu depuis une colonne                                                          |
+| Note TMDB (`vote_average`)    | Résultat, détail Historique ([CIN-104](https://linear.app/maximdubreil/issue/CIN-104)) | Même traitement que `providers` : une note change trop souvent pour être persistée durablement, toujours en fetch live |
 
-**Règle générale à appliquer avant d'ajouter une colonne** : une donnée ne mérite une colonne que si elle est lue quelque part sans repasser par un appel API externe. Si la réponse est "on la refetch de toute façon à chaque fois qu'on l'affiche", pas de colonne.
+**Règle générale à appliquer avant d'ajouter une colonne** : une donnée ne mérite une colonne que si
+elle est lue quelque part sans repasser par un appel API externe. Si la réponse est "on la refetch
+de toute façon à chaque fois qu'on l'affiche", pas de colonne.
 
 ## Ce qui n'existe pas non plus : table de session
 
-Le "run" Questions → Résultat (réponses aux 9 questions, numéro de tentative `/recommend`) vit entièrement en state front (React), jamais en DB. Seule la décision finale (accept/skip) survit, dans `watch_history`. Détail complet du raisonnement : [Specs DB (Linear)](https://linear.app/maximdubreil/document/specs-db-09a3daa57241#gestion-de-session--aucune-table-db-état-front-éphémère).
+Le "run" Questions → Résultat (réponses aux 8 questions, numéro de tentative `/recommend`) vit
+entièrement en state front (React), jamais en DB. Seule la décision finale (accept/skip) survit,
+dans `watch_history`. Détail complet du raisonnement :
+[Specs DB (Linear)](https://linear.app/maximdubreil/document/specs-db-09a3daa57241#gestion-de-session--aucune-table-db-état-front-éphémère).
 
 ## Pour Claude Code — checklist de cohérence
 
 Si tu modifies ce schéma ou le code qui l'utilise, vérifie que :
 
 1. Tout insert dans `films.genres` écrit des `genre_id` TMDB (entiers), jamais des noms de genre
-2. Tout insert dans `films.origin_country` utilise `origin_country`/`production_countries` de TMDB, jamais `original_language`
-3. Aucun code ne réintroduit une colonne pour `providers`, `trailer_url` ou la note TMDB — ces trois données doivent rester en fetch live
-4. `watch_history.decision` n'accepte que `'proposed'`/`'accepted'`/`'skipped'` (contrainte `CHECK` existante) — pas `'declined'` ni d'autre variante. `/recommend` insère les lignes en `'proposed'` ; `/recommend/decision` les fait passer à `'accepted'`/`'skipped'`, ce qui vérifie que le film a réellement été proposé avant d'accepter une décision dessus
-5. Aucune table de session n'est ajoutée pour stocker l'état du flow Questions → Résultat — ça doit rester du state front
-6. La table `watch_history` a désormais une policy RLS `UPDATE` (en plus d'insert/select), nécessaire pour que `/recommend/decision` puisse faire transitionner une ligne `'proposed'`
-7. `films.tmdb_id`, `genres`, `runtime`, `origin_country` restent tous les quatre NULLABLE — ne jamais remettre de contrainte `NOT NULL` dessus (voir le commentaire sur `origin_country` ci-dessus pour le pourquoi)
-8. `repositories/watchlist.py::upsert_films` n'écrit ces quatre colonnes que si le film a été enrichi (`tmdb_id is not None`) — un échec d'enrichissement TMDB ne doit jamais écraser une valeur déjà connue dans ce cache partagé entre tous les users
+2. Tout insert dans `films.origin_country` utilise `origin_country`/`production_countries` de TMDB,
+   jamais `original_language`
+3. Aucun code ne réintroduit une colonne pour `providers`, `trailer_url` ou la note TMDB — ces trois
+   données doivent rester en fetch live
+4. `watch_history.decision` n'accepte que `'proposed'`/`'accepted'`/`'skipped'` (contrainte `CHECK`
+   existante) — pas `'declined'` ni d'autre variante. `/recommend` insère les lignes en `'proposed'`
+   ; `/recommend/decision` les fait passer à `'accepted'`/`'skipped'`, ce qui vérifie que le film a
+   réellement été proposé avant d'accepter une décision dessus
+5. Aucune table de session n'est ajoutée pour stocker l'état du flow Questions → Résultat — ça doit
+   rester du state front
+6. La table `watch_history` a désormais une policy RLS `UPDATE` (en plus d'insert/select),
+   nécessaire pour que `/recommend/decision` puisse faire transitionner une ligne `'proposed'`
+7. `films.tmdb_id`, `genres`, `runtime`, `origin_country`, `director`, `actors` restent tous
+   NULLABLE — ne jamais remettre de contrainte `NOT NULL` dessus (voir le commentaire sur
+   `origin_country` ci-dessus pour le pourquoi)
+8. `repositories/watchlist.py::upsert_films` (`_ENRICHMENT_FIELDS`) n'écrit ces colonnes que si le
+   film a été enrichi (`tmdb_id is not None`) — un échec d'enrichissement TMDB ne doit jamais
+   écraser une valeur déjà connue dans ce cache partagé entre tous les users

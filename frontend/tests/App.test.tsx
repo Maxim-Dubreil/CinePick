@@ -2,6 +2,10 @@ import { render } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import App from "../src/App";
 
+vi.mock("@/hooks/useAuth", () => ({
+  useAuth: () => ({ user: null, loading: false }),
+}));
+
 describe("App", () => {
   it("renders without crashing", () => {
     render(

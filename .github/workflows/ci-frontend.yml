@@ -47,9 +47,9 @@ jobs:
     name: Test
     runs-on: ubuntu-latest
     env:
-      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-      VITE_API_URL: ${{ vars.VITE_API_URL }}
+      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://example.supabase.co' }}
+      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'test-anon-key' }}
+      VITE_API_URL: ${{ vars.VITE_API_URL || 'http://localhost:8000' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -59,7 +59,15 @@ jobs:
 
       - name: Run Vitest
         working-directory: frontend
-        run: pnpm test
+        run: pnpm test:coverage
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          files: frontend/coverage/lcov.info
+          flags: frontend
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: ${{ github.actor != 'dependabot[bot]' }}
 
   build:
     name: Build

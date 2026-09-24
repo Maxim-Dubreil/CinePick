@@ -1,6 +1,7 @@
+import { useEffect, useRef, useState } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { useResultFlow } from "@/hooks/useResultFlow";
+import { useResultFlow, type ResultFlowStart } from "@/hooks/useResultFlow";
 import {
   FilmCard,
   DecisionButtons,
@@ -9,61 +10,187 @@ import {
   DeadEndScreen,
 } from "@/components/result";
 import { Toast } from "@/components/ui";
-import type { RecommendRequest } from "@/lib/backend/api";
+import {
+  getCurrentRecommendation,
+  type RecommendCurrentResponse,
+  type RecommendRequest,
+} from "@/lib/backend/api";
 
-interface ResultLocationState {
+interface FreshLocationState {
   filmCount: number;
   answers: RecommendRequest;
 }
 
-function isResultLocationState(state: unknown): state is ResultLocationState {
+function isFreshLocationState(state: unknown): state is FreshLocationState {
   return (
     typeof state === "object" &&
     state !== null &&
-    typeof (state as ResultLocationState).filmCount === "number" &&
-    typeof (state as ResultLocationState).answers === "object" &&
-    (state as ResultLocationState).answers !== null
+    typeof (state as FreshLocationState).filmCount === "number" &&
+    typeof (state as FreshLocationState).answers === "object" &&
+    (state as FreshLocationState).answers !== null
   );
 }
 
-export function Result() {
-  const location = useLocation();
+interface ResumedLocationState {
+  resumed: RecommendCurrentResponse;
+}
 
-  if (!isResultLocationState(location.state)) {
+function isResumedLocationState(state: unknown): state is ResumedLocationState {
+  return (
+    typeof state === "object" &&
+    state !== null &&
+    typeof (state as ResumedLocationState).resumed === "object" &&
+    (state as ResumedLocationState).resumed !== null
+  );
+}
+
+interface ResultProps {
+  /** Called right before navigating back to the home screen after accepting
+   * a film, so `useLastAcceptedFilm` (which otherwise only fetches on mount)
+   * picks up the newly-recorded decision. */
+  onAccepted: () => void;
+}
+
+export function Result({ onAccepted }: ResultProps) {
+  const location = useLocation();
+  const { session, loading: authLoading } = useAuth();
+
+  if (isFreshLocationState(location.state)) {
+    return (
+      <ResultFlowScreen
+        start={{ type: "fresh", answers: location.state.answers }}
+        onAccepted={onAccepted}
+      />
+    );
+  }
+
+  if (isResumedLocationState(location.state)) {
+    return (
+      <ResultFlowScreen
+        start={{ type: "resumed", response: location.state.resumed }}
+        onAccepted={onAccepted}
+      />
+    );
+  }
+
+  // No usable navigation state at all (reload, direct link, lost state) —
+  // check for a pending session before giving up on Questions.
+  return (
+    <ResumeCheck
+      authLoading={authLoading}
+      token={session?.access_token ?? null}
+      onAccepted={onAccepted}
+    />
+  );
+}
+
+interface ResumeCheckProps {
+  authLoading: boolean;
+  token: string | null;
+  onAccepted: () => void;
+}
+
+function ResumeCheck({ authLoading, token, onAccepted }: ResumeCheckProps) {
+  const [pending, setPending] = useState<"checking" | "none" | ResultFlowStart>(
+    "checking",
+  );
+  const hasChecked = useRef(false);
+  useEffect(() => {
+    if (hasChecked.current || authLoading) return;
+    hasChecked.current = true;
+    getCurrentRecommendation(token)
+      .then((response) => {
+        setPending(response ? { type: "resumed", response } : "none");
+      })
+      .catch(() => {
+        // Best-effort: same fallback as before this feature existed —
+        // no usable state, no way to check, so back to Questions.
+        setPending("none");
+      });
+  }, [authLoading, token]);
+
+  if (pending === "checking") {
+    return (
+      // `justify-[safe_center]` (not `justify-center`): plain center alignment
+      // makes content taller than the viewport un-scrollable past its top —
+      // `safe` falls back to start-alignment instead of centering into
+      // negative, unreachable space.
+      <div
+        className="relative flex h-full flex-col items-center justify-[safe_center] gap-6 px-6 py-6"
+        aria-live="polite"
+      >
+        <LoadingSteps />
+      </div>
+    );
+  }
+
+  if (pending === "none") {
     return <Navigate to="/home/question" replace />;
   }
 
-  return <ResultFlowScreen answers={location.state.answers} />;
+  return <ResultFlowScreen start={pending} onAccepted={onAccepted} />;
 }
 
 interface ResultFlowScreenProps {
-  answers: RecommendRequest;
+  start: ResultFlowStart;
+  onAccepted: () => void;
 }
 
-function ResultFlowScreen({ answers }: ResultFlowScreenProps) {
+function ResultFlowScreen({ start, onAccepted }: ResultFlowScreenProps) {
   const navigate = useNavigate();
   const { session, loading: authLoading } = useAuth();
   const flow = useResultFlow(
-    answers,
+    start,
     session?.access_token ?? null,
     !authLoading,
   );
+  const [cardReady, setCardReady] = useState(false);
+
+  // The "accepted" screen can be left through several exits (this button,
+  // the topbar logo, "Aujourd'hui") — not just onBackHome below — so the
+  // refetch signal is tied to leaving this screen while a film was
+  // accepted, not to any single exit's click handler.
+  const phaseRef = useRef(flow.phase);
+  useEffect(() => {
+    phaseRef.current = flow.phase;
+  });
+  useEffect(() => {
+    return () => {
+      if (phaseRef.current === "accepted") onAccepted();
+    };
+  }, [onAccepted]);
 
   return (
+    // `justify-[safe_center]`: the film card can be taller than the
+    // viewport (15" laptops especially) — plain `justify-center` would
+    // center it into space above the fold that the scrollbar can't reach.
     <div
-      className="relative flex h-full flex-col items-center justify-center gap-6 px-6"
+      className="relative flex h-full flex-col items-center justify-[safe_center] gap-6 px-6 py-6"
       aria-live="polite"
     >
       {flow.phase === "loading" && <LoadingSteps />}
 
       {flow.phase === "card" && flow.currentFilm && (
         <>
-          <FilmCard film={flow.currentFilm} />
+          <FilmCard film={flow.currentFilm} onReadyChange={setCardReady} />
           <DecisionButtons
             onAccept={flow.onAccept}
             onSkip={flow.onSkip}
-            disabled={flow.deciding}
+            disabled={flow.deciding || !cardReady}
           />
+          {flow.resumed && (
+            <button
+              onClick={() => {
+                void flow.onAbandon().then(() => {
+                  navigate("/home/question", { replace: true });
+                });
+              }}
+              disabled={flow.abandoning}
+              className="text-xs font-medium text-text-tertiary transition-colors hover:text-text-secondary"
+            >
+              Recommencer
+            </button>
+          )}
         </>
       )}
 
@@ -77,6 +204,7 @@ function ResultFlowScreen({ answers }: ResultFlowScreenProps) {
       {flow.phase === "dead-end" && flow.deadEndReason && (
         <DeadEndScreen
           reason={flow.deadEndReason}
+          detail={flow.deadEndDetail}
           onReset={() => navigate("/home/question", { replace: true })}
         />
       )}

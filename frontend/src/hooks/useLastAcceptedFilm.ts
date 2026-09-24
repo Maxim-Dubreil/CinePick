@@ -1,32 +1,19 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { genreLabels } from "@/lib/genres";
-
-/** Film data shown by the home page's "Dernier film" panel. */
-export interface LastAcceptedFilm {
-  title: string;
-  posterUrl: string | null;
-  year: number | null;
-  runtime: number | null;
-  director: string | null;
-  genres: string[];
-  overview: string | null;
-}
-
-interface FilmsRow {
-  title: string;
-  poster_url: string | null;
-  year: number | null;
-  runtime: number | null;
-  director: string | null;
-  genres: string[] | null;
-  overview: string | null;
-}
+import {
+  HISTORY_ENTRY_SELECT,
+  rowToEntry,
+  type HistoryEntry,
+  type WatchHistoryRow,
+} from "@/hooks/useHistory";
 
 /** Return shape of {@link useLastAcceptedFilm}. */
 export interface UseLastAcceptedFilmResult {
-  film: LastAcceptedFilm | null;
+  /** Same shape as a history entry, so the panel can open the history's
+   * `FilmDetailModal` as-is. */
+  film: HistoryEntry | null;
   loading: boolean;
+  refetch: () => void;
 }
 
 /** Reads the most recently accepted film from `watch_history` (joined
@@ -40,10 +27,13 @@ export interface UseLastAcceptedFilmResult {
  * for a since-superseded user (sign-out, account switch) must never leak
  * into the new user's render. */
 export function useLastAcceptedFilm(userId: string | null): UseLastAcceptedFilmResult {
-  const [result, setResult] = useState<{ userId: string; film: LastAcceptedFilm | null }>({
+  const [result, setResult] = useState<{ userId: string; film: HistoryEntry | null }>({
     userId: "",
     film: null,
   });
+
+  const [refetchKey, setRefetchKey] = useState(0);
+  const refetch = () => setRefetchKey((key) => key + 1);
 
   useEffect(() => {
     if (!userId) return;
@@ -51,7 +41,7 @@ export function useLastAcceptedFilm(userId: string | null): UseLastAcceptedFilmR
 
     supabase
       .from("watch_history")
-      .select("films(title, poster_url, year, runtime, director, genres, overview)")
+      .select(HISTORY_ENTRY_SELECT)
       .eq("user_id", userId)
       .eq("decision", "accepted")
       .order("decided_at", { ascending: false })
@@ -64,31 +54,21 @@ export function useLastAcceptedFilm(userId: string | null): UseLastAcceptedFilmR
           setResult({ userId, film: null });
           return;
         }
-        const row = data?.films as FilmsRow | null | undefined;
-        setResult({
-          userId,
-          film: row
-            ? {
-                title: row.title,
-                posterUrl: row.poster_url,
-                year: row.year,
-                runtime: row.runtime,
-                director: row.director,
-                genres: genreLabels(row.genres ?? []),
-                overview: row.overview,
-              }
-            : null,
-        });
+        const row = data as unknown as WatchHistoryRow | null;
+        // No joined film (deleted from the catalog) reads as "nothing yet",
+        // not as a "Film inconnu" card.
+        setResult({ userId, film: row?.films ? rowToEntry(row) : null });
       });
 
     return () => {
       cancelled = true;
     };
-  }, [userId]);
+  }, [userId, refetchKey]);
 
   const upToDate = userId !== null && result.userId === userId;
   return {
     film: upToDate ? result.film : null,
     loading: userId !== null && !upToDate,
+    refetch,
   };
 }

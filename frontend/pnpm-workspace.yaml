@@ -1,2 +1,7 @@
 allowBuilds:
   msw: true
+
+confirmModulesPurge: false
+
+overrides:
+  browserslist: 4.28.7
