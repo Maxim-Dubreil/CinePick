@@ -86,13 +86,23 @@ export function Question() {
         <h2 className="max-w-[440px] font-heading text-4xl italic">
           Impossible de récupérer ta watchlist pour l'instant.
         </h2>
-        <Button
-          variant="glass"
-          className="mt-3 h-11 rounded-[var(--radius-xl)] px-6"
-          onClick={flow.retryWatchlistFetch}
-        >
-          Réessayer
-        </Button>
+        {/* Questions is full-screen with no topbar, so this is the only way out. */}
+        <div className="mt-3 flex gap-3">
+          <Button
+            variant="outline"
+            className="h-11 rounded-[var(--radius-xl)] px-6"
+            onClick={() => navigate("/home")}
+          >
+            Retour à l'accueil
+          </Button>
+          <Button
+            variant="glass"
+            className="h-11 rounded-[var(--radius-xl)] px-6"
+            onClick={flow.retryWatchlistFetch}
+          >
+            Réessayer
+          </Button>
+        </div>
       </div>
     );
   }
