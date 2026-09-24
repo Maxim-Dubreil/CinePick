@@ -23,7 +23,12 @@ function AppContent() {
         />
       )}
       <Routes>
-        <Route path="/" element={<Landing />} />
+        <Route
+          path="/"
+          element={
+            authLoading ? null : user ? <Navigate to="/home" replace /> : <Landing />
+          }
+        />
         <Route
           path="/home/*"
           element={
