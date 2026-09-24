@@ -3,6 +3,7 @@ from datetime import UTC, datetime
 import httpx
 import pytest
 from fastapi.testclient import TestClient
+from supabase_auth.errors import AuthApiError
 
 import main as main_module
 import reco_ai
@@ -612,3 +613,30 @@ def test_films_rating_requires_auth(monkeypatch):
     response = client.get("/films/238/rating")
 
     assert response.status_code == 401
+
+
+def test_auth_unreachable_returns_503(monkeypatch):
+    """A network failure reaching Supabase auth says nothing about the token —
+    it must not surface as 401 "Invalid token" (CIN-125)."""
+
+    def fake_get_user(jwt):
+        raise httpx.ReadTimeout("The read operation timed out")
+
+    monkeypatch.setattr(main_module.supabase.auth, "get_user", fake_get_user)
+
+    response = client.get("/watchlist", headers=AUTH_HEADERS)
+
+    assert response.status_code == 503
+    assert response.json()["detail"] == "Auth service unavailable"
+
+
+def test_auth_rejected_token_returns_401(monkeypatch):
+    def fake_get_user(jwt):
+        raise AuthApiError("invalid JWT", 403, "bad_jwt")
+
+    monkeypatch.setattr(main_module.supabase.auth, "get_user", fake_get_user)
+
+    response = client.get("/watchlist", headers=AUTH_HEADERS)
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Invalid token"

@@ -11,6 +11,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, Field
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.responses import Response
+from supabase_auth.errors import AuthRetryableError
 
 import filtering
 import reco_ai
@@ -93,6 +94,11 @@ async def get_current_user_id(
         return str(response.user.id)
     except HTTPException:
         raise
+    except (httpx.TransportError, AuthRetryableError) as exc:
+        # Supabase unreachable/overloaded says nothing about the token itself —
+        # reporting it as 401 "Invalid token" sent debugging down the wrong path.
+        logger.warning("Token check failed: Supabase auth unreachable (%r)", exc)
+        raise HTTPException(status_code=503, detail="Auth service unavailable") from exc
     except Exception as exc:
         raise HTTPException(status_code=401, detail="Invalid token") from exc
 
