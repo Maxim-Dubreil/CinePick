@@ -33,6 +33,7 @@ const entry: HistoryEntry = {
 };
 
 const removeEntry = vi.fn().mockResolvedValue(undefined);
+const clearHistory = vi.fn().mockResolvedValue(undefined);
 
 vi.mock("@/hooks/useAuth", () => ({
   useAuth: () => ({ user: { id: "user-1" } }),
@@ -47,7 +48,7 @@ vi.mock("@/hooks/useHistory", async (importOriginal) => {
       totalCount: 1,
       loading: false,
       removeEntry,
-      clearHistory: vi.fn().mockResolvedValue(undefined),
+      clearHistory,
     }),
   };
 });
@@ -103,5 +104,31 @@ describe("History delete flow", () => {
     await waitFor(() =>
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
     );
+  });
+});
+
+describe("History clear-all flow", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("asks for confirmation and does nothing when cancelling", async () => {
+    renderHistory();
+    await userEvent.click(screen.getByRole("button", { name: /Tout effacer/i }));
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByText(/Effacer tout l'historique/)).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Annuler" }));
+    expect(clearHistory).not.toHaveBeenCalled();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("clears the history when confirming", async () => {
+    renderHistory();
+    await userEvent.click(screen.getByRole("button", { name: /Tout effacer/i }));
+    await userEvent.click(screen.getByRole("button", { name: "Supprimer" }));
+
+    await waitFor(() => expect(clearHistory).toHaveBeenCalledTimes(1));
+    expect(removeEntry).not.toHaveBeenCalled();
   });
 });
