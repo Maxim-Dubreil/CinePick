@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { RefreshCw, Link } from 'lucide-react'
-import { Badge, Button, Skeleton } from '@/components/ui'
+import { Button, Skeleton } from '@/components/ui'
 import type { UserProfile } from '@/hooks/useProfile'
 
 interface ProfileSyncProps {
@@ -48,14 +48,9 @@ export function ProfileSync({ profile, loading, isSyncing, onResync, onOpenModal
 
   return (
     <div className="rounded-[var(--radius-xl)] bg-[var(--accent-subtle)] border border-[var(--accent-border)] shadow-[var(--shadow-glass-accent)] p-6 flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h2 className="font-heading font-medium italic text-[22px] text-[var(--text-primary)]">
-          Synchronisation
-        </h2>
-        {!loading && hasLetterboxd && (
-          <Badge variant="warning">{formatRelativeTime(profile?.last_sync ?? null)}</Badge>
-        )}
-      </div>
+      <h2 className="font-heading font-medium italic text-[22px] text-[var(--text-primary)]">
+        Synchronisation
+      </h2>
 
       {loading ? (
         <div className="flex flex-col gap-0">
