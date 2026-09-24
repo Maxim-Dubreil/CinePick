@@ -149,18 +149,22 @@ export function Question() {
             enabled={flow.hasSelection}
             onClick={flow.onConfirmMulti}
           />
+
+          {flow.showBackButton && (
+            // In-flow, not `fixed`: a fixed position stays glued to the
+            // viewport bottom regardless of content height, so on a
+            // long option list it ends up overlapping ContinueButton
+            // instead of sitting below it.
+            <button
+              onClick={flow.onBack}
+              className="inline-flex items-center gap-1 text-xs font-medium text-text-tertiary transition-colors hover:text-text-secondary"
+            >
+              <ChevronLeft size={14} />
+              Question précédente
+            </button>
+          )}
         </div>
       </div>
-
-      {flow.showBackButton && (
-        <button
-          onClick={flow.onBack}
-          className="fixed bottom-8 left-1/2 -translate-x-1/2 inline-flex items-center gap-1 text-xs font-medium text-text-tertiary transition-colors hover:text-text-secondary"
-        >
-          <ChevronLeft size={14} />
-          Question précédente
-        </button>
-      )}
 
       <LoadingOverlay visible={flow.loading} />
     </div>
