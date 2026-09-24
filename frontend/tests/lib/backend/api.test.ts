@@ -173,6 +173,7 @@ describe("getRecommendation", () => {
       candidates: [
         {
           film_id: "f1",
+          tmdb_id: null,
           title: "Film 1",
           poster_url: null,
           year: 2020,

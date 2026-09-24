@@ -3,6 +3,7 @@ import time
 from datetime import UTC, datetime
 from uuid import uuid4
 
+import httpx
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -15,6 +16,7 @@ import filtering
 import reco_ai
 import scraper
 import tmdb
+import watch_providers
 from models import (
     AbandonSessionRequest,
     RankedCandidate,
@@ -25,6 +27,7 @@ from models import (
 from repositories import watch_history as watch_history_repo
 from repositories import watchlist as watchlist_repo
 from supabase_client import supabase
+from watch_providers import WatchProvidersResponse
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +36,7 @@ app = FastAPI(title="CinePick API", version="0.1.0")
 TAG_HEALTH = "health"
 TAG_LETTERBOXD = "letterboxd"
 TAG_RECOMMEND = "recommend"
+TAG_FILMS = "films"
 
 
 class CatchAllMiddleware(BaseHTTPMiddleware):
@@ -234,6 +238,7 @@ async def letterboxd_unlink(user_id: str = Depends(get_current_user_id)):
 
 class RecommendedFilm(BaseModel):
     film_id: str
+    tmdb_id: int | None
     title: str
     poster_url: str | None
     year: int | None
@@ -270,6 +275,7 @@ def _to_recommended_film(ranked: RankedCandidate) -> dict:
     film = ranked.film
     return {
         "film_id": film.id,
+        "tmdb_id": film.tmdb_id,
         "title": film.title,
         "poster_url": film.poster_url,
         "year": film.year,
@@ -326,6 +332,7 @@ async def recommend_current(user_id: str = Depends(get_current_user_id)):
     candidates = [
         {
             "film_id": row["film_id"],
+            "tmdb_id": row["films"]["tmdb_id"],
             "title": row["films"]["title"],
             "poster_url": row["films"]["poster_url"],
             "year": row["films"]["year"],
@@ -446,3 +453,27 @@ async def recommend_current_abandon(
     decided, or a stale id) is a no-op, not an error."""
     watch_history_repo.abandon_session(user_id, body.recommendation_session_id)
     return {"status": "ok"}
+
+
+@app.get(
+    "/films/{tmdb_id}/watch-providers",
+    response_model=WatchProvidersResponse,
+    tags=[TAG_FILMS],
+)
+async def films_watch_providers(
+    tmdb_id: int,
+    user_id: str = Depends(get_current_user_id),
+):
+    """Where to watch a film in France (CIN-103) — shared by Result, Home,
+    and Historique. A film with no FR offer returns 200 with an empty
+    `providers` list; a TMDB failure raises 502 instead, so the frontend can
+    tell "nothing to watch" apart from "couldn't check" and hide the block
+    only for the latter. Only network/HTTP failures are caught here — a bug
+    inside `watch_providers.get_watch_providers` itself (e.g. malformed TMDB
+    JSON) must surface as a 500 via `CatchAllMiddleware`, not get mislabeled
+    as "TMDB is down"."""
+    try:
+        return await watch_providers.get_watch_providers(tmdb_id)
+    except httpx.HTTPError as exc:
+        logger.warning("TMDB watch-providers lookup failed for tmdb_id=%s: %s", tmdb_id, exc)
+        raise HTTPException(status_code=502, detail="Could not reach TMDB") from exc

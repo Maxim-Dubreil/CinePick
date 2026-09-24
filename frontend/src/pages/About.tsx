@@ -55,6 +55,11 @@ export function About() {
                 </span>
               </dd>
 
+              <dt className="text-(--text-tertiary)">Streaming availability</dt>
+              <dd className="text-(--text-secondary) mb-3 sm:mb-0">
+                Provided by JustWatch.
+              </dd>
+
               <dt className="text-(--text-tertiary)">Watchlist</dt>
               <dd className="text-(--text-secondary) mb-3 sm:mb-0">
                 Imported from Letterboxd. Not affiliated.

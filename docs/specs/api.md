@@ -5,7 +5,7 @@
 
 ## Principe : FastAPI seulement là où une clé secrète est nécessaire
 
-4 tables, mais seules `films` (écriture) et `user_watchlist_items` (écriture au sync) ont besoin de passer par FastAPI — parce que ces écritures nécessitent des clés secrètes (TMDB, Gemini) qui ne peuvent pas vivre côté front. Tout le reste (lecture `users`, lecture/écriture `watch_history` sur accept/decline, lecture Historique) passe directement par le client Supabase (SDK JS) protégé par RLS — pas de route custom à écrire, à documenter, ni à maintenir pour du CRUD que Supabase fait déjà nativement.
+4 tables, mais seules `films` (écriture) et `user_watchlist_items` (écriture au sync) ont besoin de passer par FastAPI pour leurs écritures — elles nécessitent des clés secrètes (TMDB, Gemini) qui ne peuvent pas vivre côté front. `GET /films/{tmdb_id}/watch-providers` est la même règle appliquée à une lecture : pas d'écriture, mais un appel TMDB à la volée qui a besoin de la clé serveur. Tout le reste (lecture `users`, lecture/écriture `watch_history` sur accept/decline, lecture Historique) passe directement par le client Supabase (SDK JS) protégé par RLS — pas de route custom à écrire, à documenter, ni à maintenir pour du CRUD que Supabase fait déjà nativement.
 
 ## Routes
 
@@ -68,7 +68,7 @@ Un nouvel appel à `/recommend` (même body, mêmes films déjà proposés exclu
 | --------------- | ------------------------------------------------------------------------------------------------------------------------ |
 | Auth            | Requis                                                                                                                    |
 | Body            | 9 champs du questionnaire — voir `RecommendRequest` dans `backend/models.py` et [Specs Questions](./questions.md)         |
-| Réponse         | `{ candidates: [{ film_id, title, poster_url, year, runtime, overview, genres, origin_country, director, rank, match_score, critique }], meta: { candidates_considered }, recommendation_session_id }` |
+| Réponse         | `{ candidates: [{ film_id, tmdb_id, title, poster_url, year, runtime, overview, genres, origin_country, director, rank, match_score, critique }], meta: { candidates_considered }, recommendation_session_id }` |
 | Erreurs typées  | `422 empty_watchlist` / `422 no_candidates` / `502 ai_error`                                                              |
 | Appels externes | Gemini, dès qu'au moins 1 candidat reste après filtrage                                                                   |
 | Détail complet  | [Specs AI](./ai.md)                                                                                                       |
@@ -108,6 +108,23 @@ Un `"accepted"` clôt la session : les autres candidats encore `"proposed"` de c
 | Body            | `{ recommendation_session_id, film_id, decision: "accepted" \| "skipped" }`           |
 | Réponse         | `{ status: "ok" }`                                                                    |
 | Erreurs typées  | `404 unknown_candidate` — pas de proposition en attente pour ce film                  |
+
+### `GET /films/{tmdb_id}/watch-providers`
+
+Où regarder un film en France (CIN-103) — un seul endpoint réutilisé par les 3 écrans qui l'affichent (Résultat, Home, Historique), la clé TMDB reste côté serveur. Appelle `GET /movie/{tmdb_id}/watch/providers` de TMDB (région `FR`), regroupe les 5 catégories TMDB (`free`, `ads`, `flatrate`, `rent`, `buy`) en 3 catégories affichées, filtre via une liste blanche statique d'une quinzaine de plateformes (`backend/watch_providers_whitelist.py`, construite à la main depuis `GET /watch/providers/movie?watch_region=FR`) et déduplique chaque variante/channel vers sa plateforme canonique (ex. `Paramount+ Amazon Channel` → `Paramount+`).
+
+Aucun stockage en base : les dispos changent trop souvent pour être persistées durablement. Mise en cache **en mémoire process** (`backend/cache.py::TTLCache`, TTL 6h) côté `watch_providers.py` — un dict clé `tmdb_id`, perdu au redémarrage du serveur, pas partagé entre plusieurs instances si le backend scale un jour (non pertinent à l'échelle actuelle). Seuls les résultats réussis sont cachés : une erreur TMDB n'est jamais mémorisée comme si c'était la vraie disponibilité du film. `TTLCache` est générique (`TTLCache[K, V]`) — pensé pour être réutilisé par d'autres données volatiles dérivées de TMDB (ex. notes multi-plateformes, [CIN-104](https://linear.app/maximdubreil/issue/CIN-104)) sans dupliquer la logique d'expiration.
+
+Distinction volontaire entre "pas de film disponible" et "TMDB injoignable" : un film sans offre FR renvoie `200` avec `providers: []` (le front affiche "Pas disponible en streaming en France"), une erreur/timeout TMDB renvoie `502` (le front masque le bloc entièrement).
+
+|                 |                                                                                                                        |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Auth            | Requis                                                                                                                    |
+| Réponse         | `{ providers: [{ provider_id, name, logo_url, category: "free" \| "subscription" \| "rent_buy", ads: boolean }], link: string \| null }` |
+| Erreurs typées  | `502` — TMDB injoignable ou en erreur                                                                                     |
+| Appels externes | TMDB, si le film n'est pas déjà en cache (TTL 6h)                                                                         |
+
+Région FR uniquement pour l'instant (l'app est 100% francophone) — voir [CIN-112](https://linear.app/maximdubreil/issue/CIN-112) pour la détection de région quand l'app passera à l'international.
 
 ## Ce qui NE passe PAS par FastAPI (Supabase direct)
 

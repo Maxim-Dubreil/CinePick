@@ -1,10 +1,15 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { FilmCard } from "@/components/result/FilmCard";
 import type { RecommendedFilm } from "@/lib/backend/api";
 
+vi.mock("@/hooks/useAuth", () => ({
+  useAuth: () => ({ session: null }),
+}));
+
 const baseFilm: RecommendedFilm = {
   film_id: "f1",
+  tmdb_id: null,
   title: "Blade Runner",
   poster_url: null,
   year: 1982,

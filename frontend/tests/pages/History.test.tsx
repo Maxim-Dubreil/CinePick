@@ -16,6 +16,7 @@ function renderHistory() {
 const entry: HistoryEntry = {
   id: "entry-1",
   filmId: "film-1",
+  tmdbId: null,
   title: "The Fall",
   year: 2006,
   posterUrl: null,

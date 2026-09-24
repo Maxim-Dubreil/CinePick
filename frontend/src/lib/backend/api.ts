@@ -82,6 +82,7 @@ export interface RecommendRequest {
 
 export interface RecommendedFilm {
   film_id: string;
+  tmdb_id: number | null;
   title: string;
   poster_url: string | null;
   year: number | null;
@@ -187,6 +188,36 @@ export async function getCurrentRecommendation(
     if (error instanceof ApiError && error.status === 404) return null;
     throw error;
   }
+}
+
+export type WatchProviderCategory = "free" | "subscription" | "rent_buy";
+
+export interface WatchProvider {
+  provider_id: number;
+  name: string;
+  logo_url: string;
+  category: WatchProviderCategory;
+  /** True when this platform only offers the film ad-supported — show an
+   * "avec pub" mention for it. */
+  ads: boolean;
+}
+
+export interface WatchProvidersResponse {
+  providers: WatchProvider[];
+  /** TMDB's "where to watch" page for this film, shared by every provider
+   * (TMDB doesn't expose a per-platform deep link). */
+  link: string | null;
+}
+
+export async function getWatchProviders(
+  tmdbId: number,
+  token: string | null,
+): Promise<WatchProvidersResponse> {
+  return apiFetch(`/films/${tmdbId}/watch-providers`, {
+    headers: {
+      ...(token !== null ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
 }
 
 export async function abandonCurrentRecommendation(

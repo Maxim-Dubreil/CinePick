@@ -6,6 +6,7 @@ import type { RecommendedFilm } from "@/lib/backend/api";
 
 const film: RecommendedFilm = {
   film_id: "f1",
+  tmdb_id: null,
   title: "Blade Runner",
   poster_url: null,
   year: 1982,

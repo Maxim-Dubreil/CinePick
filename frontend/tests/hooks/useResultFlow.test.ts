@@ -42,6 +42,7 @@ const START: ResultFlowStart = { type: "fresh", answers: ANSWERS };
 function film(overrides: Partial<RecommendedFilm> = {}): RecommendedFilm {
   return {
     film_id: "f1",
+    tmdb_id: null,
     title: "Film",
     poster_url: null,
     year: 2020,

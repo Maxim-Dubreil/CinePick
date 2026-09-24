@@ -4,6 +4,7 @@ import { genreLabels } from "@/lib/genres";
 
 /** Film data shown by the home page's "Dernier film" panel. */
 export interface LastAcceptedFilm {
+  tmdbId: number | null;
   title: string;
   posterUrl: string | null;
   year: number | null;
@@ -14,6 +15,7 @@ export interface LastAcceptedFilm {
 }
 
 interface FilmsRow {
+  tmdb_id: number | null;
   title: string;
   poster_url: string | null;
   year: number | null;
@@ -55,7 +57,7 @@ export function useLastAcceptedFilm(userId: string | null): UseLastAcceptedFilmR
 
     supabase
       .from("watch_history")
-      .select("films(title, poster_url, year, runtime, director, genres, overview)")
+      .select("films(tmdb_id, title, poster_url, year, runtime, director, genres, overview)")
       .eq("user_id", userId)
       .eq("decision", "accepted")
       .order("decided_at", { ascending: false })
@@ -73,6 +75,7 @@ export function useLastAcceptedFilm(userId: string | null): UseLastAcceptedFilmR
           userId,
           film: row
             ? {
+                tmdbId: row.tmdb_id,
                 title: row.title,
                 posterUrl: row.poster_url,
                 year: row.year,

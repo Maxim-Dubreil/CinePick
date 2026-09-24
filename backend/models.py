@@ -105,6 +105,7 @@ class WatchlistFilm(BaseModel):
     title: str
     year: int | None
     poster_url: str | None
+    tmdb_id: int | None = None
     genres: list[str] = Field(default_factory=list)
     runtime: int | None = None
     origin_country: list[str] = Field(default_factory=list)

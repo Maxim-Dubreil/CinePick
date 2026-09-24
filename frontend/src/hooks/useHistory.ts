@@ -11,6 +11,7 @@ export type HistoryDecision = "accepted" | "skipped";
 export interface HistoryEntry {
   id: string;
   filmId: string;
+  tmdbId: number | null;
   title: string;
   year: number | null;
   posterUrl: string | null;
@@ -29,6 +30,7 @@ interface WatchHistoryRow {
   decided_at: string;
   ai_critique: string | null;
   films: {
+    tmdb_id: number | null;
     title: string;
     poster_url: string | null;
     year: number | null;
@@ -43,6 +45,7 @@ function rowToEntry(row: WatchHistoryRow): HistoryEntry {
   return {
     id: row.id,
     filmId: row.film_id,
+    tmdbId: film?.tmdb_id ?? null,
     title: film?.title ?? "Film inconnu",
     year: film?.year ?? null,
     posterUrl: film?.poster_url ?? null,
@@ -95,7 +98,7 @@ export function useHistory(
     supabase
       .from("watch_history")
       .select(
-        "id, film_id, decision, decided_at, ai_critique, films(title, poster_url, year, runtime, genres, overview)",
+        "id, film_id, decision, decided_at, ai_critique, films(tmdb_id, title, poster_url, year, runtime, genres, overview)",
         { count: "exact" },
       )
       .eq("user_id", userId)

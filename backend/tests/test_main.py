@@ -1,5 +1,6 @@
 from datetime import UTC, datetime
 
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 
@@ -7,10 +8,12 @@ import main as main_module
 import reco_ai
 import scraper
 import tmdb
+import watch_providers
 from main import app
 from models import Film, RankedCandidate, WatchlistFilm
 from repositories import watch_history as watch_history_repo
 from repositories import watchlist as watchlist_repo
+from watch_providers import WatchProvider, WatchProvidersResponse
 
 client = TestClient(app)
 
@@ -266,6 +269,7 @@ def test_recommend_current_returns_pending_candidates(monkeypatch):
             "ai_critique": "Belle pioche.",
             "questions_context": RECOMMEND_BODY,
             "films": {
+                "tmdb_id": 238,
                 "title": "Film b",
                 "poster_url": "http://x/p.jpg",
                 "year": 2020,
@@ -290,6 +294,7 @@ def test_recommend_current_returns_pending_candidates(monkeypatch):
     assert data["candidates"] == [
         {
             "film_id": "b",
+            "tmdb_id": 238,
             "title": "Film b",
             "poster_url": "http://x/p.jpg",
             "year": 2020,
@@ -318,6 +323,7 @@ def test_recommend_calls_ai_even_with_two_candidates(monkeypatch):
     assert data["candidates"] == [
         {
             "film_id": "b",
+            "tmdb_id": None,
             "title": "Film b",
             "poster_url": "http://x/p.jpg",
             "year": 2020,
@@ -462,5 +468,81 @@ def test_recommend_current_abandon_requires_auth(monkeypatch):
     response = client.post(
         "/recommend/current/abandon", json={"recommendation_session_id": "session-1"}
     )
+
+    assert response.status_code == 401
+
+
+def test_films_watch_providers_nominal(monkeypatch):
+    async def fake(tmdb_id, **kwargs):
+        assert tmdb_id == 238
+        return WatchProvidersResponse(
+            providers=[
+                WatchProvider(
+                    provider_id=8,
+                    name="Netflix",
+                    logo_url="https://image.tmdb.org/t/p/w92/x.png",
+                    category="subscription",
+                    ads=False,
+                )
+            ],
+            link="https://www.themoviedb.org/movie/238-the-godfather/watch?locale=FR",
+        )
+
+    monkeypatch.setattr(watch_providers, "get_watch_providers", fake)
+
+    response = client.get("/films/238/watch-providers", headers=AUTH_HEADERS)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["providers"][0]["name"] == "Netflix"
+    assert body["link"].endswith("locale=FR")
+
+
+def test_films_watch_providers_empty_is_200(monkeypatch):
+    async def fake(tmdb_id, **kwargs):
+        return WatchProvidersResponse(providers=[], link=None)
+
+    monkeypatch.setattr(watch_providers, "get_watch_providers", fake)
+
+    response = client.get("/films/999/watch-providers", headers=AUTH_HEADERS)
+
+    assert response.status_code == 200
+    assert response.json() == {"providers": [], "link": None}
+
+
+def test_films_watch_providers_tmdb_failure_is_502(monkeypatch):
+    async def fake(tmdb_id, **kwargs):
+        raise httpx.ConnectTimeout("timed out")
+
+    monkeypatch.setattr(watch_providers, "get_watch_providers", fake)
+
+    response = client.get("/films/238/watch-providers", headers=AUTH_HEADERS)
+
+    assert response.status_code == 502
+
+
+def test_films_watch_providers_internal_bug_is_500_not_502(monkeypatch):
+    """A bug inside `get_watch_providers` itself (not a TMDB/network issue)
+    must not be mislabeled as "TMDB is down" — it should surface as a plain
+    500 via `CatchAllMiddleware`, so it's visible in logs as a real bug."""
+
+    async def fake(tmdb_id, **kwargs):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(watch_providers, "get_watch_providers", fake)
+
+    response = client.get("/films/238/watch-providers", headers=AUTH_HEADERS)
+
+    assert response.status_code == 500
+
+
+def test_films_watch_providers_requires_auth(monkeypatch):
+    monkeypatch.setattr(
+        watch_providers, "get_watch_providers", lambda *a, **k: WatchProvidersResponse(
+            providers=[], link=None
+        )
+    )
+
+    response = client.get("/films/238/watch-providers")
 
     assert response.status_code == 401

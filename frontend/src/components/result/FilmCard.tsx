@@ -1,5 +1,6 @@
 import { Badge } from "@/components/ui";
 import { FilmPoster } from "@/components/FilmPoster";
+import { WatchProvidersBlock } from "@/components/WatchProvidersBlock";
 import { genreLabels } from "@/lib/genres";
 import type { RecommendedFilm } from "@/lib/backend/api";
 
@@ -84,6 +85,8 @@ export function FilmCard({ film }: FilmCardProps) {
             </p>
           </div>
         )}
+
+        <WatchProvidersBlock tmdbId={film.tmdb_id} />
       </div>
     </div>
   );

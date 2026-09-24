@@ -1,4 +1,4 @@
-import { Images, Tv } from "lucide-react";
+import { Images } from "lucide-react";
 import {
   Badge,
   Dialog,
@@ -8,6 +8,7 @@ import {
   DialogTitle,
 } from "@/components/ui";
 import { FilmPoster } from "@/components/FilmPoster";
+import { WatchProvidersBlock } from "@/components/WatchProvidersBlock";
 import { formatDaysAgo } from "@/lib/dates";
 import type { HistoryEntry } from "@/hooks/useHistory";
 
@@ -16,11 +17,10 @@ interface FilmDetailModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
-/** Full film overview opened from a history card. `overview` (the real
- * synopsis) is already part of the `films` schema, but streaming providers
- * and alternate posters aren't modeled anywhere yet — shown as static
- * "bientôt disponible" sections rather than left out, so the page's final
- * shape is visible ahead of the backend work. */
+/** Full film overview opened from a history card. Alternate posters aren't
+ * modeled anywhere yet — shown as a static "bientôt disponible" section
+ * rather than left out, so the page's final shape is visible ahead of the
+ * backend work. */
 export function FilmDetailModal({ entry, onOpenChange }: FilmDetailModalProps) {
   return (
     <Dialog open={entry !== null} onOpenChange={onOpenChange}>
@@ -89,10 +89,7 @@ export function FilmDetailModal({ entry, onOpenChange }: FilmDetailModalProps) {
                 </p>
               </section>
 
-              <section className="flex items-center gap-2 opacity-50">
-                <Tv size={16} />
-                <span>Plateformes de streaming — bientôt disponible</span>
-              </section>
+              <WatchProvidersBlock tmdbId={entry.tmdbId} />
 
               <section className="flex items-center gap-2 opacity-50">
                 <Images size={16} />
