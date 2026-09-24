@@ -100,6 +100,8 @@ Le "Recommencer" explicite depuis une session reprise (pas depuis un premier lan
 
 Enregistre un swipe (accepté/passé). N'accepte que si une ligne `"proposed"` correspondante existe pour ce `recommendation_session_id` + `film_id` — c'est la preuve que le film a vraiment été montré (CIN-78). Ne touche plus `match_score`/`ai_critique` : ces champs sont écrits une fois pour toutes à la proposition (voir `POST /recommend` ci-dessus), pas à la décision.
 
+Un `"accepted"` clôt la session : les autres candidats encore `"proposed"` de cette session passent en `"skipped"` (même effet que `POST /recommend/current/abandon`), pour que `GET /recommend/current` ne la repropose pas (CIN-111).
+
 |                 |                                                                                    |
 | --------------- | ------------------------------------------------------------------------------------ |
 | Auth            | Requis                                                                                |
