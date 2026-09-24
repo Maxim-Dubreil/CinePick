@@ -20,7 +20,12 @@ import { RECENT_COUNT } from "@/components/profile/ProfileHistory";
 
 export function Profile() {
   const { user, session } = useAuth();
-  const { profile, loading: profileLoading, refetch } = useProfile();
+  const {
+    profile,
+    loading: profileLoading,
+    refetch,
+    updateProfile,
+  } = useProfile();
   const { stats, loading: statsLoading } = useRecommendationStats(user?.id ?? null);
   const { entries: recentEntries, loading: historyLoading } = useHistory(
     user?.id ?? null,
@@ -80,7 +85,9 @@ export function Profile() {
       <div className="max-w-5xl mx-auto px-10 py-11 pb-20 flex flex-col gap-5">
         <ProfileHero
           user={user}
+          profile={profile}
           letterboxdUsername={profile?.letterboxd_username ?? null}
+          onProfileUpdated={updateProfile}
         />
 
         <ProfileStats

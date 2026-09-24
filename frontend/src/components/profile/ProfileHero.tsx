@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Sparkles, Pencil, Calendar } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
@@ -8,10 +9,17 @@ import {
   Badge,
   Button,
 } from "@/components/ui";
+import { getDisplayName, getAvatarUrl } from "@/lib/profile";
+import type { UserProfile } from "@/contexts/ProfileContext";
+import { EditProfileModal } from "./EditProfileModal";
 
 interface ProfileHeroProps {
   user: User;
+  profile: UserProfile | null;
   letterboxdUsername: string | null;
+  onProfileUpdated: (
+    partial: Pick<UserProfile, "full_name" | "avatar_url">,
+  ) => void;
 }
 
 function formatMemberSince(isoDate: string): string {
@@ -31,21 +39,22 @@ function getInitials(fullName: string): string {
     .toUpperCase();
 }
 
-export function ProfileHero({ user, letterboxdUsername }: ProfileHeroProps) {
+export function ProfileHero({
+  user,
+  profile,
+  letterboxdUsername,
+  onProfileUpdated,
+}: ProfileHeroProps) {
   const navigate = useNavigate();
-  const fullName =
-    (user.user_metadata?.full_name as string | undefined) ??
-    user.email ??
-    "Utilisateur";
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const fullName = getDisplayName(user, profile);
+  const avatarUrl = getAvatarUrl(user, profile);
   const initials = getInitials(fullName);
 
   return (
     <section className="rounded-[var(--radius-xl)] bg-[var(--glass-bg)] border border-[var(--glass-border)] shadow-[var(--shadow-glass)] p-7 flex items-center gap-7">
       <Avatar className="size-24 shrink-0">
-        <AvatarImage
-          src={(user.user_metadata?.picture as string | undefined) ?? ""}
-          alt={fullName}
-        />
+        <AvatarImage src={avatarUrl ?? ""} alt={fullName} />
         <AvatarFallback className="text-3xl font-medium bg-gradient-to-br from-violet-400 to-purple-700 text-white rounded-full size-full flex items-center justify-center">
           {initials}
         </AvatarFallback>
@@ -84,12 +93,21 @@ export function ProfileHero({ user, letterboxdUsername }: ProfileHeroProps) {
           <Sparkles size={15} />
           Nouvelle reco
         </Button>
-        {/* TODO: implémenter l'édition du profil */}
-        <Button variant="glass" disabled>
+        <Button variant="glass" onClick={() => setEditModalOpen(true)}>
           <Pencil size={15} />
           Modifier le profil
         </Button>
       </div>
+
+      <EditProfileModal
+        open={editModalOpen}
+        onOpenChange={setEditModalOpen}
+        user={user}
+        profile={profile}
+        currentDisplayName={fullName}
+        currentAvatarUrl={avatarUrl}
+        onSaved={onProfileUpdated}
+      />
     </section>
   );
 }

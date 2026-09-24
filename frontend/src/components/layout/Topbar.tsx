@@ -14,6 +14,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
 import { useSync } from "@/hooks/useSync";
 import { cn } from "@/lib/utils";
+import { getDisplayName, getAvatarUrl } from "@/lib/profile";
 
 interface TopbarProps {
   variant?: "landing" | "app";
@@ -128,16 +129,16 @@ export function Topbar({ variant = "landing" }: TopbarProps) {
             )}
           >
             <span className="text-sm font-medium text-text-primary">
-              {user.user_metadata?.full_name?.split(" ")[0]}
+              {getDisplayName(user, profile).split(" ")[0]}
             </span>
             <Avatar size="default">
               <AvatarImage
-                src={user.user_metadata?.picture}
-                alt={user.user_metadata?.full_name ?? "Avatar"}
+                src={getAvatarUrl(user, profile)}
+                alt={getDisplayName(user, profile)}
               />
               <AvatarFallback className="bg-accent-subtle text-cp-accent font-semibold">
-                {user.user_metadata?.full_name
-                  ?.split(" ")[0]?.[0]
+                {getDisplayName(user, profile)
+                  .split(" ")[0]?.[0]
                   ?.toUpperCase()}
               </AvatarFallback>
             </Avatar>

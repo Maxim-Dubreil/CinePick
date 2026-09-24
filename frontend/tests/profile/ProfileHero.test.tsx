@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import type { User } from '@supabase/supabase-js'
+import type { UserProfile } from '@/hooks/useProfile'
 import { ProfileHero } from '@/components/profile/ProfileHero'
 
 const mockUser = {
@@ -14,12 +15,22 @@ const mockUser = {
   },
 } as unknown as User
 
+const mockProfile: UserProfile = {
+  full_name: null,
+  avatar_url: null,
+  letterboxd_username: null,
+  last_sync: null,
+  film_count: 0,
+}
+
 function renderHero(letterboxdUsername: string | null) {
   return render(
     <MemoryRouter>
       <ProfileHero
         user={mockUser}
+        profile={{ ...mockProfile, letterboxd_username: letterboxdUsername }}
         letterboxdUsername={letterboxdUsername}
+        onProfileUpdated={() => {}}
       />
     </MemoryRouter>
   )
