@@ -30,7 +30,7 @@ export function Footer({ variant = 'landing' }: FooterProps) {
         <div className="w-0.75 h-0.75 rounded-full bg-border-strong" />
         <Link
           to="/about"
-          className="text-[11px] tracking-[0.08em] text-text-secondary hover:opacity-70 transition-opacity"
+          className="text-[11px] tracking-[0.08em] text-text-secondary underline underline-offset-4 hover:opacity-70 transition-opacity"
         >
           À PROPOS
         </Link>

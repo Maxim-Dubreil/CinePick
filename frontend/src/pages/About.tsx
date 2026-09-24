@@ -1,73 +1,86 @@
 import { Link } from "react-router-dom";
 import { ArrowLeft, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { AppBackground, Footer } from "@/components/layout";
+import { Footer, LandingBackground } from "@/components/layout";
 
 const REPO_URL = "https://github.com/Maxim-Dubreil/CinePick";
 const CONTACT_EMAIL = "maxim.dubreil@epitech.eu";
 
-/** Public page (no auth guard): repo link, third-party credits and contact. */
+/**
+ * Public page (no auth guard): repo link, third-party credits and contact.
+ * Intentionally in English, unlike the rest of the GUI.
+ */
 export function About() {
   return (
-    <div className="relative h-screen flex flex-col overflow-hidden">
-      <AppBackground />
+    <div className="relative h-screen w-full overflow-hidden flex flex-col">
+      <LandingBackground />
 
-      <main className="relative z-10 flex-1 overflow-auto flex items-center justify-center px-4 py-10">
-        <div className="w-full max-w-md rounded-[var(--radius-xl)] bg-[var(--glass-bg)] border border-[var(--glass-border)] shadow-[var(--shadow-glass)] p-7 flex flex-col gap-6">
+      <main className="relative z-10 flex-1 overflow-auto">
+        <div className="max-w-2xl mx-auto px-6 sm:px-10 py-10 sm:py-16 flex flex-col gap-12">
           <Link
             to="/"
             className="flex items-center gap-2 text-sm text-(--text-secondary) hover:opacity-70 transition-opacity w-fit"
           >
             <ArrowLeft size={16} />
-            Retour
+            Back
           </Link>
 
-          <div className="flex flex-col gap-2">
-            <h1 className="text-2xl font-medium text-(--text-primary) font-(family-name:--font-heading)">
-              CinePick
+          <section className="flex flex-col gap-6">
+            <h1 className="font-(family-name:--font-heading) text-[44px] sm:text-[56px] font-medium leading-[1.05] tracking-[-0.5px] text-(--text-primary)">
+              One film for tonight, straight from your watchlist.
             </h1>
-            <p className="text-[15px] leading-[1.7] text-(--text-secondary)">
-              CinePick analyse ta watchlist Letterboxd et te recommande un seul film en 2
-              minutes — adapté à ton humeur.
+            <p className="text-[15px] leading-[1.7] text-(--text-secondary) max-w-[52ch]">
+              CinePick reads your Letterboxd watchlist, asks a few questions about your
+              mood, and picks a single film you already wanted to see. It's a personal
+              project, and the source code is public.
             </p>
-          </div>
-
-          <Button variant="glass" asChild className="w-fit">
-            <a href={REPO_URL} target="_blank" rel="noopener noreferrer">
-              Voir le code sur GitHub
-              <ExternalLink />
-            </a>
-          </Button>
-
-          <section className="flex flex-col gap-3 border-t border-[var(--glass-border)] pt-5">
-            <h2 className="text-[11px] tracking-[0.08em] text-(--text-secondary)">CRÉDITS</h2>
-            <div className="flex flex-col gap-2">
-              <img src="/logos/tmdb.svg" alt="TMDB" className="h-3 w-fit" />
-              <p className="text-xs text-(--text-secondary)">
-                This product uses the TMDB API but is not endorsed or certified by TMDB.
-              </p>
-            </div>
-            <p className="text-sm text-(--text-secondary)">
-              Watchlist : Letterboxd (non affilié)
-            </p>
-            <p className="text-sm text-(--text-secondary)">
-              Recommandations : Gemini (Google)
-            </p>
+            <Button variant="glass-primary" size="lg" asChild className="w-fit">
+              <a href={REPO_URL} target="_blank" rel="noopener noreferrer">
+                View the code on GitHub
+                <ExternalLink />
+              </a>
+            </Button>
           </section>
 
-          <p className="border-t border-[var(--glass-border)] pt-5 text-sm text-(--text-secondary)">
-            Fait par Maxim Dubreil ·{" "}
-            <a
-              href={`mailto:${CONTACT_EMAIL}`}
-              className="text-(--text-primary) hover:opacity-70 transition-opacity"
-            >
-              {CONTACT_EMAIL}
-            </a>
-          </p>
+          <section className="flex flex-col gap-5">
+            <h2 className="font-(family-name:--font-heading) text-2xl font-medium text-(--text-primary)">
+              Credits
+            </h2>
+            <dl className="grid grid-cols-1 sm:grid-cols-[10rem_1fr] gap-x-6 gap-y-2 sm:gap-y-5 text-sm">
+              <dt className="text-(--text-tertiary)">Movie data</dt>
+              <dd className="flex flex-col gap-2 mb-3 sm:mb-0">
+                <img src="/logos/tmdb.svg" alt="TMDB" className="h-3 w-fit" />
+                <span className="text-(--text-secondary)">
+                  This product uses the TMDB API but is not endorsed or certified by TMDB.
+                </span>
+              </dd>
+
+              <dt className="text-(--text-tertiary)">Watchlist</dt>
+              <dd className="text-(--text-secondary) mb-3 sm:mb-0">
+                Imported from Letterboxd. Not affiliated.
+              </dd>
+
+              <dt className="text-(--text-tertiary)">Recommendations</dt>
+              <dd className="text-(--text-secondary) mb-3 sm:mb-0">
+                Generated by Gemini (Google).
+              </dd>
+
+              <dt className="text-(--text-tertiary)">Made by</dt>
+              <dd className="text-(--text-secondary)">
+                Maxim Dubreil,{" "}
+                <a
+                  href={`mailto:${CONTACT_EMAIL}`}
+                  className="text-(--text-primary) underline underline-offset-4 hover:opacity-70 transition-opacity"
+                >
+                  {CONTACT_EMAIL}
+                </a>
+              </dd>
+            </dl>
+          </section>
         </div>
       </main>
 
-      <Footer variant="app" />
+      <Footer variant="landing" />
     </div>
   );
 }

@@ -80,18 +80,22 @@ Déclencheur : bouton « Modifier » (Profil) **ou** bannière Home « Configure
 
 **Public, sans garde d'auth** : la route ne dépend ni de `user` ni de `authLoading`, elle s'affiche à l'identique connecté ou non. Les gardes des écrans privés sont inchangés — taper `/history` depuis `/about` sans session redirige toujours vers `/`.
 
-**Volontairement discret** : hors du parcours principal. Seul point d'entrée : un item **« À PROPOS »** en fin de footer, même style que les autres items (texte secondaire, 11px), hover par opacité. Donc accessible depuis Landing, Profil et Historique ; **pas depuis Home**, qui masque le footer — assumé.
+**Volontairement discret** : hors du parcours principal. Seul point d'entrée : un item **« À PROPOS »** en fin de footer, même style que les autres items (texte secondaire, 11px), souligné pour se lire comme un lien, hover par opacité. Donc accessible depuis Landing, Profil et Historique ; **pas depuis Home**, qui masque le footer — assumé.
 
-**Contenu** (une carte centrée, pas de topbar) :
+**Seule page de l'app en anglais** (le lien footer reste en français). Les autres écrans restent en français.
 
-- Bouton « ← Retour » → `/` (qui redirige déjà vers `/home` si connecté).
-- Nom de l'app + pitch en une phrase.
-- Bouton « Voir le code sur GitHub ↗ » → `https://github.com/Maxim-Dubreil/CinePick`, nouvel onglet (`target="_blank" rel="noopener noreferrer"`).
-- **Crédits** :
-  - Données films : logo TMDB + mention obligatoire **en anglais, mot pour mot** (conditions d'utilisation de l'API TMDB) : _« This product uses the TMDB API but is not endorsed or certified by TMDB. »_
+**Mise en page** : même fond que Landing (mur d'affiches flouté), pas de topbar, colonne unique alignée à gauche, sans carte englobante. Un seul élément fort : le titre en police de titre, à l'échelle du hero de Landing.
+
+**Contenu** :
+
+- Lien « ← Back » → `/` (qui redirige déjà vers `/home` si connecté).
+- Titre + pitch court (précise que c'est un projet perso au code public).
+- Bouton « View the code on GitHub ↗ » → `https://github.com/Maxim-Dubreil/CinePick`, nouvel onglet (`target="_blank" rel="noopener noreferrer"`).
+- **Credits** — liste à deux colonnes (rôle / fournisseur), empilée sur mobile :
+  - Movie data : logo TMDB + mention obligatoire **mot pour mot** (conditions d'utilisation de l'API TMDB) : _« This product uses the TMDB API but is not endorsed or certified by TMDB. »_
   - Watchlist : Letterboxd (non affilié).
-  - Recommandations : Gemini (Google).
-- Auteur : « Fait par Maxim Dubreil » + contact `mailto:maxim.dubreil@epitech.eu`.
+  - Recommendations : Gemini (Google).
+  - Made by : Maxim Dubreil + contact `mailto:maxim.dubreil@epitech.eu`.
 
 **Hors scope** : stack technique, numéro de version, formulaire de contact.
 
@@ -107,7 +111,7 @@ Déclencheur : bouton « Modifier » (Profil) **ou** bannière Home « Configure
 | Résultat  | Home              | Accept                                                                                |
 | Résultat  | Questions         | Échec des 2 tentatives IA, ou tous les candidats skip en mode sans-IA (reset complet) |
 | Footer    | About             | Lien « À PROPOS » (visible sur Landing, Profil, Historique)                           |
-| About     | Landing / Home    | « ← Retour » (vers `/`, redirect `/home` si connecté)                                 |
+| About     | Landing / Home    | « ← Back » (vers `/`, redirect `/home` si connecté)                                   |
 
 ## Maquettes (Figma)
 
