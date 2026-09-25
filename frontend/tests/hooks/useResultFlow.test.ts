@@ -139,6 +139,18 @@ describe("useResultFlow", () => {
     expect(result.current.deadEndReason).toBe("no_match");
   });
 
+  it("maps a 429 failure to the rate_limited dead-end", async () => {
+    getRecommendationMock.mockRejectedValue(new ApiError(429, "rate_limited"));
+    const { result } = renderHook(() => useResultFlow(START, "token", true));
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(MIN_LOADING_MS);
+    });
+
+    expect(result.current.phase).toBe("dead-end");
+    expect(result.current.deadEndReason).toBe("rate_limited");
+  });
+
   it("maps a 502/network failure to the technical dead-end", async () => {
     getRecommendationMock.mockRejectedValue(new ApiError(502, "ai_error"));
     const { result } = renderHook(() => useResultFlow(START, "token", true));

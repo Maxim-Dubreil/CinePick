@@ -33,6 +33,9 @@ function errorToDeadEndReason(error: unknown, attempt: number): DeadEndReason {
   if (error instanceof ApiError && errorType(error) === "ai_overloaded") {
     return "overloaded";
   }
+  if (error instanceof ApiError && error.status === 429) {
+    return "rate_limited";
+  }
   return "technical";
 }
 

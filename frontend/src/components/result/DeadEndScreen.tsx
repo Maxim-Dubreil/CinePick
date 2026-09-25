@@ -3,6 +3,7 @@ import { Button } from "@/components/ui";
 export type DeadEndReason =
   | "technical"
   | "overloaded"
+  | "rate_limited"
   | "no_match"
   | "exhausted";
 
@@ -10,6 +11,8 @@ const MESSAGES: Record<DeadEndReason, string> = {
   technical: "On n'arrive pas à te proposer un film pour l'instant.",
   overloaded:
     "L'IA est surchargée en ce moment. Réessaie dans quelques minutes.",
+  rate_limited:
+    "Tu as demandé beaucoup de films d'un coup. Fais une pause et réessaie dans un moment.",
   no_match: "Aucun film ne correspond à tes critères.",
   exhausted: "Tu as vu tous les films qui correspondent à tes critères.",
 };
