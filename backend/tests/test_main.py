@@ -43,6 +43,9 @@ def test_health_ready_endpoint(require_integration, monkeypatch):
     assert data["checks"]["database"] == "ok"
 
 
+AUTH_HEADERS = {"Authorization": "Bearer test-token"}
+
+
 def _patch_validate(monkeypatch, *, returns=None, raises=None):
     async def fake(username, **kwargs):
         if raises is not None:
@@ -54,35 +57,46 @@ def _patch_validate(monkeypatch, *, returns=None, raises=None):
 
 def test_letterboxd_validate_nominal(monkeypatch):
     _patch_validate(monkeypatch, returns=602)
-    response = client.get("/letterboxd/validate", params={"username": "dave"})
+    response = client.get(
+        "/letterboxd/validate", params={"username": "dave"}, headers=AUTH_HEADERS
+    )
     assert response.status_code == 200
     assert response.json() == {"username": "dave", "count": 602}
 
 
 def test_letterboxd_validate_profile_not_found(monkeypatch):
     _patch_validate(monkeypatch, raises=scraper.ProfileNotFoundError("ghost"))
-    response = client.get("/letterboxd/validate", params={"username": "ghost"})
+    response = client.get(
+        "/letterboxd/validate", params={"username": "ghost"}, headers=AUTH_HEADERS
+    )
     assert response.status_code == 404
 
 
 def test_letterboxd_validate_private(monkeypatch):
     _patch_validate(monkeypatch, raises=scraper.WatchlistPrivateError("secretive"))
-    response = client.get("/letterboxd/validate", params={"username": "secretive"})
+    response = client.get(
+        "/letterboxd/validate", params={"username": "secretive"}, headers=AUTH_HEADERS
+    )
     assert response.status_code == 403
 
 
 def test_letterboxd_validate_scrape_error(monkeypatch):
     _patch_validate(monkeypatch, raises=scraper.WatchlistScrapeError("boom"))
-    response = client.get("/letterboxd/validate", params={"username": "dave"})
+    response = client.get(
+        "/letterboxd/validate", params={"username": "dave"}, headers=AUTH_HEADERS
+    )
     assert response.status_code == 502
 
 
 def test_letterboxd_validate_requires_username():
-    response = client.get("/letterboxd/validate")
+    response = client.get("/letterboxd/validate", headers=AUTH_HEADERS)
     assert response.status_code == 422
 
 
-AUTH_HEADERS = {"Authorization": "Bearer test-token"}
+def test_letterboxd_validate_requires_auth(monkeypatch):
+    _patch_validate(monkeypatch, returns=602)
+    response = client.get("/letterboxd/validate", params={"username": "dave"})
+    assert response.status_code == 401
 
 
 def _patch_sync(monkeypatch, *, films=None, raises=None):
@@ -370,6 +384,20 @@ def test_recommend_empty_watchlist(monkeypatch):
 
     assert response.status_code == 422
     assert response.json()["detail"]["type"] == "empty_watchlist"
+
+
+def test_recommend_rate_limited_after_allowance(monkeypatch):
+    # Empty watchlist = cheapest path through the route; each call still counts.
+    _patch_recommend(monkeypatch, films=[])
+    for _ in range(20):
+        response = client.post("/recommend", json=RECOMMEND_BODY, headers=AUTH_HEADERS)
+        assert response.status_code == 422
+
+    response = client.post("/recommend", json=RECOMMEND_BODY, headers=AUTH_HEADERS)
+
+    assert response.status_code == 429
+    assert response.json()["detail"]["type"] == "rate_limited"
+    assert int(response.headers["Retry-After"]) > 0
 
 
 def test_recommend_no_candidates(monkeypatch):

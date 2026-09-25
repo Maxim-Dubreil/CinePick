@@ -30,9 +30,15 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
 
 export async function validateLetterboxdAccount(
   username: string,
+  token: string | null,
 ): Promise<{ username: string; count: number }> {
   return apiFetch(
     `/letterboxd/validate?username=${encodeURIComponent(username)}`,
+    {
+      headers: {
+        ...(token !== null ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    },
   );
 }
 

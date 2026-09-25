@@ -27,6 +27,7 @@ from models import (
     RecommendRequest,
     WatchlistFilterResponse,
 )
+from rate_limit import RateLimiter
 from repositories import watch_history as watch_history_repo
 from repositories import watchlist as watchlist_repo
 from supabase_client import supabase
@@ -112,6 +113,34 @@ async def get_current_user_id(
         raise HTTPException(status_code=401, detail="Invalid token") from exc
 
 
+def rate_limited(limiter: RateLimiter):
+    """Dependency: authenticate, then count the call against `limiter` for
+    this user — 429 with `Retry-After` once the allowance is spent. Replaces
+    `get_current_user_id` on routes spending a third-party quota."""
+
+    async def dependency(user_id: str = Depends(get_current_user_id)) -> str:
+        retry_after = limiter.hit(user_id)
+        if retry_after is not None:
+            logger.warning("Rate limit hit for user %s", user_id)
+            raise HTTPException(
+                status_code=429,
+                detail={"type": "rate_limited", "message": "Too many requests"},
+                headers={"Retry-After": str(retry_after)},
+            )
+        return user_id
+
+    return dependency
+
+
+# Allowances per user. /recommend = one Gemini call each; a sync scrapes every
+# watchlist page and hits TMDB ~3× per film; /films/* are cached TMDB lookups
+# shared by both routes below.
+recommend_limiter = RateLimiter(max_calls=20, window_seconds=3600)
+sync_limiter = RateLimiter(max_calls=5, window_seconds=3600)
+validate_limiter = RateLimiter(max_calls=20, window_seconds=3600)
+films_limiter = RateLimiter(max_calls=120, window_seconds=60)
+
+
 # ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
@@ -162,7 +191,10 @@ class LetterboxdValidateResponse(BaseModel):
     response_model=LetterboxdValidateResponse,
     tags=[TAG_LETTERBOXD],
 )
-async def letterboxd_validate(username: str = Query(min_length=1)):
+async def letterboxd_validate(
+    username: str = Query(min_length=1),
+    user_id: str = Depends(rate_limited(validate_limiter)),
+):
     """Validate a Letterboxd username: exists + watchlist public. Returns film count."""
     try:
         count = await scraper.get_watchlist_count(username)
@@ -193,7 +225,7 @@ class LetterboxdSyncResponse(BaseModel):
 @app.post("/letterboxd/sync", response_model=LetterboxdSyncResponse, tags=[TAG_LETTERBOXD])
 async def letterboxd_sync(
     body: LetterboxdSyncRequest,
-    user_id: str = Depends(get_current_user_id),
+    user_id: str = Depends(rate_limited(sync_limiter)),
 ):
     """Scrape the full Letterboxd watchlist, enrich it via TMDB, and replace
     the user's stored watchlist (CIN-46)."""
@@ -379,7 +411,7 @@ async def recommend_current(user_id: str = Depends(get_current_user_id)):
 @app.post("/recommend", response_model=RecommendResponse, tags=[TAG_RECOMMEND])
 async def recommend(
     body: RecommendRequest,
-    user_id: str = Depends(get_current_user_id),
+    user_id: str = Depends(rate_limited(recommend_limiter)),
 ):
     """Pre-filter the user's watchlist, then proxy an AI call to rank up to 3
     candidates (CIN-49/CIN-78) — always, down to a single remaining film, so
@@ -487,7 +519,7 @@ async def recommend_current_abandon(
 )
 async def films_watch_providers(
     tmdb_id: int,
-    user_id: str = Depends(get_current_user_id),
+    user_id: str = Depends(rate_limited(films_limiter)),
 ):
     """Where to watch a film in France (CIN-103) — shared by Result, Home,
     and Historique. A film with no FR offer returns 200 with an empty
@@ -511,7 +543,7 @@ async def films_watch_providers(
 )
 async def films_rating(
     tmdb_id: int,
-    user_id: str = Depends(get_current_user_id),
+    user_id: str = Depends(rate_limited(films_limiter)),
 ):
     """TMDB rating for a film (CIN-104) — live-fetched, never persisted (see
     `tmdb_rating.py`). Same error contract as `/films/{tmdb_id}/watch-providers`:

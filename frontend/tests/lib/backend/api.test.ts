@@ -22,36 +22,36 @@ describe("validateLetterboxdAccount", () => {
         headers: { "Content-Type": "application/json" },
       }),
     );
-    const result = await validateLetterboxdAccount("johndoe");
+    const result = await validateLetterboxdAccount("johndoe", "my-token");
     expect(result).toEqual({ username: "johndoe", count: 42 });
   });
 
   it("throws ApiError(404) when user not found", async () => {
     vi.mocked(fetch).mockResolvedValue(new Response("", { status: 404 }));
-    await expect(validateLetterboxdAccount("unknown")).rejects.toThrow(
+    await expect(validateLetterboxdAccount("unknown", "my-token")).rejects.toThrow(
       ApiError,
     );
-    await expect(validateLetterboxdAccount("unknown")).rejects.toMatchObject({
+    await expect(validateLetterboxdAccount("unknown", "my-token")).rejects.toMatchObject({
       status: 404,
     });
   });
 
   it("throws ApiError(403) when watchlist is private", async () => {
     vi.mocked(fetch).mockResolvedValue(new Response("", { status: 403 }));
-    await expect(validateLetterboxdAccount("private")).rejects.toThrow(
+    await expect(validateLetterboxdAccount("private", "my-token")).rejects.toThrow(
       ApiError,
     );
-    await expect(validateLetterboxdAccount("private")).rejects.toMatchObject({
+    await expect(validateLetterboxdAccount("private", "my-token")).rejects.toMatchObject({
       status: 403,
     });
   });
 
   it("throws ApiError(0) on network failure", async () => {
     vi.mocked(fetch).mockRejectedValue(new TypeError("Failed to fetch"));
-    await expect(validateLetterboxdAccount("johndoe")).rejects.toThrow(
+    await expect(validateLetterboxdAccount("johndoe", "my-token")).rejects.toThrow(
       ApiError,
     );
-    await expect(validateLetterboxdAccount("johndoe")).rejects.toMatchObject({
+    await expect(validateLetterboxdAccount("johndoe", "my-token")).rejects.toMatchObject({
       status: 0,
     });
   });
@@ -63,8 +63,22 @@ describe("validateLetterboxdAccount", () => {
         headers: { "Content-Type": "application/json" },
       }),
     );
-    await validateLetterboxdAccount("jo hn");
+    await validateLetterboxdAccount("jo hn", "my-token");
     expect(vi.mocked(fetch).mock.calls[0][0]).toContain("jo%20hn");
+  });
+
+  it("includes Authorization header when token is provided", async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      new Response(JSON.stringify({ username: "johndoe", count: 42 }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    await validateLetterboxdAccount("johndoe", "my-token");
+    const [, options] = vi.mocked(fetch).mock.calls[0];
+    expect((options as RequestInit).headers).toMatchObject({
+      Authorization: "Bearer my-token",
+    });
   });
 });
 
