@@ -4,6 +4,15 @@
 #
 # `--env-file` feeds the front's build args (VITE_*, baked into the bundle) and
 # DOMAIN; the backend reads its secrets from backend/.env.prod at runtime.
+
+# Docker's default json-file driver never rotates: logs grow until the disk is
+# full. Cap each container at 3 × 10 MB, oldest file dropped first.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   web:
     build:
@@ -25,6 +34,7 @@ services:
     depends_on:
       - backend
     restart: unless-stopped
+    logging: *default-logging
 
   backend:
     build:
@@ -33,6 +43,7 @@ services:
       - ./backend/.env.prod
     # No `ports`: only reachable from `web` on the internal Compose network.
     restart: unless-stopped
+    logging: *default-logging
 
 volumes:
   caddy_data:
