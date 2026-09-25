@@ -13,12 +13,12 @@ the `_cache.set` call, so a TMDB failure is never remembered as if it were
 the film's real (lack of) availability.
 """
 
-import os
 from typing import Literal
 
 import httpx
 from pydantic import BaseModel
 
+import tmdb
 from cache import TTLCache
 from watch_providers_whitelist import CANONICAL_PROVIDERS, resolve
 
@@ -39,9 +39,6 @@ _CATEGORY_MAP: dict[str, Literal["free", "subscription", "rent_buy"]] = {
     "buy": "rent_buy",
 }
 
-
-def _api_key() -> str:
-    return os.environ.get("TMDB_API_KEY", "")
 
 
 class WatchProvider(BaseModel):
@@ -91,7 +88,7 @@ async def _fetch_watch_providers(
     try:
         response = await client.get(
             f"{_BASE_URL}/movie/{tmdb_id}/watch/providers",
-            params={"api_key": _api_key()},
+            headers=tmdb.auth_headers(),
         )
         response.raise_for_status()
         data = response.json()

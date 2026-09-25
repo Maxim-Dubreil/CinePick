@@ -19,8 +19,12 @@ _IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w500"
 _REQUEST_TIMEOUT = 10.0
 
 
-def _api_key() -> str:
-    return os.environ.get("TMDB_API_KEY", "")
+def auth_headers() -> dict[str, str]:
+    """TMDB v4 read access token as a Bearer header — accepted by every v3
+    endpoint used here and, unlike the v3 `api_key` query param, never part of
+    a URL, so it can't leak through logged URLs (`httpx.HTTPStatusError`
+    messages, proxy access logs)."""
+    return {"Authorization": f"Bearer {os.environ.get('TMDB_READ_ACCESS_TOKEN', '')}"}
 
 
 def _parse_year(release_date: str | None) -> int | None:
@@ -35,10 +39,12 @@ def _parse_year(release_date: str | None) -> int | None:
 async def _search_movie_id(
     client: httpx.AsyncClient, title: str, year: int | None
 ) -> int | None:
-    params: dict[str, str] = {"api_key": _api_key(), "query": title}
+    params: dict[str, str] = {"query": title}
     if year is not None:
         params["year"] = str(year)
-    response = await client.get(f"{_BASE_URL}/search/movie", params=params)
+    response = await client.get(
+        f"{_BASE_URL}/search/movie", params=params, headers=auth_headers()
+    )
     if response.status_code != 200:
         return None
     results = response.json().get("results", [])
@@ -65,14 +71,16 @@ def _parse_cast(credits: dict) -> list[str]:
 def _details_request(client: httpx.AsyncClient, tmdb_id: int):
     return client.get(
         f"{_BASE_URL}/movie/{tmdb_id}",
-        params={"api_key": _api_key(), "language": "fr-FR"},
+        params={"language": "fr-FR"},
+        headers=auth_headers(),
     )
 
 
 def _collection_request(client: httpx.AsyncClient, collection_id: int):
     return client.get(
         f"{_BASE_URL}/collection/{collection_id}",
-        params={"api_key": _api_key(), "language": "fr-FR"},
+        params={"language": "fr-FR"},
+        headers=auth_headers(),
     )
 
 
@@ -119,7 +127,7 @@ def _credits_request(client: httpx.AsyncClient, tmdb_id: int):
     is fetched in French."""
     return client.get(
         f"{_BASE_URL}/movie/{tmdb_id}/credits",
-        params={"api_key": _api_key()},
+        headers=auth_headers(),
     )
 
 

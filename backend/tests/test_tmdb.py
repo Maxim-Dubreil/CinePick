@@ -255,6 +255,35 @@ async def test_search_and_enrich_credits_have_no_language_param():
     assert captured["credits_language"] is None
 
 
+async def test_every_tmdb_request_authenticates_by_header_not_url(monkeypatch):
+    """The credential must never be part of a URL — URLs end up in logged
+    `HTTPStatusError` messages and proxy access logs."""
+    monkeypatch.setenv("TMDB_READ_ACCESS_TOKEN", "secret-token")
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        url = str(request.url)
+        if "/search/movie" in url:
+            return httpx.Response(200, json={"results": [{"id": 42}]})
+        if "/collection/" in url:
+            return httpx.Response(200, json={"parts": []})
+        if "/credits" in url:
+            return httpx.Response(200, json={})
+        return httpx.Response(
+            200, json={"genres": [], "belongs_to_collection": {"id": 7, "name": "Saga"}}
+        )
+
+    async with _client(handler) as client:
+        await search_and_enrich("Some Film", 2021, client=client)
+
+    assert len(requests) >= 4  # search, details, credits, collection
+    for request in requests:
+        assert request.headers["Authorization"] == "Bearer secret-token"
+        assert "secret-token" not in str(request.url)
+        assert "api_key" not in request.url.params
+
+
 async def test_search_and_enrich_captures_cast_up_to_five_in_billing_order():
     def handler(request: httpx.Request) -> httpx.Response:
         url = str(request.url)
