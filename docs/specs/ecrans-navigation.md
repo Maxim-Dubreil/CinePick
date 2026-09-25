@@ -3,7 +3,7 @@
 > Source de vérité : ce fichier (versionné avec le code qu'il décrit). Miroir en lecture sur [Linear](https://linear.app/maximdubreil/document/ecrans-and-navigation-3801798532e9) — modifie ici, pas là-bas.
 > Wireframes basse fidélité réalisés sur Figma. Home détaille la **bannière warning « watchlist non connectée »** + le **bloc stats compte**.
 
-## Inventaire V1 — 7 écrans + 1 modale
+## Inventaire V1 — 8 écrans + 1 modale
 
 ```sh
 Landing (public)
@@ -14,6 +14,7 @@ Home (privé)
   └─ → Profil → [modale] Connexion Letterboxd
 
 About (public) ← lien footer (Landing, Profil, Historique)
+Mentions légales (public) ← lien footer (Landing, Profil, Historique, About)
 ```
 
 Les états (loading / erreur / succès) sont des états d'un écran existant, pas des écrans séparés.
@@ -101,6 +102,14 @@ Déclencheur : bouton « Modifier » (Profil) **ou** bannière Home « Configure
 
 **Hors scope** : stack technique, numéro de version, formulaire de contact.
 
+## 8. Mentions légales — `/mentions-legales`
+
+**Public, sans garde d'auth**, même principe et même mise en page que About (fond Landing, colonne unique, pas de topbar). **En français.**
+
+Une seule page, deux sections : **Mentions légales** (éditeur, hébergeurs, crédits données — obligation LCEN) puis **Politique de confidentialité** (RGPD : données collectées, finalité, destinataires dont Gemini, durée, droits, stockage local), cette dernière ancrée sur `#confidentialite` — l'URL à donner à l'écran de consentement OAuth Google. Une seule page plutôt que deux pour n'ajouter qu'un item au footer.
+
+Point d'entrée : item **« MENTIONS LÉGALES »** après « À PROPOS » dans le footer, même style. Lien « ← Retour » → `/`.
+
 ## Récap navigation
 
 | Depuis    | Vers              | Déclencheur                                                                           |
@@ -114,6 +123,7 @@ Déclencheur : bouton « Modifier » (Profil) **ou** bannière Home « Configure
 | Résultat  | Questions         | Échec des 2 tentatives IA, ou tous les candidats skip en mode sans-IA (reset complet) |
 | Footer    | About             | Lien « À PROPOS » (visible sur Landing, Profil, Historique)                           |
 | About     | Landing / Home    | « ← Back » (vers `/`, redirect `/home` si connecté)                                   |
+| Footer    | Mentions légales  | Lien « MENTIONS LÉGALES » (visible partout où le footer l'est)                        |
 
 ## Maquettes (Figma)
 

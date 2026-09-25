@@ -83,6 +83,15 @@ describe("App Routing", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("should display the legal page at /mentions-legales without being authenticated", () => {
+    authMock.user = null;
+    renderWithRouter("/mentions-legales");
+    expect(screen.getByRole("heading", { name: "Mentions légales" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Politique de confidentialité" }),
+    ).toBeInTheDocument();
+  });
+
   it("should display NotFound page at /invalid", () => {
     const { container } = renderWithRouter("/invalid");
     expect(screen.getByText("Not Found")).toBeInTheDocument();

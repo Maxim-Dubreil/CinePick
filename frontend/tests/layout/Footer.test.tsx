@@ -11,6 +11,14 @@ describe("Footer", () => {
     expect(screen.getByText("GOOGLE OAUTH")).toBeInTheDocument();
   });
 
+  it("links to the legal page", () => {
+    render(<Footer />, { wrapper: MemoryRouter });
+    expect(screen.getByRole("link", { name: "MENTIONS LÉGALES" })).toHaveAttribute(
+      "href",
+      "/mentions-legales",
+    );
+  });
+
   it("accepts variant prop without error", () => {
     const { container } = render(<Footer variant="app" />, { wrapper: MemoryRouter });
     expect(container.firstChild).toBeInTheDocument();
