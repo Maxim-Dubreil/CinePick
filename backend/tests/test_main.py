@@ -396,6 +396,24 @@ def test_recommend_calls_ai_with_more_than_three_candidates(monkeypatch):
     assert [r.film.id for r in recorded[0][2]] == ["2"]  # matches what was returned
 
 
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"emotion": ["x" * 41]},
+        {"ambiance": ["Zen"] * 21},
+        {"region": [""]},
+    ],
+)
+def test_recommend_rejects_oversized_answers(monkeypatch, overrides):
+    _patch_recommend(monkeypatch, films=[_film("a")])
+
+    response = client.post(
+        "/recommend", json={**RECOMMEND_BODY, **overrides}, headers=AUTH_HEADERS
+    )
+
+    assert response.status_code == 422
+
+
 def test_recommend_empty_watchlist(monkeypatch):
     _patch_recommend(monkeypatch, films=[])
 

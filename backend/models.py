@@ -2,9 +2,9 @@
 /recommend questionnaire/response contract."""
 
 from datetime import datetime
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, StringConstraints, field_validator
 
 
 class Film(BaseModel):
@@ -178,6 +178,14 @@ class RankedCandidate(BaseModel):
     critique: str | None
 
 
+# Bounds on the free-form answer lists: `emotion`/`ambiance` go verbatim into
+# the Gemini prompt, so unbounded input would inflate every call's token cost.
+# Loose enough for any real answer (options are short labels, a dozen each) —
+# not a closed Literal, which would 422 whenever the frontend adds an option.
+_AnswerTag = Annotated[str, StringConstraints(min_length=1, max_length=40)]
+_AnswerTags = Annotated[list[_AnswerTag], Field(max_length=20)]
+
+
 class RecommendRequest(BaseModel):
     """Answers to the 9-question flow, sent as-is from the frontend.
 
@@ -187,17 +195,17 @@ class RecommendRequest(BaseModel):
     `"any"` for the same meaning, matching `questionnaire.ts`.
     """
 
-    genre: list[str]
+    genre: _AnswerTags
     """TMDB genre ids as strings (e.g. `["35"]`), or `["none"]`."""
-    emotion: list[str]
+    emotion: _AnswerTags
     """Not filtered — forwarded to the AI proxy as-is."""
-    ambiance: list[str]
+    ambiance: _AnswerTags
     """Not filtered — forwarded to the AI proxy as-is."""
     withWho: Literal["seul", "amis", "couple", "famille", "any"]
     """Not filtered — forwarded to the AI proxy as-is."""
     duration: Literal["lt90", "90-120", "120-150", "150plus", "any"]
     era: Literal["silent", "golden", "newwave", "blockbuster", "2000s", "recent", "any"]
-    region: list[str]
+    region: _AnswerTags
     """ISO 3166-1 country codes, `["none"]`, or a user-typed custom region."""
     subtitles: Literal["with", "without", "any"]
     """Not filtered — forwarded to the AI proxy as-is."""

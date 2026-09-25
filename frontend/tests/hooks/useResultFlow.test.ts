@@ -139,6 +139,23 @@ describe("useResultFlow", () => {
     expect(result.current.deadEndReason).toBe("no_match");
   });
 
+  it("maps a request-validation 422 to the technical dead-end, not no_match", async () => {
+    getRecommendationMock.mockRejectedValue(
+      new ApiError(
+        422,
+        JSON.stringify({ detail: [{ loc: ["body", "emotion", 0], msg: "too long" }] }),
+      ),
+    );
+    const { result } = renderHook(() => useResultFlow(START, "token", true));
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(MIN_LOADING_MS);
+    });
+
+    expect(result.current.phase).toBe("dead-end");
+    expect(result.current.deadEndReason).toBe("technical");
+  });
+
   it("maps a 429 failure to the rate_limited dead-end", async () => {
     getRecommendationMock.mockRejectedValue(new ApiError(429, "rate_limited"));
     const { result } = renderHook(() => useResultFlow(START, "token", true));

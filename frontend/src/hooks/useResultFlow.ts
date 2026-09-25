@@ -24,7 +24,7 @@ function wait(ms: number): Promise<void> {
 }
 
 function errorToDeadEndReason(error: unknown, attempt: number): DeadEndReason {
-  if (error instanceof ApiError && error.status === 422) {
+  if (error instanceof ApiError && error.status === 422 && !isRequestValidationError(error)) {
     // A retry uses the same answers that already matched on the first try —
     // so an empty pool now only means every match was just shown (excluded
     // by the backend's 15-min session window), not that the filters are off.
@@ -39,26 +39,40 @@ function errorToDeadEndReason(error: unknown, attempt: number): DeadEndReason {
   return "technical";
 }
 
-// Reads the backend's typed error (`{"detail": {"type": ...}}`) from the raw
-// body ApiError carries — `null` when the body isn't that shape.
-function errorType(error: ApiError): string | null {
+// The `detail` field of the JSON body ApiError carries — `undefined` when the
+// body isn't JSON or has no `detail`.
+function errorDetail(error: ApiError): unknown {
   try {
     const body: unknown = JSON.parse(error.message);
-    if (
-      typeof body === "object" &&
-      body !== null &&
-      "detail" in body &&
-      typeof body.detail === "object" &&
-      body.detail !== null &&
-      "type" in body.detail &&
-      typeof body.detail.type === "string"
-    ) {
-      return body.detail.type;
+    if (typeof body === "object" && body !== null && "detail" in body) {
+      return body.detail;
     }
   } catch {
     // Non-JSON body (e.g. a proxy's HTML error page) — not a typed error.
   }
+  return undefined;
+}
+
+// Reads the backend's typed error (`{"detail": {"type": ...}}`) — `null` when
+// the body isn't that shape.
+function errorType(error: ApiError): string | null {
+  const detail = errorDetail(error);
+  if (
+    typeof detail === "object" &&
+    detail !== null &&
+    "type" in detail &&
+    typeof detail.type === "string"
+  ) {
+    return detail.type;
+  }
   return null;
+}
+
+// FastAPI's own request validation 422 carries a list of field errors, unlike
+// the route's typed `no_candidates`/`empty_watchlist` 422 — a malformed request
+// is a bug, not "no film matches".
+function isRequestValidationError(error: ApiError): boolean {
+  return Array.isArray(errorDetail(error));
 }
 
 function errorToDevDetail(error: unknown): string | null {
