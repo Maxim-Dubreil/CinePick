@@ -1,4 +1,4 @@
-.PHONY: verify verify-backend verify-frontend verify-db verify-commit verify-push install-hooks build
+.PHONY: verify verify-backend verify-frontend verify-db verify-commit verify-push install-hooks build db-push-prod
 
 build:
 	docker compose build
@@ -28,6 +28,11 @@ verify-commit:
 # Docker build, backend + frontend tests/lint/typecheck/build. Kept out of
 # verify-commit so day-to-day commits on develop stay fast.
 verify-push: verify
+
+# Apply pending migrations to the PROD Supabase project (prompts for its
+# database password). Dev is migrated by the usual `supabase db push`.
+db-push-prod:
+	@bash scripts/db-push-prod.sh
 
 install-hooks:
 	git config core.hooksPath .githooks
