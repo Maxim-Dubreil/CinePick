@@ -1,0 +1,34 @@
+# DOMAIN defaults to localhost for local testing (Caddy then uses its own
+# internal CA); in prod, set DOMAIN=cinepick.fr and Caddy fetches a Let's
+# Encrypt certificate automatically.
+{$DOMAIN:localhost} {
+	encode zstd gzip
+
+	# /api/* → FastAPI, with the /api prefix stripped (routes stay unchanged).
+	handle_path /api/* {
+		reverse_proxy backend:8000
+	}
+
+	handle {
+		root * /srv
+		# SPA fallback: any unknown path serves index.html, React Router takes over.
+		try_files {path} /index.html
+		file_server
+
+		# Hashed bundle files never change; index.html must always be revalidated
+		# so a new deploy is picked up immediately.
+		@assets path /assets/*
+		header @assets Cache-Control "public, max-age=31536000, immutable"
+		@html not path /assets/*
+		header @html Cache-Control "no-cache"
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://image.tmdb.org https://*.supabase.co https://lh3.googleusercontent.com; font-src 'self' data:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
+		-Server
+	}
+}
