@@ -176,16 +176,18 @@ create policy "Users can update own watchlist items"
 -- Policies watch_history
 create policy "Users can view own history"
   on watch_history for select
-  using (auth.uid() = user_id);
+  using ((select auth.uid()) = user_id);
 
-create policy "Users can insert own history"
-  on watch_history for insert
-  with check (auth.uid() = user_id);
+-- No INSERT policy: rows are only written by the backend (service role).
 
 create policy "Users can update own history"
   on watch_history for update
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
+
+create policy "Users can delete own history"
+  on watch_history for delete
+  using (auth.uid() = user_id);
 
 -- Storage: public bucket for user-uploaded profile avatars (CIN-107).
 -- Path convention: "{user_id}/avatar.<ext>" — fixed filename per user (upsert on
