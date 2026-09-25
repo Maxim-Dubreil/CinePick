@@ -21,6 +21,23 @@ from watch_providers import WatchProvider, WatchProvidersResponse
 client = TestClient(app)
 
 
+def test_startup_fails_when_a_credential_is_missing(monkeypatch):
+    monkeypatch.setenv("GEMINI_API_KEY", "key")
+    monkeypatch.delenv("TMDB_READ_ACCESS_TOKEN", raising=False)
+
+    with pytest.raises(RuntimeError, match="TMDB_READ_ACCESS_TOKEN"):
+        with TestClient(app):
+            pass
+
+
+def test_startup_succeeds_with_every_credential(monkeypatch):
+    monkeypatch.setenv("GEMINI_API_KEY", "key")
+    monkeypatch.setenv("TMDB_READ_ACCESS_TOKEN", "token")
+
+    with TestClient(app) as started:
+        assert started.get("/health").status_code == 200
+
+
 def test_root_endpoint():
     response = client.get("/")
     assert response.status_code == 200

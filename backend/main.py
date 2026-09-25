@@ -1,6 +1,8 @@
 import logging
 import os
 import time
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from uuid import uuid4
 
@@ -36,6 +38,23 @@ from watch_providers import WatchProvidersResponse
 
 logger = logging.getLogger(__name__)
 
+# Third-party credentials read lazily at call time: a missing one wouldn't
+# crash anything, just silently degrade (a sync would "succeed" without any
+# TMDB enrichment). SUPABASE_* are already checked at import in supabase_client.
+_REQUIRED_ENV_VARS = ("GEMINI_API_KEY", "TMDB_READ_ACCESS_TOKEN")
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    """Refuse to start with a missing credential rather than serve degraded
+    responses. Runs on server startup, not on import, so tests importing
+    `main` without these vars are unaffected."""
+    missing = [name for name in _REQUIRED_ENV_VARS if not os.environ.get(name)]
+    if missing:
+        raise RuntimeError(f"Missing required environment variables: {', '.join(missing)}")
+    yield
+
+
 # Interactive docs map the whole API surface for anyone — dev only.
 _docs_enabled = os.getenv("ENV", "dev") != "prod"
 app = FastAPI(
@@ -44,6 +63,7 @@ app = FastAPI(
     docs_url="/docs" if _docs_enabled else None,
     redoc_url="/redoc" if _docs_enabled else None,
     openapi_url="/openapi.json" if _docs_enabled else None,
+    lifespan=lifespan,
 )
 
 TAG_HEALTH = "health"
