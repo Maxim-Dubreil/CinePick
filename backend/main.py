@@ -1,5 +1,8 @@
 import logging
+import os
 import time
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from uuid import uuid4
 
@@ -26,6 +29,7 @@ from models import (
     RecommendRequest,
     WatchlistFilterResponse,
 )
+from rate_limit import RateLimiter
 from repositories import watch_history as watch_history_repo
 from repositories import watchlist as watchlist_repo
 from supabase_client import supabase
@@ -34,7 +38,33 @@ from watch_providers import WatchProvidersResponse
 
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="CinePick API", version="0.1.0")
+# Third-party credentials read lazily at call time: a missing one wouldn't
+# crash anything, just silently degrade (a sync would "succeed" without any
+# TMDB enrichment). SUPABASE_* are already checked at import in supabase_client.
+_REQUIRED_ENV_VARS = ("GEMINI_API_KEY", "TMDB_READ_ACCESS_TOKEN")
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    """Refuse to start with a missing credential rather than serve degraded
+    responses. Runs on server startup, not on import, so tests importing
+    `main` without these vars are unaffected."""
+    missing = [name for name in _REQUIRED_ENV_VARS if not os.environ.get(name)]
+    if missing:
+        raise RuntimeError(f"Missing required environment variables: {', '.join(missing)}")
+    yield
+
+
+# Interactive docs map the whole API surface for anyone — dev only.
+_docs_enabled = os.getenv("ENV", "dev") != "prod"
+app = FastAPI(
+    title="CinePick API",
+    version="0.1.0",
+    docs_url="/docs" if _docs_enabled else None,
+    redoc_url="/redoc" if _docs_enabled else None,
+    openapi_url="/openapi.json" if _docs_enabled else None,
+    lifespan=lifespan,
+)
 
 TAG_HEALTH = "health"
 TAG_LETTERBOXD = "letterboxd"
@@ -103,6 +133,34 @@ async def get_current_user_id(
         raise HTTPException(status_code=401, detail="Invalid token") from exc
 
 
+def rate_limited(limiter: RateLimiter):
+    """Dependency: authenticate, then count the call against `limiter` for
+    this user — 429 with `Retry-After` once the allowance is spent. Replaces
+    `get_current_user_id` on routes spending a third-party quota."""
+
+    async def dependency(user_id: str = Depends(get_current_user_id)) -> str:
+        retry_after = limiter.hit(user_id)
+        if retry_after is not None:
+            logger.warning("Rate limit hit for user %s", user_id)
+            raise HTTPException(
+                status_code=429,
+                detail={"type": "rate_limited", "message": "Too many requests"},
+                headers={"Retry-After": str(retry_after)},
+            )
+        return user_id
+
+    return dependency
+
+
+# Allowances per user. /recommend = one Gemini call each; a sync scrapes every
+# watchlist page and hits TMDB ~3× per film; /films/* are cached TMDB lookups
+# shared by both routes below.
+recommend_limiter = RateLimiter(max_calls=20, window_seconds=3600)
+sync_limiter = RateLimiter(max_calls=5, window_seconds=3600)
+validate_limiter = RateLimiter(max_calls=20, window_seconds=3600)
+films_limiter = RateLimiter(max_calls=120, window_seconds=60)
+
+
 # ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
@@ -137,10 +195,20 @@ async def health_ready():
         supabase.table("users").select("id").limit(1).execute()
         return {"status": "ready", "checks": {"database": "ok"}}
     except Exception as e:
+        # The raw error can carry hostnames or query details — logs only,
+        # never the (unauthenticated) response.
+        logger.exception("Readiness check failed: database unreachable")
         raise HTTPException(
             status_code=503,
-            detail={"status": "not_ready", "error": str(e)},
+            detail={"status": "not_ready", "checks": {"database": "unreachable"}},
         ) from e
+
+
+# Same rule as the frontend's `isValidUsername`. The username is interpolated
+# into a letterboxd.com URL path, so anything else (`/`, `..`, `?`) could
+# steer the scraper to another page.
+_LETTERBOXD_USERNAME_PATTERN = r"^[A-Za-z0-9_-]+$"
+_LETTERBOXD_USERNAME_MAX_LENGTH = 50
 
 
 class LetterboxdValidateResponse(BaseModel):
@@ -153,7 +221,14 @@ class LetterboxdValidateResponse(BaseModel):
     response_model=LetterboxdValidateResponse,
     tags=[TAG_LETTERBOXD],
 )
-async def letterboxd_validate(username: str = Query(min_length=1)):
+async def letterboxd_validate(
+    username: str = Query(
+        min_length=1,
+        max_length=_LETTERBOXD_USERNAME_MAX_LENGTH,
+        pattern=_LETTERBOXD_USERNAME_PATTERN,
+    ),
+    user_id: str = Depends(rate_limited(validate_limiter)),
+):
     """Validate a Letterboxd username: exists + watchlist public. Returns film count."""
     try:
         count = await scraper.get_watchlist_count(username)
@@ -173,7 +248,11 @@ async def letterboxd_validate(username: str = Query(min_length=1)):
 
 
 class LetterboxdSyncRequest(BaseModel):
-    letterboxd_username: str = Field(min_length=1)
+    letterboxd_username: str = Field(
+        min_length=1,
+        max_length=_LETTERBOXD_USERNAME_MAX_LENGTH,
+        pattern=_LETTERBOXD_USERNAME_PATTERN,
+    )
 
 
 class LetterboxdSyncResponse(BaseModel):
@@ -184,7 +263,7 @@ class LetterboxdSyncResponse(BaseModel):
 @app.post("/letterboxd/sync", response_model=LetterboxdSyncResponse, tags=[TAG_LETTERBOXD])
 async def letterboxd_sync(
     body: LetterboxdSyncRequest,
-    user_id: str = Depends(get_current_user_id),
+    user_id: str = Depends(rate_limited(sync_limiter)),
 ):
     """Scrape the full Letterboxd watchlist, enrich it via TMDB, and replace
     the user's stored watchlist (CIN-46)."""
@@ -370,7 +449,7 @@ async def recommend_current(user_id: str = Depends(get_current_user_id)):
 @app.post("/recommend", response_model=RecommendResponse, tags=[TAG_RECOMMEND])
 async def recommend(
     body: RecommendRequest,
-    user_id: str = Depends(get_current_user_id),
+    user_id: str = Depends(rate_limited(recommend_limiter)),
 ):
     """Pre-filter the user's watchlist, then proxy an AI call to rank up to 3
     candidates (CIN-49/CIN-78) — always, down to a single remaining film, so
@@ -478,7 +557,7 @@ async def recommend_current_abandon(
 )
 async def films_watch_providers(
     tmdb_id: int,
-    user_id: str = Depends(get_current_user_id),
+    user_id: str = Depends(rate_limited(films_limiter)),
 ):
     """Where to watch a film in France (CIN-103) — shared by Result, Home,
     and Historique. A film with no FR offer returns 200 with an empty
@@ -502,7 +581,7 @@ async def films_watch_providers(
 )
 async def films_rating(
     tmdb_id: int,
-    user_id: str = Depends(get_current_user_id),
+    user_id: str = Depends(rate_limited(films_limiter)),
 ):
     """TMDB rating for a film (CIN-104) — live-fetched, never persisted (see
     `tmdb_rating.py`). Same error contract as `/films/{tmdb_id}/watch-providers`:

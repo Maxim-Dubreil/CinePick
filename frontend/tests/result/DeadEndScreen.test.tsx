@@ -18,6 +18,15 @@ describe("DeadEndScreen", () => {
     ).toBeInTheDocument();
   });
 
+  it("shows the rate-limited message", () => {
+    render(<DeadEndScreen reason="rate_limited" onReset={vi.fn()} />);
+    expect(
+      screen.getByText(
+        "Tu as demandé beaucoup de films d'un coup. Fais une pause et réessaie dans un moment.",
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("calls onReset when the button is clicked", async () => {
     const onReset = vi.fn();
     render(<DeadEndScreen reason="no_match" onReset={onReset} />);

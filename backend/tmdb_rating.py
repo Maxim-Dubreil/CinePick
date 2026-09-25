@@ -7,20 +7,17 @@ pas dans ce schéma"). Mirrors `watch_providers.py`'s pattern — same reasoning
 same shared `TTLCache`, same "failures raise" contract.
 """
 
-import os
 
 import httpx
 from pydantic import BaseModel
 
+import tmdb
 from cache import TTLCache
 
 _BASE_URL = "https://api.themoviedb.org/3"
 _REQUEST_TIMEOUT = 10.0
 _CACHE_TTL_SECONDS = 6 * 60 * 60  # 6h
 
-
-def _api_key() -> str:
-    return os.environ.get("TMDB_API_KEY", "")
 
 
 class RatingResponse(BaseModel):
@@ -56,7 +53,7 @@ async def _fetch_rating(
     try:
         response = await client.get(
             f"{_BASE_URL}/movie/{tmdb_id}",
-            params={"api_key": _api_key()},
+            headers=tmdb.auth_headers(),
         )
         response.raise_for_status()
         data = response.json()

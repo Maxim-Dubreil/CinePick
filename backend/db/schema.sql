@@ -146,6 +146,11 @@ create policy "Users can update own profile"
   using (auth.uid() = id)
   with check (auth.uid() = id);
 
+-- Clients may only edit these two columns of their own row; everything else
+-- on users is written by the backend (service role) or the signup trigger.
+revoke update on users from anon, authenticated;
+grant update (full_name, avatar_url) on users to authenticated;
+
 create policy "Users can insert own profile"
   on users for insert
   with check (auth.uid() = id);
@@ -176,27 +181,34 @@ create policy "Users can update own watchlist items"
 -- Policies watch_history
 create policy "Users can view own history"
   on watch_history for select
+  using ((select auth.uid()) = user_id);
+
+-- No INSERT/UPDATE policy: rows are only written by the backend (service
+-- role), which verifies each decision against its "proposed" row.
+
+create policy "Users can delete own history"
+  on watch_history for delete
   using (auth.uid() = user_id);
-
-create policy "Users can insert own history"
-  on watch_history for insert
-  with check (auth.uid() = user_id);
-
-create policy "Users can update own history"
-  on watch_history for update
-  using (auth.uid() = user_id)
-  with check (auth.uid() = user_id);
 
 -- Storage: public bucket for user-uploaded profile avatars (CIN-107).
 -- Path convention: "{user_id}/avatar.<ext>" — fixed filename per user (upsert on
 -- re-upload) so switching avatars doesn't accumulate orphaned files.
-insert into storage.buckets (id, name, public)
-values ('avatars', 'avatars', true)
+-- Server-side limits: 10 MB (the client checks 5 MB on input, but re-encodes
+-- the crop at native resolution) and images only.
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('avatars', 'avatars', true, 10485760, array['image/jpeg', 'image/png', 'image/webp'])
 on conflict (id) do nothing;
 
-create policy "Avatar images are publicly accessible"
+-- Files are served by public URL without any SELECT policy. SELECT is only
+-- granted on one's own folder (needed by upsert uploads) so the bucket can't
+-- be listed to enumerate user ids.
+create policy "Users can view own avatar folder"
   on storage.objects for select
-  using (bucket_id = 'avatars');
+  to authenticated
+  using (
+    bucket_id = 'avatars'
+    and (select auth.uid())::text = (storage.foldername(name))[1]
+  );
 
 create policy "Users can upload own avatar"
   on storage.objects for insert

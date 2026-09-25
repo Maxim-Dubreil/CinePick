@@ -1,0 +1,11 @@
+.env*
+!.env.example
+.venv/
+node_modules/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.coverage
+tests/
+db/
+Dockerfile*

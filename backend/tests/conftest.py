@@ -58,3 +58,15 @@ def supabase_mock():
 def reset_supabase_mock():
     mock_supabase_client.reset_mock()
     yield
+
+
+@pytest.fixture(autouse=True)
+def reset_rate_limiters():
+    """Every test authenticates as the same mocked user, so module-level
+    limiters would otherwise carry their count from one test to the next."""
+    import main
+    from rate_limit import RateLimiter
+
+    for value in vars(main).values():
+        if isinstance(value, RateLimiter):
+            value.reset()

@@ -31,9 +31,19 @@ supabase migration list
 
 Affiche les migrations locales vs appliquées sur la base distante.
 
+### Appliquer sur prod
+
+```bash
+make db-push-prod
+```
+
+Lit le mot de passe de la base prod dans `supabase/.env.prod` (`SUPABASE_PROD_DB_PASSWORD`, ignoré par git, à garder sur ta machine uniquement), ou le demande en saisie masquée si le fichier est absent ou vide. Liste ensuite les migrations en attente, demande confirmation, applique, puis lint le schéma.
+
 ### Environnements
 
-Appliquer toujours dans cet ordre : **dev** → vérifier → **prod** (changer de projet avec `supabase link --project-ref <ref>`).
+Appliquer toujours dans cet ordre : **dev** (`supabase db push`) → vérifier → **prod** (`make db-push-prod`).
+
+Le repo reste lié (`supabase link`) au projet **dev** : ne pas le relier à la prod. Le hook pre-commit (`make verify-db`) fait son dry-run contre le projet lié, il tournerait sinon contre la prod à chaque commit. La prod est atteinte via une URL de connexion explicite (`scripts/db-push-prod.sh`).
 
 ## Règles
 

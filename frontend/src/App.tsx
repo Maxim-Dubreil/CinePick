@@ -10,6 +10,7 @@ import { Profile } from "@/pages/Profile";
 import { History } from "@/pages/History";
 import { NotFound } from "@/pages/NotFound";
 import { About } from "@/pages/About";
+import { Legal } from "@/pages/Legal";
 import { AppLayout, AppLoader, ThemeToggle } from "@/components/layout";
 
 function AppContent() {
@@ -63,6 +64,7 @@ function AppContent() {
             }
           />
           <Route path="/about" element={<About />} />
+          <Route path="/mentions-legales" element={<Legal />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
         <ThemeToggle />

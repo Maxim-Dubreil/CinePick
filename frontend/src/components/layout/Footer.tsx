@@ -35,6 +35,15 @@ export function Footer({ variant = 'landing' }: FooterProps) {
           À PROPOS
         </Link>
       </div>
+      <div className="flex items-center gap-6">
+        <div className="w-0.75 h-0.75 rounded-full bg-border-strong" />
+        <Link
+          to="/mentions-legales"
+          className="text-[11px] tracking-[0.08em] text-text-secondary underline underline-offset-4 hover:opacity-70 transition-opacity"
+        >
+          MENTIONS LÉGALES
+        </Link>
+      </div>
     </footer>
   )
 }

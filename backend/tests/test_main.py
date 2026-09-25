@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from unittest.mock import MagicMock
 
 import httpx
 import pytest
@@ -19,6 +20,23 @@ from tmdb_rating import RatingResponse
 from watch_providers import WatchProvider, WatchProvidersResponse
 
 client = TestClient(app)
+
+
+def test_startup_fails_when_a_credential_is_missing(monkeypatch):
+    monkeypatch.setenv("GEMINI_API_KEY", "key")
+    monkeypatch.delenv("TMDB_READ_ACCESS_TOKEN", raising=False)
+
+    with pytest.raises(RuntimeError, match="TMDB_READ_ACCESS_TOKEN"):
+        with TestClient(app):
+            pass
+
+
+def test_startup_succeeds_with_every_credential(monkeypatch):
+    monkeypatch.setenv("GEMINI_API_KEY", "key")
+    monkeypatch.setenv("TMDB_READ_ACCESS_TOKEN", "token")
+
+    with TestClient(app) as started:
+        assert started.get("/health").status_code == 200
 
 
 def test_root_endpoint():
@@ -43,6 +61,27 @@ def test_health_ready_endpoint(require_integration, monkeypatch):
     assert data["checks"]["database"] == "ok"
 
 
+AUTH_HEADERS = {"Authorization": "Bearer test-token"}
+
+
+def test_health_ready_hides_the_raw_error(supabase_mock, monkeypatch):
+    # monkeypatch, not `supabase_mock.table.side_effect = ...`: reset_mock()
+    # keeps side effects, so it would leak into every later test.
+    monkeypatch.setattr(
+        supabase_mock,
+        "table",
+        MagicMock(side_effect=RuntimeError("could not connect to db.internal-host:5432")),
+    )
+
+    response = client.get("/health/ready")
+
+    assert response.status_code == 503
+    assert response.json() == {
+        "detail": {"status": "not_ready", "checks": {"database": "unreachable"}}
+    }
+    assert "internal-host" not in response.text
+
+
 def _patch_validate(monkeypatch, *, returns=None, raises=None):
     async def fake(username, **kwargs):
         if raises is not None:
@@ -54,35 +93,55 @@ def _patch_validate(monkeypatch, *, returns=None, raises=None):
 
 def test_letterboxd_validate_nominal(monkeypatch):
     _patch_validate(monkeypatch, returns=602)
-    response = client.get("/letterboxd/validate", params={"username": "dave"})
+    response = client.get(
+        "/letterboxd/validate", params={"username": "dave"}, headers=AUTH_HEADERS
+    )
     assert response.status_code == 200
     assert response.json() == {"username": "dave", "count": 602}
 
 
 def test_letterboxd_validate_profile_not_found(monkeypatch):
     _patch_validate(monkeypatch, raises=scraper.ProfileNotFoundError("ghost"))
-    response = client.get("/letterboxd/validate", params={"username": "ghost"})
+    response = client.get(
+        "/letterboxd/validate", params={"username": "ghost"}, headers=AUTH_HEADERS
+    )
     assert response.status_code == 404
 
 
 def test_letterboxd_validate_private(monkeypatch):
     _patch_validate(monkeypatch, raises=scraper.WatchlistPrivateError("secretive"))
-    response = client.get("/letterboxd/validate", params={"username": "secretive"})
+    response = client.get(
+        "/letterboxd/validate", params={"username": "secretive"}, headers=AUTH_HEADERS
+    )
     assert response.status_code == 403
 
 
 def test_letterboxd_validate_scrape_error(monkeypatch):
     _patch_validate(monkeypatch, raises=scraper.WatchlistScrapeError("boom"))
-    response = client.get("/letterboxd/validate", params={"username": "dave"})
+    response = client.get(
+        "/letterboxd/validate", params={"username": "dave"}, headers=AUTH_HEADERS
+    )
     assert response.status_code == 502
 
 
 def test_letterboxd_validate_requires_username():
-    response = client.get("/letterboxd/validate")
+    response = client.get("/letterboxd/validate", headers=AUTH_HEADERS)
     assert response.status_code == 422
 
 
-AUTH_HEADERS = {"Authorization": "Bearer test-token"}
+@pytest.mark.parametrize("username", ["../settings", "dave?x=1", "da ve", "a" * 51])
+def test_letterboxd_validate_rejects_invalid_username(monkeypatch, username):
+    _patch_validate(monkeypatch, raises=AssertionError("scraper must not be called"))
+    response = client.get(
+        "/letterboxd/validate", params={"username": username}, headers=AUTH_HEADERS
+    )
+    assert response.status_code == 422
+
+
+def test_letterboxd_validate_requires_auth(monkeypatch):
+    _patch_validate(monkeypatch, returns=602)
+    response = client.get("/letterboxd/validate", params={"username": "dave"})
+    assert response.status_code == 401
 
 
 def _patch_sync(monkeypatch, *, films=None, raises=None):
@@ -149,6 +208,16 @@ def test_letterboxd_sync_scrape_error(monkeypatch):
 
 def test_letterboxd_sync_missing_username():
     response = client.post("/letterboxd/sync", json={}, headers=AUTH_HEADERS)
+    assert response.status_code == 422
+
+
+def test_letterboxd_sync_rejects_invalid_username(monkeypatch):
+    _patch_sync(monkeypatch, raises=AssertionError("scraper must not be called"))
+    response = client.post(
+        "/letterboxd/sync",
+        json={"letterboxd_username": "../settings"},
+        headers=AUTH_HEADERS,
+    )
     assert response.status_code == 422
 
 
@@ -363,6 +432,24 @@ def test_recommend_calls_ai_with_more_than_three_candidates(monkeypatch):
     assert [r.film.id for r in recorded[0][2]] == ["2"]  # matches what was returned
 
 
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"emotion": ["x" * 41]},
+        {"ambiance": ["Zen"] * 21},
+        {"region": [""]},
+    ],
+)
+def test_recommend_rejects_oversized_answers(monkeypatch, overrides):
+    _patch_recommend(monkeypatch, films=[_film("a")])
+
+    response = client.post(
+        "/recommend", json={**RECOMMEND_BODY, **overrides}, headers=AUTH_HEADERS
+    )
+
+    assert response.status_code == 422
+
+
 def test_recommend_empty_watchlist(monkeypatch):
     _patch_recommend(monkeypatch, films=[])
 
@@ -370,6 +457,20 @@ def test_recommend_empty_watchlist(monkeypatch):
 
     assert response.status_code == 422
     assert response.json()["detail"]["type"] == "empty_watchlist"
+
+
+def test_recommend_rate_limited_after_allowance(monkeypatch):
+    # Empty watchlist = cheapest path through the route; each call still counts.
+    _patch_recommend(monkeypatch, films=[])
+    for _ in range(20):
+        response = client.post("/recommend", json=RECOMMEND_BODY, headers=AUTH_HEADERS)
+        assert response.status_code == 422
+
+    response = client.post("/recommend", json=RECOMMEND_BODY, headers=AUTH_HEADERS)
+
+    assert response.status_code == 429
+    assert response.json()["detail"]["type"] == "rate_limited"
+    assert int(response.headers["Retry-After"]) > 0
 
 
 def test_recommend_no_candidates(monkeypatch):

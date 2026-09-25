@@ -1,0 +1,50 @@
+# Production stack: Caddy (static front + reverse proxy + HTTPS) → FastAPI.
+#
+#   docker compose -f docker-compose.prod.yml --env-file frontend/.env.prod up -d --build
+#
+# `--env-file` feeds the front's build args (VITE_*, baked into the bundle) and
+# DOMAIN; the backend reads its secrets from backend/.env.prod at runtime.
+
+# Docker's default json-file driver never rotates: logs grow until the disk is
+# full. Cap each container at 3 × 10 MB, oldest file dropped first.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  web:
+    build:
+      context: ./frontend
+      args:
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL:?VITE_SUPABASE_URL is required}
+        VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY:?VITE_SUPABASE_ANON_KEY is required}
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp" # HTTP/3
+    volumes:
+      # Certificates must survive restarts: re-issuing on every deploy would
+      # hit Let's Encrypt rate limits.
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - backend
+    restart: unless-stopped
+    logging: *default-logging
+
+  backend:
+    build:
+      context: ./backend
+    env_file:
+      - ./backend/.env.prod
+    # No `ports`: only reachable from `web` on the internal Compose network.
+    restart: unless-stopped
+    logging: *default-logging
+
+volumes:
+  caddy_data:
+  caddy_config:

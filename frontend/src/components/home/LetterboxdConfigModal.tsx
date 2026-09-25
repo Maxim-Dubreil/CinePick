@@ -22,18 +22,25 @@ interface LetterboxdConfigModalProps {
 
 type VerifyStatus = "idle" | "loading" | "success" | "error";
 type SyncStatus = "idle" | "syncing" | "synced" | "sync_error";
-type ErrorType = "404" | "403" | "network";
-type SyncErrorType = "401" | "403" | "network";
+type ErrorType = "401" | "404" | "403" | "422" | "429" | "network";
+type SyncErrorType = "401" | "403" | "429" | "network";
+
+const SESSION_EXPIRED_MESSAGE = "Ta session a expiré — reconnecte-toi puis réessaie";
+const RATE_LIMITED_MESSAGE = "Trop de tentatives — réessaie dans un moment";
 
 const ERROR_MESSAGES: Record<ErrorType, string> = {
+  "401": SESSION_EXPIRED_MESSAGE,
   "404": "Pseudo introuvable, vérifie l'orthographe",
   "403": "Ta watchlist est privée — voir le tuto ci-dessus",
+  "422": "Pseudo invalide — lettres, chiffres, _ et - uniquement",
+  "429": RATE_LIMITED_MESSAGE,
   network: "Letterboxd est momentanément inaccessible",
 };
 
 const SYNC_ERROR_MESSAGES: Record<SyncErrorType, string> = {
-  "401": "Ta session a expiré — reconnecte-toi puis réessaie",
+  "401": SESSION_EXPIRED_MESSAGE,
   "403": "Ta watchlist est privée — voir le tuto ci-dessus",
+  "429": RATE_LIMITED_MESSAGE,
   network: "La synchronisation a échoué. Réessayez",
 };
 
@@ -80,14 +87,17 @@ export function LetterboxdConfigModal({
     setSyncStatus("idle");
     setSyncResult(null);
     try {
-      const { count } = await validateLetterboxdAccount(username.trim());
+      const { count } = await validateLetterboxdAccount(username.trim(), token);
       setFilmCount(count);
       setStatus("success");
     } catch (err) {
       setStatus("error");
       if (err instanceof ApiError) {
-        if (err.status === 404) setErrorType("404");
+        if (err.status === 401) setErrorType("401");
+        else if (err.status === 404) setErrorType("404");
         else if (err.status === 403) setErrorType("403");
+        else if (err.status === 422) setErrorType("422");
+        else if (err.status === 429) setErrorType("429");
         else setErrorType("network");
       } else {
         setErrorType("network");
@@ -109,6 +119,8 @@ export function LetterboxdConfigModal({
         setSyncErrorType("401");
       } else if (err instanceof ApiError && err.status === 403) {
         setSyncErrorType("403");
+      } else if (err instanceof ApiError && err.status === 429) {
+        setSyncErrorType("429");
       } else {
         setSyncErrorType("network");
       }
