@@ -7,6 +7,19 @@
 
 4 tables, mais seules `films` (écriture) et `user_watchlist_items` (écriture au sync) ont besoin de passer par FastAPI pour leurs écritures — elles nécessitent des clés secrètes (TMDB, Gemini) qui ne peuvent pas vivre côté front. `GET /films/{tmdb_id}/watch-providers` est la même règle appliquée à une lecture : pas d'écriture, mais un appel TMDB à la volée qui a besoin de la clé serveur. Tout le reste (lecture `users`, lecture/écriture `watch_history` sur accept/decline, lecture Historique) passe directement par le client Supabase (SDK JS) protégé par RLS — pas de route custom à écrire, à documenter, ni à maintenir pour du CRUD que Supabase fait déjà nativement.
 
+## Rate limiting
+
+Les routes qui consomment un quota tiers sont limitées **par utilisateur** (fenêtre glissante, en mémoire du process — `backend/rate_limit.py`). Au-delà : `429` `{ detail: { type: "rate_limited" } }` + en-tête `Retry-After` (secondes).
+
+| Route                        | Quota / utilisateur |
+| ---------------------------- | ------------------- |
+| `POST /recommend`            | 20 / heure          |
+| `POST /letterboxd/sync`      | 5 / heure           |
+| `GET /letterboxd/validate`   | 20 / heure          |
+| `GET /films/*` (les deux)    | 120 / minute        |
+
+Un appel compte dès qu'il est authentifié, même s'il échoue ensuite en `422`.
+
 ## Routes
 
 ### `GET /letterboxd/validate`
@@ -15,9 +28,10 @@ Appelé à la soumission du formulaire dans la modale Letterboxd (avant le bouto
 
 |                 |                                                                                    |
 | --------------- | ---------------------------------------------------------------------------------- |
-| Query param     | `username: string`                                                                |
+| Auth            | Requis                                                                             |
+| Query param     | `username: string` — `^[A-Za-z0-9_-]+$`, 50 caractères max (injecté dans l'URL Letterboxd) |
 | Réponse         | `{ username: string, count: number }`                                             |
-| Erreurs typées  | `404` pseudo introuvable / `403` watchlist privée / `502` Letterboxd injoignable   |
+| Erreurs typées  | `404` pseudo introuvable / `403` watchlist privée / `422` pseudo invalide / `429` / `502` Letterboxd injoignable |
 | Appels externes | Scraper Letterboxd (comptage seul, pas d'enrichissement TMDB)                     |
 
 ### `POST /letterboxd/sync`
@@ -35,9 +49,9 @@ Déclenché par le bouton "Synchroniser" (Profil / bannière Home). Nécessite u
 |                 |                                                                                          |
 | --------------- | ------------------------------------------------------------------------------------------ |
 | Auth            | Requis (`get_current_user_id`)                                                            |
-| Body            | `{ letterboxd_username: string }`                                                          |
+| Body            | `{ letterboxd_username: string }` — même règle que `/letterboxd/validate`                 |
 | Réponse         | `{ film_count: number, sync_duration_ms: number }`                                         |
-| Erreurs typées  | `404` profil introuvable / `403` watchlist privée / `502` Letterboxd injoignable           |
+| Erreurs typées  | `404` profil introuvable / `403` watchlist privée / `422` pseudo invalide / `429` / `502` Letterboxd injoignable |
 | Appels externes | Scraper Letterboxd (paginé, concurrence 5) + TMDB (enrichissement, concurrence 5)          |
 
 ### `DELETE /letterboxd/unlink`
@@ -67,9 +81,9 @@ Un nouvel appel à `/recommend` (même body, mêmes films déjà proposés exclu
 |                 |                                                                                                                        |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------ |
 | Auth            | Requis                                                                                                                    |
-| Body            | 9 champs du questionnaire — voir `RecommendRequest` dans `backend/models.py` et [Specs Questions](./questions.md)         |
+| Body            | 9 champs du questionnaire — voir `RecommendRequest` dans `backend/models.py` et [Specs Questions](./questions.md). Listes (`genre`, `emotion`, `ambiance`, `region`) bornées à 20 éléments de 1 à 40 caractères (`emotion`/`ambiance` vont tels quels dans le prompt) |
 | Réponse         | `{ candidates: [{ film_id, tmdb_id, title, poster_url, year, runtime, overview, genres, origin_country, director, actors, rank, match_score, critique }], meta: { candidates_considered }, recommendation_session_id }` |
-| Erreurs typées  | `422 empty_watchlist` / `422 no_candidates` / `503 ai_overloaded` (primary and fallback models both 503) / `502 ai_error`                                                              |
+| Erreurs typées  | `422 empty_watchlist` / `422 no_candidates` / `429 rate_limited` / `503 ai_overloaded` (primary and fallback models both 503) / `502 ai_error`. Un `422` de validation FastAPI (`detail` = liste d'erreurs de champ, pas d'objet typé) est un bug client, affiché comme erreur technique côté front |
 | Appels externes | Gemini, dès qu'au moins 1 candidat reste après filtrage                                                                   |
 | Détail complet  | [Specs AI](./ai.md)                                                                                                       |
 
