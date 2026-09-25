@@ -1,4 +1,5 @@
 import logging
+import os
 import time
 from datetime import UTC, datetime
 from uuid import uuid4
@@ -34,7 +35,15 @@ from watch_providers import WatchProvidersResponse
 
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="CinePick API", version="0.1.0")
+# Interactive docs map the whole API surface for anyone — dev only.
+_docs_enabled = os.getenv("ENV", "dev") != "prod"
+app = FastAPI(
+    title="CinePick API",
+    version="0.1.0",
+    docs_url="/docs" if _docs_enabled else None,
+    redoc_url="/redoc" if _docs_enabled else None,
+    openapi_url="/openapi.json" if _docs_enabled else None,
+)
 
 TAG_HEALTH = "health"
 TAG_LETTERBOXD = "letterboxd"
