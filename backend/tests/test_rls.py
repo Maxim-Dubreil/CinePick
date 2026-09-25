@@ -118,3 +118,62 @@ def test_user_cannot_update_another_users_profile(
     assert response.data == []
     after = admin.table("users").select("full_name, avatar_url").eq("id", second_user_id).execute()
     assert after.data == before.data
+
+
+def test_user_cannot_update_protected_profile_columns(
+    rls_clients: tuple[Client, Client, Client, str, str]
+):
+    admin, first_client, _, first_user_id, _ = rls_clients
+    before = admin.table("users").select("*").eq("id", first_user_id).execute()
+
+    # Only full_name/avatar_url are granted to `authenticated`: touching any
+    # other column is a privilege error, not a silent no-op.
+    with pytest.raises(APIError) as exc_info:
+        first_client.table("users").update({"letterboxd_film_count": 9999}).eq(
+            "id", first_user_id
+        ).execute()
+
+    assert exc_info.value.code == _RLS_VIOLATION_CODE
+    after = admin.table("users").select("*").eq("id", first_user_id).execute()
+    assert after.data == before.data
+
+
+def test_user_cannot_rewrite_own_watch_history_decision(
+    rls_clients: tuple[Client, Client, Client, str, str]
+):
+    admin, first_client, _, first_user_id, _ = rls_clients
+    film = (
+        admin.table("films")
+        .insert({"letterboxd_slug": f"rls-test-{uuid4().hex}", "title": "RLS test film"})
+        .execute()
+        .data[0]
+    )
+    try:
+        row = (
+            admin.table("watch_history")
+            .insert(
+                {
+                    "user_id": first_user_id,
+                    "film_id": film["id"],
+                    "recommendation_session_id": str(uuid4()),
+                    "decision": "skipped",
+                }
+            )
+            .execute()
+            .data[0]
+        )
+
+        # No UPDATE policy: the row is invisible to the update, which matches
+        # nothing rather than raising.
+        response = (
+            first_client.table("watch_history")
+            .update({"decision": "accepted"})
+            .eq("id", row["id"])
+            .execute()
+        )
+
+        assert response.data == []
+        after = admin.table("watch_history").select("decision").eq("id", row["id"]).execute()
+        assert after.data == [{"decision": "skipped"}]
+    finally:
+        admin.table("films").delete().eq("id", film["id"]).execute()

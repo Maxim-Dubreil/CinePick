@@ -146,6 +146,11 @@ create policy "Users can update own profile"
   using (auth.uid() = id)
   with check (auth.uid() = id);
 
+-- Clients may only edit these two columns of their own row; everything else
+-- on users is written by the backend (service role) or the signup trigger.
+revoke update on users from anon, authenticated;
+grant update (full_name, avatar_url) on users to authenticated;
+
 create policy "Users can insert own profile"
   on users for insert
   with check (auth.uid() = id);
@@ -178,12 +183,8 @@ create policy "Users can view own history"
   on watch_history for select
   using ((select auth.uid()) = user_id);
 
--- No INSERT policy: rows are only written by the backend (service role).
-
-create policy "Users can update own history"
-  on watch_history for update
-  using (auth.uid() = user_id)
-  with check (auth.uid() = user_id);
+-- No INSERT/UPDATE policy: rows are only written by the backend (service
+-- role), which verifies each decision against its "proposed" row.
 
 create policy "Users can delete own history"
   on watch_history for delete
