@@ -195,9 +195,12 @@ async def health_ready():
         supabase.table("users").select("id").limit(1).execute()
         return {"status": "ready", "checks": {"database": "ok"}}
     except Exception as e:
+        # The raw error can carry hostnames or query details — logs only,
+        # never the (unauthenticated) response.
+        logger.exception("Readiness check failed: database unreachable")
         raise HTTPException(
             status_code=503,
-            detail={"status": "not_ready", "error": str(e)},
+            detail={"status": "not_ready", "checks": {"database": "unreachable"}},
         ) from e
 
 

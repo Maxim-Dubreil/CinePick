@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from unittest.mock import MagicMock
 
 import httpx
 import pytest
@@ -61,6 +62,24 @@ def test_health_ready_endpoint(require_integration, monkeypatch):
 
 
 AUTH_HEADERS = {"Authorization": "Bearer test-token"}
+
+
+def test_health_ready_hides_the_raw_error(supabase_mock, monkeypatch):
+    # monkeypatch, not `supabase_mock.table.side_effect = ...`: reset_mock()
+    # keeps side effects, so it would leak into every later test.
+    monkeypatch.setattr(
+        supabase_mock,
+        "table",
+        MagicMock(side_effect=RuntimeError("could not connect to db.internal-host:5432")),
+    )
+
+    response = client.get("/health/ready")
+
+    assert response.status_code == 503
+    assert response.json() == {
+        "detail": {"status": "not_ready", "checks": {"database": "unreachable"}}
+    }
+    assert "internal-host" not in response.text
 
 
 def _patch_validate(monkeypatch, *, returns=None, raises=None):
