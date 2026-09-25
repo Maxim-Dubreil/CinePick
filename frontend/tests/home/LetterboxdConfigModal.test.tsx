@@ -109,6 +109,36 @@ describe("LetterboxdConfigModal", () => {
     );
   });
 
+  it("shows invalid-username error inline on 422", async () => {
+    vi.mocked(validateLetterboxdAccount).mockRejectedValue(
+      new ApiError(422, "Unprocessable"),
+    );
+    render(<LetterboxdConfigModal {...defaultProps} />);
+    await userEvent.type(
+      screen.getByLabelText(/Pseudo Letterboxd/i),
+      "cinephile",
+    );
+    await userEvent.click(screen.getByRole("button", { name: /Vérifier/i }));
+    await waitFor(() =>
+      expect(screen.getByText(/Pseudo invalide/i)).toBeInTheDocument(),
+    );
+  });
+
+  it("shows rate-limit error inline on 429", async () => {
+    vi.mocked(validateLetterboxdAccount).mockRejectedValue(
+      new ApiError(429, "Too many requests"),
+    );
+    render(<LetterboxdConfigModal {...defaultProps} />);
+    await userEvent.type(
+      screen.getByLabelText(/Pseudo Letterboxd/i),
+      "cinephile",
+    );
+    await userEvent.click(screen.getByRole("button", { name: /Vérifier/i }));
+    await waitFor(() =>
+      expect(screen.getByText(/Trop de tentatives/i)).toBeInTheDocument(),
+    );
+  });
+
   it("shows network error inline", async () => {
     vi.mocked(validateLetterboxdAccount).mockRejectedValue(new Error("Network"));
     render(<LetterboxdConfigModal {...defaultProps} />);

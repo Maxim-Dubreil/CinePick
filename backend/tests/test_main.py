@@ -93,6 +93,15 @@ def test_letterboxd_validate_requires_username():
     assert response.status_code == 422
 
 
+@pytest.mark.parametrize("username", ["../settings", "dave?x=1", "da ve", "a" * 51])
+def test_letterboxd_validate_rejects_invalid_username(monkeypatch, username):
+    _patch_validate(monkeypatch, raises=AssertionError("scraper must not be called"))
+    response = client.get(
+        "/letterboxd/validate", params={"username": username}, headers=AUTH_HEADERS
+    )
+    assert response.status_code == 422
+
+
 def test_letterboxd_validate_requires_auth(monkeypatch):
     _patch_validate(monkeypatch, returns=602)
     response = client.get("/letterboxd/validate", params={"username": "dave"})
@@ -163,6 +172,16 @@ def test_letterboxd_sync_scrape_error(monkeypatch):
 
 def test_letterboxd_sync_missing_username():
     response = client.post("/letterboxd/sync", json={}, headers=AUTH_HEADERS)
+    assert response.status_code == 422
+
+
+def test_letterboxd_sync_rejects_invalid_username(monkeypatch):
+    _patch_sync(monkeypatch, raises=AssertionError("scraper must not be called"))
+    response = client.post(
+        "/letterboxd/sync",
+        json={"letterboxd_username": "../settings"},
+        headers=AUTH_HEADERS,
+    )
     assert response.status_code == 422
 
 

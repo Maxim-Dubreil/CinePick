@@ -181,6 +181,13 @@ async def health_ready():
         ) from e
 
 
+# Same rule as the frontend's `isValidUsername`. The username is interpolated
+# into a letterboxd.com URL path, so anything else (`/`, `..`, `?`) could
+# steer the scraper to another page.
+_LETTERBOXD_USERNAME_PATTERN = r"^[A-Za-z0-9_-]+$"
+_LETTERBOXD_USERNAME_MAX_LENGTH = 50
+
+
 class LetterboxdValidateResponse(BaseModel):
     username: str
     count: int
@@ -192,7 +199,11 @@ class LetterboxdValidateResponse(BaseModel):
     tags=[TAG_LETTERBOXD],
 )
 async def letterboxd_validate(
-    username: str = Query(min_length=1),
+    username: str = Query(
+        min_length=1,
+        max_length=_LETTERBOXD_USERNAME_MAX_LENGTH,
+        pattern=_LETTERBOXD_USERNAME_PATTERN,
+    ),
     user_id: str = Depends(rate_limited(validate_limiter)),
 ):
     """Validate a Letterboxd username: exists + watchlist public. Returns film count."""
@@ -214,7 +225,11 @@ async def letterboxd_validate(
 
 
 class LetterboxdSyncRequest(BaseModel):
-    letterboxd_username: str = Field(min_length=1)
+    letterboxd_username: str = Field(
+        min_length=1,
+        max_length=_LETTERBOXD_USERNAME_MAX_LENGTH,
+        pattern=_LETTERBOXD_USERNAME_PATTERN,
+    )
 
 
 class LetterboxdSyncResponse(BaseModel):

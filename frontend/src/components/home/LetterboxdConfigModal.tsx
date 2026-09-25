@@ -22,7 +22,7 @@ interface LetterboxdConfigModalProps {
 
 type VerifyStatus = "idle" | "loading" | "success" | "error";
 type SyncStatus = "idle" | "syncing" | "synced" | "sync_error";
-type ErrorType = "401" | "404" | "403" | "429" | "network";
+type ErrorType = "401" | "404" | "403" | "422" | "429" | "network";
 type SyncErrorType = "401" | "403" | "429" | "network";
 
 const SESSION_EXPIRED_MESSAGE = "Ta session a expiré — reconnecte-toi puis réessaie";
@@ -32,6 +32,7 @@ const ERROR_MESSAGES: Record<ErrorType, string> = {
   "401": SESSION_EXPIRED_MESSAGE,
   "404": "Pseudo introuvable, vérifie l'orthographe",
   "403": "Ta watchlist est privée — voir le tuto ci-dessus",
+  "422": "Pseudo invalide — lettres, chiffres, _ et - uniquement",
   "429": RATE_LIMITED_MESSAGE,
   network: "Letterboxd est momentanément inaccessible",
 };
@@ -95,6 +96,7 @@ export function LetterboxdConfigModal({
         if (err.status === 401) setErrorType("401");
         else if (err.status === 404) setErrorType("404");
         else if (err.status === 403) setErrorType("403");
+        else if (err.status === 422) setErrorType("422");
         else if (err.status === 429) setErrorType("429");
         else setErrorType("network");
       } else {
