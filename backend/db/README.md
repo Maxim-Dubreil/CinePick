@@ -37,7 +37,7 @@ Affiche les migrations locales vs appliquées sur la base distante.
 make db-push-prod
 ```
 
-Demande le mot de passe de la base prod (saisie masquée), liste les migrations en attente, demande confirmation, applique, puis lint le schéma.
+Lit le mot de passe de la base prod dans `supabase/.env.prod` (`SUPABASE_PROD_DB_PASSWORD`, ignoré par git, à garder sur ta machine uniquement), ou le demande en saisie masquée si le fichier est absent ou vide. Liste ensuite les migrations en attente, demande confirmation, applique, puis lint le schéma.
 
 ### Environnements
 
